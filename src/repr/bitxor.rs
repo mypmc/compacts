@@ -35,7 +35,7 @@ impl Repr {
                 *ones = 0;
                 for (x, y) in map1.iter_mut().zip(map2.iter()) {
                     let p = *x ^ *y;
-                    *ones += p.ones();
+                    *ones += p.ones() as usize;
                     *x = p;
                 }
             }

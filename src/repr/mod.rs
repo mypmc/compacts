@@ -48,28 +48,28 @@ pub enum Repr {
     Map(usize, Vec<u64>),
 }
 impl Bits for Repr {
-    const SIZE: usize = 1 << 16;
+    const SIZE: u64 = 1 << 16;
 
     fn none() -> Self {
         Self::new()
     }
-    fn ones(&self) -> usize {
+    fn ones(&self) -> u64 {
         match self {
-            &Repr::Vec(ones, _) => ones,
-            &Repr::Map(ones, _) => ones,
+            &Repr::Vec(ones, _) => ones as u64,
+            &Repr::Map(ones, _) => ones as u64,
         }
     }
 }
 
 impl Repr {
-    pub const BITS_SIZE: usize = <u64 as Bits>::SIZE;
+    pub const BITS_SIZE: u64 = <u64 as Bits>::SIZE;
 
-    //pub const VEC_SIZE: usize = 1 << 12;
-    //pub const VEC_SIZE: usize = 1 << 11;
-    const VEC_SIZE: usize = 1 << 10;
+    //pub const VEC_SIZE: u64 = 1 << 12;
+    //pub const VEC_SIZE: u64 = 1 << 11;
+    const VEC_SIZE: u64 = 1 << 10;
 
     #[allow(dead_code)]
-    const MAP_SIZE: usize = Repr::SIZE / Repr::BITS_SIZE;
+    const MAP_SIZE: u64 = Repr::SIZE / Repr::BITS_SIZE;
 
     #[allow(dead_code)]
     fn load_factor(&self) -> f64 {
@@ -80,7 +80,7 @@ impl Repr {
         Repr::Vec(0, Vec::new())
     }
     pub fn with_capacity(cap: usize) -> Repr {
-        if cap <= Self::VEC_SIZE {
+        if cap as u64 <= Self::VEC_SIZE {
             Repr::Vec(0, Vec::with_capacity(cap))
         } else {
             Repr::Map(0, Vec::with_capacity(cap))
@@ -222,7 +222,7 @@ impl<'a> FromIterator<&'a u16> for Repr {
 impl FromIterator<bool> for Repr {
     fn from_iter<I: IntoIterator<Item = bool>>(iterable: I) -> Repr {
         let iter = iterable.into_iter();
-        iter.take(Repr::SIZE)
+        iter.take(Repr::SIZE as usize)
             .enumerate()
             .filter_map(|(i, p)| if p { Some(i as u16) } else { None })
             .collect::<Repr>()
@@ -235,7 +235,7 @@ impl<'a> FromIterator<&'a bool> for Repr {
     }
 }
 
-fn insert_u16_all<It: Iterator<Item = u16>>(it: It, repr: &mut Repr) -> usize {
+fn insert_u16_all<It: Iterator<Item = u16>>(it: It, repr: &mut Repr) -> u64 {
     let mut ones = 0;
     for item in it {
         if repr.insert(item) {

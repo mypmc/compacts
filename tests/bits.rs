@@ -4,7 +4,7 @@ use self::cwt::{Bits, Rank0, Rank1, Select1};
 
 struct RankSelect<T> {
     bvec: T,
-    case: (usize, Option<usize>),
+    case: (usize, Option<u64>),
 }
 
 impl<T> RankSelect<T>
@@ -17,11 +17,11 @@ impl<T> RankSelect<T>
         let s9 = bvec.select1(arg);
         assert_eq!(s9, want);
 
-        let r9 = bvec.rank1(<T as Bits>::SIZE);
+        let r9 = bvec.rank1(<T as Bits>::SIZE as usize);
         assert_eq!(r9, bvec.ones());
 
         if let Some(s9) = s9 {
-            assert_eq!(bvec.rank1(s9), arg);
+            assert_eq!(bvec.rank1(s9 as usize), arg as u64);
         }
     }
 }

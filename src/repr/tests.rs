@@ -35,7 +35,7 @@ impl RankSelect {
     }
     fn max_rank_is_equals_to_ones(&self) {
         let ones = self.repr.ones();
-        let rank = self.repr.rank1(Repr::SIZE);
+        let rank = self.repr.rank1(Repr::SIZE as usize);
         assert_eq!(ones, rank, "{:?}", self);
     }
     fn rank_select_identity<R: Rng>(&self, rng: &mut R) {
@@ -44,14 +44,14 @@ impl RankSelect {
         } else {
             rng.gen_range(0, self.repr.ones())
         };
-        let s = self.repr.select1(c).unwrap_or(0);
-        let r = self.repr.rank1(s);
+        let s = self.repr.select1(c as usize).unwrap_or(0);
+        let r = self.repr.rank1(s as usize);
         assert_eq!(c, r, "{:?}", self);
     }
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-static LENGTHS: &'static [usize] = &[0, Repr::VEC_SIZE, Repr::VEC_SIZE * 2, Repr::SIZE / 2, Repr::SIZE];
+static LENGTHS: &'static [u64] = &[0, Repr::VEC_SIZE, Repr::VEC_SIZE * 2, Repr::SIZE / 2, Repr::SIZE];
 
 #[test]
 fn repr_rank_select() {
@@ -64,7 +64,7 @@ fn repr_rank_select() {
         vec
     };
     for &size in lens.iter() {
-        RankSelect::run(size, &mut rng);
+        RankSelect::run(size as usize, &mut rng);
     }
 }
 
@@ -78,7 +78,7 @@ impl<'a> IterTest<'a> {
         Self::new(bits, dirs).test()
     }
     fn new(bits: &'a [u64], dirs: &'a [Option<u16>]) -> IterTest<'a> {
-        let ones = bits.iter().fold(0, |acc, &x| acc + x.ones());
+        let ones = bits.iter().fold(0, |acc, &x| acc + x.ones()) as usize;
         IterTest { bits, ones, dirs }
     }
     fn test(&mut self) {
@@ -115,11 +115,11 @@ impl<'a> TestOp<'a> {
 macro_rules! init_repr {
     ( VEC; $repr: ident, $rng: expr ) => {
         let size = $rng.gen_range(0, Repr::VEC_SIZE);
-        init_repr!($repr, size, $rng);
+        init_repr!($repr, size as usize, $rng);
     };
     ( MAP; $repr: ident, $rng: expr ) => {
         let size = $rng.gen_range(Repr::VEC_SIZE, Repr::SIZE);
-        init_repr!($repr, size, $rng);
+        init_repr!($repr, size as usize, $rng);
     };
     ( $repr: ident, $size: expr, $rng: expr ) => {
         let $repr = &generate_repr( $size, &mut $rng );
@@ -239,28 +239,27 @@ fn repr_bitop_XOR() {
 
 #[test]
 fn repr_insert_remove() {
-    // let _ = env_logger::init();
-
     let mut b = Repr::none();
     let mut i = 0u16;
-    while i < Repr::VEC_SIZE as u16 {
+    while (i as u64) < Repr::VEC_SIZE {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
         assert!(b.contains(i));
         i += 1;
     }
+    assert_eq!(i as u64, Repr::VEC_SIZE);
     assert_eq!(b.ones(), Repr::VEC_SIZE);
-    while i < Repr::SIZE as u16 {
+
+    while (i as u64) < Repr::SIZE {
         assert!(b.insert(i), "insert failed");
         assert!(b.contains(i), "insert ok, but not contains");
+        if i == u16::MAX {
+            break;
+        }
         i += 1;
     }
-    assert!(b.insert(i), format!("insert({:?}) failed", i));
-    assert!(b.contains(i));
 
     b.optimize();
-
-    assert_eq!(i as usize, Repr::VEC_SIZE);
-    assert_eq!(b.ones(), Repr::VEC_SIZE + 1);
+    assert_eq!(b.ones(), Repr::SIZE);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));
