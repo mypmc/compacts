@@ -14,7 +14,7 @@ pub struct Pair<'a, T> {
 }
 
 macro_rules! define_pair {
-    ( $( $op:ident ),* ) => ($(
+    ( $( ( $fn:ident, $op:ident ) ),* ) => ($(
         pub struct $op;
         impl<'a> Pair<'a, $op> {
             fn new(x: Iter<'a>, y: Iter<'a>) -> Pair<'a, $op> {
@@ -25,25 +25,20 @@ macro_rules! define_pair {
                 }
             }
         }
-    )*);
-}
-macro_rules! define_newfn {
-    ( $( ( $fn:ident, $ty:ident ) ),* ) => ($(
-        pub fn $fn<'a, I>(x: I, y: I) -> Pair<'a, $ty>
+        pub fn $fn<'a, I>(x: I, y: I) -> Pair<'a, $op>
             where I
             : IntoIterator<IntoIter = Iter<'a>>
             + IntoIterator<Item = <Iter<'a> as Iterator>::Item>
         {
-            <Pair<'a, $ty>>::new(x.into_iter(), y.into_iter())
+            <Pair<'a, $op>>::new(x.into_iter(), y.into_iter())
         }
     )*);
 }
 
-define_pair!(Intersection, Union, Difference, SymmetricDifference);
-define_newfn!((intersection, Intersection),
-              (union, Union),
-              (difference, Difference),
-              (symmetric_difference, SymmetricDifference));
+define_pair!((intersection, Intersection),
+             (union, Union),
+             (difference, Difference),
+             (symmetric_difference, SymmetricDifference));
 
 /// Compare `a` and `b`, but return `s` if a is None and `l` if b is None
 fn comparing<T: Ord>(a: Option<T>, b: Option<T>, x: Ordering, y: Ordering) -> Ordering {

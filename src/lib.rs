@@ -15,4 +15,4 @@ pub use bits::{Select0, Select1};
 mod repr;
 use repr::{Repr, Iter};
 
-//mod bucket;
+mod bit_map;
