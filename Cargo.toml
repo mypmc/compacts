@@ -1,0 +1,11 @@
+[package]
+name    = "cwt"
+version = "0.1.0"
+authors = ["Kohei Watanabe <xBEEF29@gmail.com>"]
+
+[dependencies]
+
+[dev-dependencies]
+# log = "0.3.7"
+# env_logger = "0.4.2"
+rand = "0.3"
