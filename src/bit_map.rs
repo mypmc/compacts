@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use super::{Bits, Repr};
 
-struct BitMap {
+pub struct BitMap {
     bitmap: BTreeMap<u16, Repr>,
 }
 

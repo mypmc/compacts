@@ -172,12 +172,15 @@ macro_rules! bitops_test {
                     bitand=bitand, lhs=lhs, rhs=rhs);
         }
         let pair = pair!(intersection, lhs, rhs);
+        let mut c = 0;
         for (i, j) in pair.zip(&bitand){
+            c += 1;
             assert!(i == j, "i:{:?} j:{:?}", i, j);
             assert!((lhs.contains(i) && rhs.contains(i)) && (lhs.contains(j) && rhs.contains(j)),
                     "bitand={bitand:?} lhs={lhs:?} rhs={rhs:?}",
                     bitand=bitand, lhs=lhs, rhs=rhs);
         }
+        assert!(c == bitand.ones());
     };
     ( $this: ident | $that: ident ) => {
         bitops!($this | $that; lhs, rhs, test);
@@ -188,12 +191,15 @@ macro_rules! bitops_test {
                     bitor=bitor, lhs=lhs, rhs=rhs);
         }
         let pair = pair!(union, lhs, rhs);
+        let mut c = 0;
         for (i, j) in pair.zip(&bitor){
+            c += 1;
             assert!(i == j, "i:{:?} j:{:?}", i, j);
             assert!((lhs.contains(i) || rhs.contains(i)) && (lhs.contains(j) || rhs.contains(j)),
                     "bitor={bitor:?} lhs={lhs:?} rhs={rhs:?}",
                     bitor=bitor, lhs=lhs, rhs=rhs);
         }
+        assert!(c == bitor.ones());
     };
     ( $this: ident ^ $that: ident ) => {
         bitops!($this ^ $that; lhs, rhs, test);
@@ -204,12 +210,15 @@ macro_rules! bitops_test {
                     bitxor=bitxor, lhs=lhs, rhs=rhs);
         }
         let pair = pair!(symmetric_difference, lhs, rhs);
+        let mut c = 0;
         for (i, j) in pair.zip(&bitxor){
+            c += 1;
             assert!(i == j, "i:{:?} j:{:?}", i, j);
             assert!(!(lhs.contains(i) && rhs.contains(i)) && !(lhs.contains(j) && rhs.contains(j)),
                     "bitxor={bitxor:?} lhs={lhs:?} rhs={rhs:?}",
                     bitxor=bitxor, lhs=lhs, rhs=rhs);
         }
+        assert!(c == bitxor.ones());
     };
 }
 
@@ -272,6 +281,20 @@ fn repr_insert_remove() {
 
     b.optimize();
     assert_eq!(0, b.ones());
+}
+
+#[test]
+fn pop_count_max() {
+    {
+        let cnt: u64 = 1 << 16;
+        let pop = PopCount::<u16>::new(cnt);
+        assert!(pop.ones() == cnt, "{:?} {:?}", pop.ones(), cnt);
+    }
+    {
+        let cnt: u64 = 1 << 32;
+        let pop = PopCount::<u32>::new(cnt);
+        assert!(pop.ones() == cnt, "{:?} {:?}", pop.ones(), cnt);
+    }
 }
 
 macro_rules! run_bench_bitops {

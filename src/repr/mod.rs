@@ -3,7 +3,8 @@
 use std::{fmt, u16};
 use std::iter::{IntoIterator, FromIterator};
 
-use super::{Bits, Rank0, Rank1, Select0, Select1};
+use super::{Bits, Bounded, PopCount};
+use super::{Rank0, Rank1, Select0, Select1};
 
 macro_rules! keypos {
     ( $bit: expr, $key: ident, $pos: ident ) => (
@@ -42,10 +43,10 @@ mod tests;
 #[derive(Clone)]
 pub enum Repr {
     // Vec hold bit as is, sorted order.
-    Vec(usize, Vec<u16>),
+    Vec(PopCount<u16>, Vec<u16>),
 
     // Map hold u64 as a bitarray, each non-zero bit represents element.
-    Map(usize, Vec<u64>),
+    Map(PopCount<u16>, Vec<u64>),
 }
 impl Bits for Repr {
     const SIZE: u64 = 1 << 16;
@@ -55,8 +56,8 @@ impl Bits for Repr {
     }
     fn ones(&self) -> u64 {
         match self {
-            &Repr::Vec(ones, _) => ones as u64,
-            &Repr::Map(ones, _) => ones as u64,
+            &Repr::Vec(ref pop, _) => pop.ones(),
+            &Repr::Map(ref pop, _) => pop.ones(),
         }
     }
 }
@@ -77,13 +78,13 @@ impl Repr {
     }
 
     pub fn new() -> Repr {
-        Repr::Vec(0, Vec::new())
+        Repr::Vec(PopCount::MIN, Vec::new())
     }
     pub fn with_capacity(cap: usize) -> Repr {
         if cap as u64 <= Self::VEC_SIZE {
-            Repr::Vec(0, Vec::with_capacity(cap))
+            Repr::Vec(PopCount::MIN, Vec::with_capacity(cap))
         } else {
-            Repr::Map(0, Vec::with_capacity(cap))
+            Repr::Map(PopCount::MIN, Vec::with_capacity(cap))
         }
     }
 
@@ -114,8 +115,8 @@ impl Repr {
 impl Repr {
     fn iter(&self) -> Iter {
         match self {
-            &Repr::Vec(ones, ref bits) => Iter::vec(&bits[..], ones),
-            &Repr::Map(ones, ref bits) => Iter::map(&bits[..], ones),
+            &Repr::Vec(ref pop, ref bits) => Iter::vec(&bits[..], pop.ones() as usize),
+            &Repr::Map(ref pop, ref bits) => Iter::map(&bits[..], pop.ones() as usize),
         }
     }
 }
@@ -123,8 +124,8 @@ impl Repr {
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Repr::Vec(ones, _) => write!(fmt, "Vec({:?})", ones),
-            &Repr::Map(ones, _) => write!(fmt, "Map({:?})", ones),
+            &Repr::Vec(ref popc, _) => write!(fmt, "Vec({:?})", popc.ones()),
+            &Repr::Map(ref popc, _) => write!(fmt, "Map({:?})", popc.ones()),
         }
     }
 }
@@ -142,23 +143,23 @@ impl Repr {
 
     pub fn insert(&mut self, bit: u16) -> bool {
         match self {
-            &mut Repr::Vec(ref mut ones, ref mut bits) => {
+            &mut Repr::Vec(ref mut popc, ref mut bits) => {
                 let ok = bits.binary_search(&bit)
                     .map_err(|i| bits.insert(i, bit))
                     .is_err();
                 if ok {
-                    *ones += 1;
+                    popc.incr();
                 }
                 ok
             }
-            &mut Repr::Map(ref mut ones, ref mut bits) => {
+            &mut Repr::Map(ref mut popc, ref mut bits) => {
                 bitmask!(bit, key, mask);
                 if let Some(map) = bits.get_mut(key) {
                     if *map & mask != 0 {
                         return false;
                     } else {
                         *map |= mask;
-                        *ones += 1;
+                        popc.incr();
                         return true;
                     }
                 }
@@ -166,7 +167,7 @@ impl Repr {
                     bits.resize(key, 0);
                 }
                 bits.insert(key, mask);
-                *ones += 1;
+                popc.incr();
                 return true;
             }
         }
@@ -174,7 +175,7 @@ impl Repr {
 
     pub fn remove(&mut self, bit: u16) -> bool {
         match self {
-            &mut Repr::Vec(ref mut ones, ref mut bits) => {
+            &mut Repr::Vec(ref mut popc, ref mut bits) => {
                 let ok = bits.binary_search(&bit)
                     .map(|i| {
                              let removed = bits.remove(i);
@@ -182,16 +183,16 @@ impl Repr {
                          })
                     .is_ok();
                 if ok {
-                    *ones -= 1;
+                    popc.decr();
                 }
                 ok
             }
-            &mut Repr::Map(ref mut ones, ref mut bits) => {
+            &mut Repr::Map(ref mut popc, ref mut bits) => {
                 bitmask!(bit, key, mask);
                 if let Some(map) = bits.get_mut(key) {
                     if *map & mask != 0 {
                         *map &= !mask;
-                        *ones -= 1;
+                        popc.decr();
                         return true;
                     } else {
                         return false;

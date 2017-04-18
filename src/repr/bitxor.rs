@@ -1,5 +1,5 @@
 use std::ops;
-use super::{pair, Bits, Repr};
+use super::{pair, Bits, PopCount, Repr};
 
 macro_rules! clone_symmetric_difference {
     ( $clone: ident, $source: expr, $target: expr ) => {
@@ -31,13 +31,14 @@ impl Repr {
                     }
                 }
             }
-            (&mut Repr::Map(ref mut ones, ref mut map1), &Repr::Map(_, ref map2)) => {
-                *ones = 0;
+            (&mut Repr::Map(ref mut pop, ref mut map1), &Repr::Map(_, ref map2)) => {
+                let mut ones = 0;
                 for (x, y) in map1.iter_mut().zip(map2.iter()) {
                     let p = *x ^ *y;
-                    *ones += p.ones() as usize;
+                    ones += p.ones();
                     *x = p;
                 }
+                *pop = PopCount::<u16>::new(ones);
             }
         }
     }

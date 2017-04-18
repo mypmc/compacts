@@ -1,5 +1,5 @@
 use std::ops;
-use super::{pair, Bits, Repr};
+use super::{pair, Bits, PopCount, Repr};
 
 macro_rules! clone_intersect_with {
     ( $clone: ident, $source: expr, $target: expr ) => {
@@ -17,15 +17,16 @@ impl Repr {
                 *this = iter.collect::<Repr>();
             }
 
-            (&mut Repr::Vec(ref mut ones, ref mut vec), that @ &Repr::Map(..)) => {
-                *ones = 0;
+            (&mut Repr::Vec(ref mut pop, ref mut vec), that @ &Repr::Map(..)) => {
+                let mut ones = 0;
                 for i in 0..vec.len() {
                     if that.contains(vec[i]) {
-                        vec[*ones] = vec[i];
-                        *ones += 1;
+                        vec[ones] = vec[i];
+                        ones += 1;
                     }
                 }
-                vec.truncate(*ones);
+                *pop = PopCount::<u16>::new(ones as u64);
+                vec.truncate(ones);
             }
 
             (this @ &mut Repr::Map(..), that @ &Repr::Vec(..)) => {
@@ -33,13 +34,14 @@ impl Repr {
                 *this = clone;
             }
 
-            (&mut Repr::Map(ref mut ones, ref mut map1), &Repr::Map(_, ref map2)) => {
-                *ones = 0;
+            (&mut Repr::Map(ref mut pop, ref mut map1), &Repr::Map(_, ref map2)) => {
+                let mut ones = 0;
                 for (x, y) in map1.iter_mut().zip(map2.iter()) {
                     let p = *x & *y;
-                    *ones += p.ones() as usize;
+                    ones += p.ones();
                     *x = p;
                 }
+                *pop = PopCount::<u16>::new(ones);
             }
         }
     }

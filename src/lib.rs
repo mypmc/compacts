@@ -9,10 +9,18 @@ extern crate test;
 
 mod bits;
 pub use bits::Bits;
-pub use bits::{Rank0, Rank1};
-pub use bits::{Select0, Select1};
+
+mod rank;
+pub use rank::{Rank0, Rank1};
+
+mod select;
+pub use select::{Select0, Select1};
+
+mod pop_count;
+use pop_count::{Bounded, PopCount};
 
 mod repr;
 use repr::{Repr, Iter};
 
 mod bit_map;
+use bit_map::BitMap;
