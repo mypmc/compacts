@@ -81,6 +81,19 @@ impl_SplitMerge!{(usize, u16)}
 #[cfg(target_pointer_width = "64")]
 impl_SplitMerge!{(usize, u32)}
 
+/*
+impl<T, S> SplitMerge<T> for S
+    where S: From<(T, T)> + Into<(T, T)>
+{
+    fn split(self) -> (T, T) {
+        self.into()
+    }
+    fn merge(t: (T, T)) -> S {
+        Self::from(t)
+    }
+}
+*/
+
 macro_rules! impl_PopCount {
     ( $( $type: ty ),* ) => ($(
         impl Bounded for PopCount<$type> {
