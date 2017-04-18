@@ -19,8 +19,8 @@ pub use select::{Select0, Select1};
 mod pop_count;
 use pop_count::{Bounded, PopCount};
 
-mod repr;
-use repr::{Repr, Iter};
+mod bucket;
+use bucket::{Bucket, Iter};
 
 mod bit_map;
 use bit_map::BitMap;

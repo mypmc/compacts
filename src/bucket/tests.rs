@@ -8,18 +8,18 @@ use self::test::Bencher;
 
 use super::*;
 
-fn generate_repr<R: Rng>(size: usize, rng: &mut R) -> Repr {
-    let mut repr = Repr::with_capacity(size);
+fn generate_bucket<R: Rng>(size: usize, rng: &mut R) -> Bucket {
+    let mut bucket = Bucket::with_capacity(size);
     for _ in 0..size {
-        repr.insert(rng.gen());
+        bucket.insert(rng.gen());
     }
-    repr
+    bucket
 }
 
 #[derive(Debug)]
 struct RankSelect {
     size: usize,
-    repr: Repr,
+    bucket: Bucket,
 }
 
 impl RankSelect {
@@ -30,35 +30,35 @@ impl RankSelect {
     }
 
     fn new<R: Rng>(size: usize, rng: &mut R) -> RankSelect {
-        let repr = generate_repr(size, rng);
-        RankSelect { size, repr }
+        let bucket = generate_bucket(size, rng);
+        RankSelect { size, bucket }
     }
     fn max_rank_is_equals_to_ones(&self) {
-        let ones = self.repr.ones();
-        let rank = self.repr.rank1(Repr::SIZE as usize);
+        let ones = self.bucket.ones();
+        let rank = self.bucket.rank1(Bucket::SIZE as usize);
         assert_eq!(ones, rank, "{:?}", self);
     }
     fn rank_select_identity<R: Rng>(&self, rng: &mut R) {
-        let c = if self.repr.ones() == 0 {
+        let c = if self.bucket.ones() == 0 {
             0
         } else {
-            rng.gen_range(0, self.repr.ones())
+            rng.gen_range(0, self.bucket.ones())
         };
-        let s = self.repr.select1(c as usize).unwrap_or(0);
-        let r = self.repr.rank1(s as usize);
+        let s = self.bucket.select1(c as usize).unwrap_or(0);
+        let r = self.bucket.rank1(s as usize);
         assert_eq!(c, r, "{:?}", self);
     }
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-static LENGTHS: &'static [u64] = &[0, Repr::VEC_SIZE, Repr::VEC_SIZE * 2, Repr::SIZE / 2, Repr::SIZE];
+static LENGTHS: &'static [u64] = &[0, Bucket::VEC_SIZE, Bucket::VEC_SIZE * 2, Bucket::SIZE / 2, Bucket::SIZE];
 
 #[test]
-fn repr_rank_select() {
+fn bucket_rank_select() {
     let mut rng = rand::thread_rng();
     let lens = {
-        let mut vec = vec![rng.gen_range(10, Repr::VEC_SIZE),
-                           rng.gen_range(Repr::VEC_SIZE + 1, Repr::SIZE - 1)];
+        let mut vec = vec![rng.gen_range(10, Bucket::VEC_SIZE),
+                           rng.gen_range(Bucket::VEC_SIZE + 1, Bucket::SIZE - 1)];
         vec.extend_from_slice(LENGTHS);
         vec.sort();
         vec
@@ -91,7 +91,7 @@ impl<'a> IterTest<'a> {
 }
 
 #[test]
-fn repr_iter_next() {
+fn bucket_iter_next() {
     {
         let bits = &[1 | 1 << 63, 1 | 1 << 63, 1 | 1 << 63];
         let dirs = &[Some(0), Some(63), Some(64), Some(127), Some(128), Some(191), None, None];
@@ -100,29 +100,29 @@ fn repr_iter_next() {
 }
 
 struct TestOp<'a> {
-    lhs: &'a Repr,
-    rhs: &'a Repr,
-    ops: &'a Fn(&Repr, &Repr) -> Repr,
+    lhs: &'a Bucket,
+    rhs: &'a Bucket,
+    ops: &'a Fn(&Bucket, &Bucket) -> Bucket,
 }
 
 impl<'a> TestOp<'a> {
-    fn run(&self) -> Repr {
+    fn run(&self) -> Bucket {
         let &TestOp { lhs, rhs, ops } = self;
         ops(lhs, rhs)
     }
 }
 
-macro_rules! init_repr {
-    ( VEC; $repr: ident, $rng: expr ) => {
-        let size = $rng.gen_range(0, Repr::VEC_SIZE);
-        init_repr!($repr, size as usize, $rng);
+macro_rules! init_bucket {
+    ( VEC; $bucket: ident, $rng: expr ) => {
+        let size = $rng.gen_range(0, Bucket::VEC_SIZE);
+        init_bucket!($bucket, size as usize, $rng);
     };
-    ( MAP; $repr: ident, $rng: expr ) => {
-        let size = $rng.gen_range(Repr::VEC_SIZE, Repr::SIZE);
-        init_repr!($repr, size as usize, $rng);
+    ( MAP; $bucket: ident, $rng: expr ) => {
+        let size = $rng.gen_range(Bucket::VEC_SIZE, Bucket::SIZE);
+        init_bucket!($bucket, size as usize, $rng);
     };
-    ( $repr: ident, $size: expr, $rng: expr ) => {
-        let $repr = &generate_repr( $size, &mut $rng );
+    ( $bucket: ident, $size: expr, $rng: expr ) => {
+        let $bucket = &generate_bucket( $size, &mut $rng );
     };
 }
 macro_rules! init_bitops {
@@ -144,20 +144,20 @@ macro_rules! init_bitops {
 macro_rules! bitops {
     ( $this: ident & $that: ident; $lhs: ident, $rhs: ident, $test: ident ) => {
         let mut rng = rand::thread_rng();
-        init_repr!($this; $lhs, rng);
-        init_repr!($that; $rhs, rng);
+        init_bucket!($this; $lhs, rng);
+        init_bucket!($that; $rhs, rng);
         init_bitops!($test, $lhs & $rhs);
     };
     ( $this: ident | $that: ident; $lhs: ident, $rhs: ident, $test: ident ) => {
         let mut rng = rand::thread_rng();
-        init_repr!($this; $lhs, rng);
-        init_repr!($that; $rhs, rng);
+        init_bucket!($this; $lhs, rng);
+        init_bucket!($that; $rhs, rng);
         init_bitops!($test, $lhs | $rhs);
     };
     ( $this: ident ^ $that: ident; $lhs: ident, $rhs: ident, $test: ident ) => {
         let mut rng = rand::thread_rng();
-        init_repr!($this; $lhs, rng);
-        init_repr!($that; $rhs, rng);
+        init_bucket!($this; $lhs, rng);
+        init_bucket!($that; $rhs, rng);
         init_bitops!($test, $lhs ^ $rhs);
     };
 }
@@ -223,7 +223,7 @@ macro_rules! bitops_test {
 }
 
 #[test]
-fn repr_bitop_AND() {
+fn bucket_bitop_AND() {
     bitops_test!(VEC & VEC);
     bitops_test!(VEC & MAP);
     bitops_test!(MAP & VEC);
@@ -231,7 +231,7 @@ fn repr_bitop_AND() {
 }
 
 #[test]
-fn repr_bitop_OR() {
+fn bucket_bitop_OR() {
     bitops_test!(VEC | VEC);
     bitops_test!(VEC | MAP);
     bitops_test!(MAP | VEC);
@@ -239,7 +239,7 @@ fn repr_bitop_OR() {
 }
 
 #[test]
-fn repr_bitop_XOR() {
+fn bucket_bitop_XOR() {
     bitops_test!(VEC ^ VEC);
     bitops_test!(VEC ^ MAP);
     bitops_test!(MAP ^ VEC);
@@ -247,18 +247,18 @@ fn repr_bitop_XOR() {
 }
 
 #[test]
-fn repr_insert_remove() {
-    let mut b = Repr::none();
+fn bucket_insert_remove() {
+    let mut b = Bucket::none();
     let mut i = 0u16;
-    while (i as u64) < Repr::VEC_SIZE {
+    while (i as u64) < Bucket::VEC_SIZE {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
         assert!(b.contains(i));
         i += 1;
     }
-    assert_eq!(i as u64, Repr::VEC_SIZE);
-    assert_eq!(b.ones(), Repr::VEC_SIZE);
+    assert_eq!(i as u64, Bucket::VEC_SIZE);
+    assert_eq!(b.ones(), Bucket::VEC_SIZE);
 
-    while (i as u64) < Repr::SIZE {
+    while (i as u64) < Bucket::SIZE {
         assert!(b.insert(i), "insert failed");
         assert!(b.contains(i), "insert ok, but not contains");
         if i == u16::MAX {
@@ -268,7 +268,7 @@ fn repr_insert_remove() {
     }
 
     b.optimize();
-    assert_eq!(b.ones(), Repr::SIZE);
+    assert_eq!(b.ones(), Bucket::SIZE);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));

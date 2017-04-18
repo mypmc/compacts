@@ -2,7 +2,7 @@ use std::iter::{Iterator, ExactSizeIterator};
 use std::slice::Iter as SliceIter;
 use std::marker::PhantomData;
 
-use super::{Bits, Repr};
+use super::{Bits, Bucket};
 
 /// module document.
 
@@ -21,12 +21,12 @@ pub enum Iter<'a> {
 impl<'a> Iter<'a> {
     pub fn vec(bits: &'a [u16], ones: usize) -> Iter<'a> {
         debug_assert!(bits.len() == ones);
-        debug_assert!(ones <= Repr::SIZE as usize, "{:?} {:?}", ones, Repr::SIZE);
+        debug_assert!(ones <= Bucket::SIZE as usize, "{:?} {:?}", ones, Bucket::SIZE);
         let iter = bits.iter();
         Iter::Vec { ones, iter }
     }
     pub fn map(bits: &'a [u64], ones: usize) -> Iter<'a> {
-        debug_assert!(ones <= Repr::SIZE as usize);
+        debug_assert!(ones <= Bucket::SIZE as usize);
         let ptr = <SlicePtr<'a, Forward>>::new(bits);
         Iter::Map { ones, ptr }
     }
@@ -78,7 +78,7 @@ impl<'a> SlicePtr<'a, Forward> {
     }
     fn goto_next(&mut self) {
         self.pos += 1;
-        if self.pos == Repr::BITS_SIZE as usize {
+        if self.pos == Bucket::BITS_SIZE as usize {
             self.pos = 0;
             self.idx += 1;
         }
@@ -93,7 +93,7 @@ impl<'a> SlicePtr<'a, Forward> {
             if i >= self.bits.len() {
                 return None;
             } else if self.bits[i] & (1u64 << p) != 0 {
-                let bit = Some((i * Repr::BITS_SIZE as usize + p) as u16);
+                let bit = Some((i * Bucket::BITS_SIZE as usize + p) as u16);
                 self.goto_next();
                 return bit;
             }

@@ -16,10 +16,10 @@ pub enum PopCount<T: Bounded> {
 }
 
 macro_rules! implPopCount {
-    ( $( ( $type: ty, $mod: ident ) ),* ) => ($(
+    ( $( $type: ty ),* ) => ($(
         impl Bounded for $type {
             const MIN: $type =  0;
-            const MAX: $type = ::std::$mod::MAX;
+            const MAX: $type = !0; //::std::$mod::MAX;
         }
 
         impl fmt::Debug for PopCount<$type> {
@@ -83,4 +83,4 @@ macro_rules! implPopCount {
     )*);
 }
 
-implPopCount!((u32, u32), (u16, u16), (u8, u8));
+implPopCount!(u32, u16, u8);

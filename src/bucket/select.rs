@@ -1,13 +1,13 @@
-use super::{Bits, Repr, Select1};
+use super::{Bits, Bucket, Select1};
 
-impl Select1<usize> for Repr {
+impl Select1<usize> for Bucket {
     fn select1(&self, c: usize) -> Option<u64> {
         if c as u64 >= self.ones() {
             return None;
         }
         match self {
-            &Repr::Vec(_, ref bits) => bits.get(c).map(|&u| u as u64),
-            &Repr::Map(_, ref bits) => {
+            &Bucket::Vec(_, ref bits) => bits.get(c).map(|&u| u as u64),
+            &Bucket::Map(_, ref bits) => {
                 let mut r = c as u64;
                 for (i, x) in bits.iter().enumerate() {
                     let w = x.ones();
@@ -24,16 +24,16 @@ impl Select1<usize> for Repr {
 }
 
 /*
-impl Select0 for Repr {
+impl Select0 for Bucket {
     fn select0(&self, c: usize) -> Option<usize> {
         if c >= Self::SIZE - self.ones() {
             return None;
         }
         match self {
-            &Repr::Vec(_, ref bits) => {
+            &Bucket::Vec(_, ref bits) => {
                 // [0,2,4,5,6]
             }
-            &Repr::Map(_, ref bits) => {
+            &Bucket::Map(_, ref bits) => {
                 let mut r = c;
                 for (i, x) in bits.iter().enumerate() {
                     let w = x.zeros();

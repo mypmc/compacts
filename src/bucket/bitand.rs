@@ -1,5 +1,5 @@
 use std::ops;
-use super::{pair, Bits, PopCount, Repr};
+use super::{pair, Bits, PopCount, Bucket};
 
 macro_rules! clone_intersect_with {
     ( $clone: ident, $source: expr, $target: expr ) => {
@@ -8,16 +8,16 @@ macro_rules! clone_intersect_with {
     };
 }
 
-impl Repr {
-    fn intersect_with(&mut self, other: &Repr) {
+impl Bucket {
+    fn intersect_with(&mut self, other: &Bucket) {
         match (self, other) {
-            (this @ &mut Repr::Vec(..), that @ &Repr::Vec(..)) => {
+            (this @ &mut Bucket::Vec(..), that @ &Bucket::Vec(..)) => {
                 let repr = this.clone();
                 let iter = pair!(intersection, repr, that);
-                *this = iter.collect::<Repr>();
+                *this = iter.collect::<Bucket>();
             }
 
-            (&mut Repr::Vec(ref mut pop, ref mut vec), that @ &Repr::Map(..)) => {
+            (&mut Bucket::Vec(ref mut pop, ref mut vec), that @ &Bucket::Map(..)) => {
                 let mut ones = 0;
                 for i in 0..vec.len() {
                     if that.contains(vec[i]) {
@@ -29,12 +29,12 @@ impl Repr {
                 vec.truncate(ones);
             }
 
-            (this @ &mut Repr::Map(..), that @ &Repr::Vec(..)) => {
+            (this @ &mut Bucket::Map(..), that @ &Bucket::Vec(..)) => {
                 clone_intersect_with!(clone, that, this);
                 *this = clone;
             }
 
-            (&mut Repr::Map(ref mut pop, ref mut map1), &Repr::Map(_, ref map2)) => {
+            (&mut Bucket::Map(ref mut pop, ref mut map1), &Bucket::Map(_, ref map2)) => {
                 let mut ones = 0;
                 for (x, y) in map1.iter_mut().zip(map2.iter()) {
                     let p = *x & *y;
@@ -47,15 +47,15 @@ impl Repr {
     }
 }
 
-impl<'a, 'b> ops::BitAnd<&'b Repr> for &'a Repr {
-    type Output = Repr;
-    fn bitand(self, other: &Repr) -> Self::Output {
+impl<'a, 'b> ops::BitAnd<&'b Bucket> for &'a Bucket {
+    type Output = Bucket;
+    fn bitand(self, other: &Bucket) -> Self::Output {
         match (self, other) {
-            (this @ &Repr::Vec(..), that @ &Repr::Vec(..)) => {
+            (this @ &Bucket::Vec(..), that @ &Bucket::Vec(..)) => {
                 let iter = pair!(intersection, this, that);
-                iter.collect::<Repr>()
+                iter.collect::<Bucket>()
             }
-            (this @ &Repr::Map(..), that @ &Repr::Vec(..)) => {
+            (this @ &Bucket::Map(..), that @ &Bucket::Vec(..)) => {
                 clone_intersect_with!(clone, that, this);
                 clone
             }
@@ -66,8 +66,8 @@ impl<'a, 'b> ops::BitAnd<&'b Repr> for &'a Repr {
         }
     }
 }
-impl<'a> ops::BitAndAssign<&'a Repr> for Repr {
-    fn bitand_assign(&mut self, other: &Repr) {
+impl<'a> ops::BitAndAssign<&'a Bucket> for Bucket {
+    fn bitand_assign(&mut self, other: &Bucket) {
         self.intersect_with(other)
     }
 }
