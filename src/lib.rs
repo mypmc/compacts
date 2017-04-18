@@ -8,7 +8,8 @@
 extern crate test;
 
 mod bits;
-pub use bits::Bits;
+pub use bits::{Bits, PopCount};
+pub use bits::{Bounded, SplitMerge};
 
 mod rank;
 pub use rank::{Rank0, Rank1};
@@ -16,11 +17,8 @@ pub use rank::{Rank0, Rank1};
 mod select;
 pub use select::{Select0, Select1};
 
-mod pop_count;
-use pop_count::{Bounded, PopCount};
-
 mod bucket;
-use bucket::{Bucket, Iter};
+use bucket::{Bucket, Iter as BucketIter};
 
 mod bit_map;
 use bit_map::BitMap;

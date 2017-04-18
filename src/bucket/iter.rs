@@ -2,33 +2,33 @@ use std::iter::{Iterator, ExactSizeIterator};
 use std::slice::Iter as SliceIter;
 use std::marker::PhantomData;
 
-use super::{Bits, Bucket};
+use super::{Bits, PopCount, Bucket};
 
 /// module document.
 
 // each 'ones' are count of non-zero bit; for size_hint
 pub enum Iter<'a> {
     Vec {
-        ones: usize,
+        pop: &'a PopCount<u16>,
         iter: SliceIter<'a, u16>,
     },
     Map {
-        ones: usize,
+        pop: &'a PopCount<u16>,
         ptr: SlicePtr<'a, Forward>,
     },
 }
 
 impl<'a> Iter<'a> {
-    pub fn vec(bits: &'a [u16], ones: usize) -> Iter<'a> {
-        debug_assert!(bits.len() == ones);
-        debug_assert!(ones <= Bucket::SIZE as usize, "{:?} {:?}", ones, Bucket::SIZE);
+    pub fn vec(bits: &'a [u16], pop: &'a PopCount<u16>) -> Iter<'a> {
+        debug_assert!(pop.cardinality() == bits.len() as u64);
+        debug_assert!(pop.cardinality() <= Bucket::SIZE);
         let iter = bits.iter();
-        Iter::Vec { ones, iter }
+        Iter::Vec { pop, iter }
     }
-    pub fn map(bits: &'a [u64], ones: usize) -> Iter<'a> {
-        debug_assert!(ones <= Bucket::SIZE as usize);
-        let ptr = <SlicePtr<'a, Forward>>::new(bits);
-        Iter::Map { ones, ptr }
+    pub fn map(bits: &'a [u64], pop: &'a PopCount<u16>) -> Iter<'a> {
+        debug_assert!(pop.cardinality() <= Bucket::SIZE);
+        let ptr = SlicePtr::<'a, Forward>::new(bits);
+        Iter::Map { pop, ptr }
     }
 }
 
@@ -43,7 +43,10 @@ impl<'a> Iterator for Iter<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self {
             &Iter::Vec { ref iter, .. } => iter.size_hint(),
-            &Iter::Map { ones, .. } => (ones, Some(ones)),
+            &Iter::Map { ref pop, .. } => {
+                let ones = pop.cardinality() as usize;
+                (ones, Some(ones))
+            }
         }
     }
 }

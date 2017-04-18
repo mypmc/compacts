@@ -1,6 +1,6 @@
 extern crate cwt;
 
-use self::cwt::{Bits, Rank0, Rank1, Select1};
+use self::cwt::{Bits, SplitMerge, Rank0, Rank1, Select1};
 
 struct RankSelect<T> {
     bvec: T,
@@ -49,4 +49,10 @@ fn rank_select() {
     for test in TESTS_64 {
         test.run();
     }
+}
+
+#[test]
+fn split_merge() {
+    let w = 0b_1100_u64;
+    assert!(w == <u64 as SplitMerge<u32>>::merge(w.split()));
 }

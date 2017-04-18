@@ -1,10 +1,10 @@
 use super::Bits;
 
-pub trait Select0<T = usize>: Bits {
+pub trait Select0<T = usize> {
     /// Return the 'c+1'th zero bit's index.
     fn select0(&self, c: T) -> Option<u64>;
 }
-pub trait Select1<T = usize>: Bits {
+pub trait Select1<T = usize> {
     /// Return the 'c+1'th non-zero bit's index.
     fn select1(&self, c: T) -> Option<u64>;
 }
@@ -52,7 +52,7 @@ macro_rules! impl_select9_all {
         impl_select9!(($type, u64), ($type, u32), ($type, u16), ($type, u8), ($type, usize));
     )*)
 }
-impl_select9_all!(u64, u32, u16, u8, usize);
+impl_select9_all!(u64, u32, u16, usize);
 
 fn le8(x: u64, y: u64) -> u64 {
     let x8 = X02 + X02 + X02 + X02;

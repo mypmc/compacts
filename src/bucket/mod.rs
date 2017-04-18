@@ -51,19 +51,16 @@ pub enum Bucket {
 impl Bits for Bucket {
     const SIZE: u64 = 1 << 16;
 
-    fn none() -> Self {
-        Self::new()
-    }
     fn ones(&self) -> u64 {
         match self {
-            &Bucket::Vec(ref pop, _) => pop.ones(),
-            &Bucket::Map(ref pop, _) => pop.ones(),
+            &Bucket::Vec(ref pop, _) => pop.cardinality(),
+            &Bucket::Map(ref pop, _) => pop.cardinality(),
         }
     }
 }
 
 impl Bucket {
-    pub const BITS_SIZE: u64 = <u64 as Bits>::SIZE;
+    const BITS_SIZE: u64 = <u64 as Bits>::SIZE;
 
     //pub const VEC_SIZE: u64 = 1 << 12;
     //pub const VEC_SIZE: u64 = 1 << 11;
@@ -115,8 +112,8 @@ impl Bucket {
 impl Bucket {
     fn iter(&self) -> Iter {
         match self {
-            &Bucket::Vec(ref pop, ref bits) => Iter::vec(&bits[..], pop.ones() as usize),
-            &Bucket::Map(ref pop, ref bits) => Iter::map(&bits[..], pop.ones() as usize),
+            &Bucket::Vec(ref pop, ref bits) => Iter::vec(&bits[..], pop),
+            &Bucket::Map(ref pop, ref bits) => Iter::map(&bits[..], pop),
         }
     }
 }
@@ -124,8 +121,8 @@ impl Bucket {
 impl fmt::Debug for Bucket {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Bucket::Vec(ref popc, _) => write!(fmt, "Vec({:?})", popc.ones()),
-            &Bucket::Map(ref popc, _) => write!(fmt, "Map({:?})", popc.ones()),
+            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.cardinality()),
+            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.cardinality()),
         }
     }
 }

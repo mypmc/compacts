@@ -51,7 +51,8 @@ impl RankSelect {
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-static LENGTHS: &'static [u64] = &[0, Bucket::VEC_SIZE, Bucket::VEC_SIZE * 2, Bucket::SIZE / 2, Bucket::SIZE];
+static LENGTHS: &'static [u64] =
+    &[0, Bucket::VEC_SIZE, Bucket::VEC_SIZE * 2, Bucket::SIZE / 2, Bucket::SIZE];
 
 #[test]
 fn bucket_rank_select() {
@@ -70,7 +71,7 @@ fn bucket_rank_select() {
 
 struct IterTest<'a> {
     bits: &'a [u64],
-    ones: usize,
+    ones: u64,
     dirs: &'a [Option<u16>],
 }
 impl<'a> IterTest<'a> {
@@ -78,11 +79,12 @@ impl<'a> IterTest<'a> {
         Self::new(bits, dirs).test()
     }
     fn new(bits: &'a [u64], dirs: &'a [Option<u16>]) -> IterTest<'a> {
-        let ones = bits.iter().fold(0, |acc, &x| acc + x.ones()) as usize;
+        let ones = bits.iter().fold(0, |acc, &x| acc + x.ones());
         IterTest { bits, ones, dirs }
     }
     fn test(&mut self) {
-        let mut iter = Iter::map(self.bits, self.ones);
+        let pop = PopCount::<u16>::new(self.ones);
+        let mut iter = Iter::map(self.bits, &pop);
         for (i, &want) in self.dirs.iter().enumerate() {
             let got = iter.next();
             assert_eq!(got, want, "{:?}", i);
@@ -248,7 +250,7 @@ fn bucket_bitop_XOR() {
 
 #[test]
 fn bucket_insert_remove() {
-    let mut b = Bucket::none();
+    let mut b = Bucket::new();
     let mut i = 0u16;
     while (i as u64) < Bucket::VEC_SIZE {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
@@ -288,12 +290,12 @@ fn pop_count_max() {
     {
         let cnt: u64 = 1 << 16;
         let pop = PopCount::<u16>::new(cnt);
-        assert!(pop.ones() == cnt, "{:?} {:?}", pop.ones(), cnt);
+        assert!(pop.cardinality() == cnt);
     }
     {
         let cnt: u64 = 1 << 32;
         let pop = PopCount::<u32>::new(cnt);
-        assert!(pop.ones() == cnt, "{:?} {:?}", pop.ones(), cnt);
+        assert!(pop.cardinality() == cnt);
     }
 }
 

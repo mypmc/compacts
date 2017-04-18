@@ -1,10 +1,10 @@
 use super::Bits;
 
-pub trait Rank0<T = usize>: Bits {
+pub trait Rank0<T = usize> {
     /// Count how many zero bits there are up to a given position
     fn rank0(&self, i: T) -> u64;
 }
-pub trait Rank1<T = usize>: Bits {
+pub trait Rank1<T = usize> {
     /// Count how many non-zero bits there are up to a given position
     fn rank1(&self, i: T) -> u64;
 }
@@ -37,4 +37,4 @@ macro_rules! impl_rank9_all {
         impl_rank9!(($type, u64), ($type, u32), ($type, u16), ($type, u8), ($type, usize));
     )*)
 }
-impl_rank9_all!(u64, u32, u16, u8, usize);
+impl_rank9_all!(u64, u32, u16, usize);
