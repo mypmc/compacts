@@ -3,7 +3,7 @@
 use std::{fmt, u16};
 use std::iter::{IntoIterator, FromIterator};
 
-use super::{Bits, Bounded, PopCount};
+use super::{Bits, Bounded, Count};
 use super::{Rank0, Rank1, Select0, Select1};
 
 macro_rules! keypos {
@@ -43,10 +43,10 @@ mod tests;
 #[derive(Clone)]
 pub enum Bucket {
     // Vec hold bit as is, sorted order.
-    Vec(PopCount<u16>, Vec<u16>),
+    Vec(Count<u16>, Vec<u16>),
 
     // Map hold u64 as a bitarray, each non-zero bit represents element.
-    Map(PopCount<u16>, Vec<u64>),
+    Map(Count<u16>, Vec<u64>),
 }
 impl Bits for Bucket {
     const SIZE: u64 = 1 << 16;
@@ -75,13 +75,13 @@ impl Bucket {
     }
 
     pub fn new() -> Bucket {
-        Bucket::Vec(PopCount::MIN, Vec::new())
+        Bucket::Vec(Count::MIN, Vec::new())
     }
     pub fn with_capacity(cap: usize) -> Bucket {
         if cap as u64 <= Self::VEC_SIZE {
-            Bucket::Vec(PopCount::MIN, Vec::with_capacity(cap))
+            Bucket::Vec(Count::MIN, Vec::with_capacity(cap))
         } else {
-            Bucket::Map(PopCount::MIN, Vec::with_capacity(cap))
+            Bucket::Map(Count::MIN, Vec::with_capacity(cap))
         }
     }
 

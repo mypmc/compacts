@@ -83,7 +83,7 @@ impl<'a> IterTest<'a> {
         IterTest { bits, ones, dirs }
     }
     fn test(&mut self) {
-        let pop = PopCount::<u16>::new(self.ones);
+        let pop = Count::<u16>::new(self.ones);
         let mut iter = Iter::map(self.bits, &pop);
         for (i, &want) in self.dirs.iter().enumerate() {
             let got = iter.next();
@@ -289,12 +289,12 @@ fn bucket_insert_remove() {
 fn pop_count_max() {
     {
         let cnt: u64 = 1 << 16;
-        let pop = PopCount::<u16>::new(cnt);
+        let pop = Count::<u16>::new(cnt);
         assert!(pop.count() == cnt);
     }
     {
         let cnt: u64 = 1 << 32;
-        let pop = PopCount::<u32>::new(cnt);
+        let pop = Count::<u32>::new(cnt);
         assert!(pop.count() == cnt);
     }
 }

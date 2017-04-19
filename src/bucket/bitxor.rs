@@ -1,5 +1,5 @@
 use std::ops;
-use super::{pair, Bits, PopCount, Bucket};
+use super::{pair, Bits, Count, Bucket};
 
 macro_rules! clone_symmetric_difference {
     ( $clone: ident, $source: expr, $target: expr ) => {
@@ -38,7 +38,7 @@ impl Bucket {
                     ones += p.ones();
                     *x = p;
                 }
-                *pop = PopCount::<u16>::new(ones);
+                *pop = Count::<u16>::new(ones);
             }
         }
     }

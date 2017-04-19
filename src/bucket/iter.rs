@@ -2,30 +2,30 @@ use std::iter::{Iterator, ExactSizeIterator};
 use std::slice::Iter as SliceIter;
 use std::marker::PhantomData;
 
-use super::{Bits, PopCount, Bucket};
+use super::{Bits, Count, Bucket};
 
 /// module document.
 
 // each 'ones' are count of non-zero bit; for size_hint
 pub enum Iter<'a> {
     Vec {
-        pop: &'a PopCount<u16>,
+        pop: &'a Count<u16>,
         iter: SliceIter<'a, u16>,
     },
     Map {
-        pop: &'a PopCount<u16>,
+        pop: &'a Count<u16>,
         ptr: SlicePtr<'a, Forward>,
     },
 }
 
 impl<'a> Iter<'a> {
-    pub fn vec(bits: &'a [u16], pop: &'a PopCount<u16>) -> Iter<'a> {
+    pub fn vec(bits: &'a [u16], pop: &'a Count<u16>) -> Iter<'a> {
         debug_assert!(pop.count() == bits.len() as u64);
         debug_assert!(pop.count() <= Bucket::SIZE);
         let iter = bits.iter();
         Iter::Vec { pop, iter }
     }
-    pub fn map(bits: &'a [u64], pop: &'a PopCount<u16>) -> Iter<'a> {
+    pub fn map(bits: &'a [u64], pop: &'a Count<u16>) -> Iter<'a> {
         debug_assert!(pop.count() <= Bucket::SIZE);
         let ptr = SlicePtr::<'a, Forward>::new(bits);
         Iter::Map { pop, ptr }

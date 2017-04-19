@@ -8,7 +8,7 @@
 extern crate test;
 
 mod bits;
-pub use bits::{Bits, PopCount};
+pub use bits::{Bits, Count};
 pub use bits::{Bounded, SplitMerge};
 
 mod rank;

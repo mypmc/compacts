@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
-use super::{PopCount, Bucket};
+use super::{Count, Bucket};
 use super::{Bits, Bounded, SplitMerge};
 
 pub struct BitMap {
-    pop: PopCount<u32>,
+    pop: Count<u32>,
     map: BTreeMap<u16, Bucket>,
 }
 
@@ -19,7 +19,7 @@ impl Bits for BitMap {
 impl BitMap {
     pub fn new() -> Self {
         BitMap {
-            pop: PopCount::MIN,
+            pop: Count::MIN,
             map: BTreeMap::new(),
         }
     }

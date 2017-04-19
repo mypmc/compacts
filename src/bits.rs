@@ -22,10 +22,10 @@ pub trait Bounded {
     const MAX: Self;
 }
 
-/// Type for count bits Population
-/// Prevent to use `u32` for `1 << 16`, or `u64` for `1 << 32`.
+/// Type prevent to use `u32` for `1 << 16`, or `u64` for `1 << 32`
+/// when implementing `Bits` trait.
 #[derive(Debug, Clone)]
-pub enum PopCount<T: Bounded> {
+pub enum Count<T: Bounded> {
     Ones(T),
     Full,
 }
@@ -98,58 +98,58 @@ impl<T, S> SplitMerge for S
 }
 */
 
-macro_rules! impl_PopCount {
+macro_rules! impl_Count {
     ( $( $type: ty ),* ) => ($(
-        impl Bounded for PopCount<$type> {
-            const MIN: Self = PopCount::Ones(<$type as Bounded>::MIN);
-            const MAX: Self = PopCount::Full;
+        impl Bounded for Count<$type> {
+            const MIN: Self = Count::Ones(<$type as Bounded>::MIN);
+            const MAX: Self = Count::Full;
         }
 
-        impl PopCount<$type> {
-            pub fn new(c: u64) -> PopCount<$type> {
+        impl Count<$type> {
+            pub fn new(c: u64) -> Count<$type> {
                 let max = <$type as Bounded>::MAX as u64 + 1;
                 if max < c {
-                    debug_assert!(false, "PopCount overflow");
-                    PopCount::Full
+                    debug_assert!(false, "overflow");
+                    Count::Full
                 } else if max == c {
-                    PopCount::Full
+                    Count::Full
                 } else {
-                    PopCount::Ones(c as $type)
+                    Count::Ones(c as $type)
                 }
             }
             pub fn count(&self) -> u64 {
                 match self {
-                    &PopCount::Ones(p) => p as u64,
-                    &PopCount::Full    => <$type as Bounded>::MAX as u64 + 1,
+                    &Count::Ones(p) => p as u64,
+                    &Count::Full    => <$type as Bounded>::MAX as u64 + 1,
                 }
             }
             pub fn incr(&mut self) {
                 let ones = self.count();
                 match self {
-                    this @ &mut PopCount::Ones(..) => {
+                    this @ &mut Count::Ones(..) => {
                         if ones < <$type as Bounded>::MAX as u64 {
-                            *this = PopCount::Ones(ones as $type + 1);
+                            *this = Count::Ones(ones as $type + 1);
                         } else {
-                            *this = PopCount::Full;
+                            *this = Count::Full;
                         }
                     },
-                    &mut PopCount::Full => {
-                        debug_assert!(false, "PopCount overflow");
+                    &mut Count::Full => {
+                        debug_assert!(false, "increment overflow");
                     }
                 }
             }
             pub fn decr(&mut self) {
                 let ones = self.count();
                 match self {
-                    this @ &mut PopCount::Ones(..) => {
+                    this @ &mut Count::Ones(..) => {
                         if ones > <$type as Bounded>::MIN as u64 {
-                            *this = PopCount::Ones(ones as $type - 1);
+                            *this = Count::Ones(ones as $type - 1);
                         } else {
-                            debug_assert!(false, "PopCount overflow");
+                            debug_assert!(false, "decrement overflow");
                         }
                     },
-                    this @ &mut PopCount::Full => {
-                        *this = PopCount::Ones(<$type as Bounded>::MAX);
+                    this @ &mut Count::Full => {
+                        *this = Count::Ones(<$type as Bounded>::MAX);
                     }
                 }
             }
@@ -157,4 +157,4 @@ macro_rules! impl_PopCount {
     )*);
 }
 
-impl_PopCount!(u32, u16, u8);
+impl_Count!(u32, u16, u8);
