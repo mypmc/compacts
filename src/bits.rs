@@ -22,6 +22,7 @@ pub trait Bounded {
     const MAX: Self;
 }
 
+/// Type for count bits Population
 /// Prevent to use `u32` for `1 << 16`, or `u64` for `1 << 32`.
 #[derive(Debug, Clone)]
 pub enum PopCount<T: Bounded> {
@@ -52,22 +53,24 @@ impl_Bits!{(usize, 32)}
 #[cfg(target_pointer_width = "64")]
 impl_Bits!{(usize, 64)}
 
-pub trait SplitMerge<T> {
-    fn split(self) -> (T, T);
-    fn merge((T, T)) -> Self;
+pub trait SplitMerge {
+    type Parts;
+    fn split(self) -> Self::Parts;
+    fn merge(Self::Parts) -> Self;
 }
 
 macro_rules! impl_SplitMerge {
     ($( ( $this:ty, $half:ty ) ),*) => ($(
-        impl SplitMerge<$half> for $this {
+        impl SplitMerge for $this {
+            type Parts = ($half, $half);
             #[inline]
-            fn split(self) -> ($half, $half) {
+            fn split(self) -> Self::Parts {
                 let x = self;
                 let s = Self::SIZE / 2;
                 ((x >> s) as $half, x as $half)
             }
             #[inline]
-            fn merge(x: ($half, $half)) -> $this {
+            fn merge(x: Self::Parts) -> $this {
                 let s = Self::SIZE / 2;
                 (x.0 as $this << s) | x.1 as $this
             }
@@ -82,13 +85,14 @@ impl_SplitMerge!{(usize, u16)}
 impl_SplitMerge!{(usize, u32)}
 
 /*
-impl<T, S> SplitMerge<T> for S
+impl<T, S> SplitMerge for S
     where S: From<(T, T)> + Into<(T, T)>
 {
-    fn split(self) -> (T, T) {
+    type Parts = (T, T);
+    fn split(self) -> Self::Parts {
         self.into()
     }
-    fn merge(t: (T, T)) -> S {
+    fn merge(t: Self::Parts) -> S {
         Self::from(t)
     }
 }
