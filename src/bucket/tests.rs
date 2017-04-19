@@ -290,12 +290,12 @@ fn pop_count_max() {
     {
         let cnt: u64 = 1 << 16;
         let pop = PopCount::<u16>::new(cnt);
-        assert!(pop.cardinality() == cnt);
+        assert!(pop.count() == cnt);
     }
     {
         let cnt: u64 = 1 << 32;
         let pop = PopCount::<u32>::new(cnt);
-        assert!(pop.cardinality() == cnt);
+        assert!(pop.count() == cnt);
     }
 }
 

@@ -55,7 +55,7 @@ impl_Bits!{(usize, 64)}
 
 pub trait SplitMerge {
     type Parts;
-    fn split(self) -> Self::Parts;
+    fn split(&self) -> Self::Parts;
     fn merge(Self::Parts) -> Self;
 }
 
@@ -64,15 +64,15 @@ macro_rules! impl_SplitMerge {
         impl SplitMerge for $this {
             type Parts = ($half, $half);
             #[inline]
-            fn split(self) -> Self::Parts {
-                let x = self;
+            fn split(&self) -> Self::Parts {
+                let this = *self;
                 let s = Self::SIZE / 2;
-                ((x >> s) as $half, x as $half)
+                ((this >> s) as $half, this as $half)
             }
             #[inline]
-            fn merge(x: Self::Parts) -> $this {
+            fn merge(parts: Self::Parts) -> $this {
                 let s = Self::SIZE / 2;
-                (x.0 as $this << s) | x.1 as $this
+                (parts.0 as $this << s) | parts.1 as $this
             }
         }
     )*)
@@ -117,14 +117,14 @@ macro_rules! impl_PopCount {
                     PopCount::Ones(c as $type)
                 }
             }
-            pub fn cardinality(&self) -> u64 {
+            pub fn count(&self) -> u64 {
                 match self {
                     &PopCount::Ones(p) => p as u64,
                     &PopCount::Full    => <$type as Bounded>::MAX as u64 + 1,
                 }
             }
             pub fn incr(&mut self) {
-                let ones = self.cardinality();
+                let ones = self.count();
                 match self {
                     this @ &mut PopCount::Ones(..) => {
                         if ones < <$type as Bounded>::MAX as u64 {
@@ -139,7 +139,7 @@ macro_rules! impl_PopCount {
                 }
             }
             pub fn decr(&mut self) {
-                let ones = self.cardinality();
+                let ones = self.count();
                 match self {
                     this @ &mut PopCount::Ones(..) => {
                         if ones > <$type as Bounded>::MIN as u64 {

@@ -21,4 +21,4 @@ mod bucket;
 use bucket::{Bucket, Iter as BucketIter};
 
 mod bit_map;
-use bit_map::BitMap;
+pub use bit_map::BitMap;

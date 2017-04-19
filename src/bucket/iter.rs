@@ -20,13 +20,13 @@ pub enum Iter<'a> {
 
 impl<'a> Iter<'a> {
     pub fn vec(bits: &'a [u16], pop: &'a PopCount<u16>) -> Iter<'a> {
-        debug_assert!(pop.cardinality() == bits.len() as u64);
-        debug_assert!(pop.cardinality() <= Bucket::SIZE);
+        debug_assert!(pop.count() == bits.len() as u64);
+        debug_assert!(pop.count() <= Bucket::SIZE);
         let iter = bits.iter();
         Iter::Vec { pop, iter }
     }
     pub fn map(bits: &'a [u64], pop: &'a PopCount<u16>) -> Iter<'a> {
-        debug_assert!(pop.cardinality() <= Bucket::SIZE);
+        debug_assert!(pop.count() <= Bucket::SIZE);
         let ptr = SlicePtr::<'a, Forward>::new(bits);
         Iter::Map { pop, ptr }
     }
@@ -44,7 +44,7 @@ impl<'a> Iterator for Iter<'a> {
         match self {
             &Iter::Vec { ref iter, .. } => iter.size_hint(),
             &Iter::Map { ref pop, .. } => {
-                let ones = pop.cardinality() as usize;
+                let ones = pop.count() as usize;
                 (ones, Some(ones))
             }
         }

@@ -53,8 +53,8 @@ impl Bits for Bucket {
 
     fn ones(&self) -> u64 {
         match self {
-            &Bucket::Vec(ref pop, _) => pop.cardinality(),
-            &Bucket::Map(ref pop, _) => pop.cardinality(),
+            &Bucket::Vec(ref pop, _) => pop.count(),
+            &Bucket::Map(ref pop, _) => pop.count(),
         }
     }
 }
@@ -121,8 +121,8 @@ impl Bucket {
 impl fmt::Debug for Bucket {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.cardinality()),
-            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.cardinality()),
+            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.count()),
+            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.count()),
         }
     }
 }
