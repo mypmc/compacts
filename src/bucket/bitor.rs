@@ -1,5 +1,7 @@
 use std::ops;
-use super::{pair, Bits, Count, Bucket};
+
+use {bits, PopCount, Bucket};
+use bucket::pair;
 
 macro_rules! clone_union_with {
     ( $clone: ident, $source: expr, $target: expr ) => {
@@ -35,7 +37,7 @@ impl Bucket {
                     ones += p.ones();
                     *x = p;
                 }
-                *pop = Count::<u16>::new(ones);
+                *pop = bits::Count::<u16>::new(ones);
             }
         }
     }

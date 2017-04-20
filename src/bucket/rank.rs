@@ -1,4 +1,4 @@
-use super::{Bits, Bucket, Rank0, Rank1};
+use {PopCount, Bucket, Rank0, Rank1};
 
 impl Rank0<usize> for Bucket {
     fn rank0(&self, i: usize) -> u64 {

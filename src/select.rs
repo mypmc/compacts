@@ -1,4 +1,4 @@
-use super::Bits;
+use PopCount;
 
 pub trait Select0<T = usize> {
     /// Return the 'c+1'th zero bit's index.

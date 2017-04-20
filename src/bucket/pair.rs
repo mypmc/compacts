@@ -5,11 +5,11 @@ use std::cmp::{self, Ordering};
 use std::marker::PhantomData;
 
 use self::Ordering::{Less, Equal, Greater};
-use super::Iter;
+use BucketIter;
 
 pub struct Pair<'a, T> {
-    lhs: Peekable<Iter<'a>>,
-    rhs: Peekable<Iter<'a>>,
+    lhs: Peekable<BucketIter<'a>>,
+    rhs: Peekable<BucketIter<'a>>,
     _op: PhantomData<T>,
 }
 
@@ -17,7 +17,7 @@ macro_rules! define_pair {
     ( $( ( $fn:ident, $op:ident ) ),* ) => ($(
         pub struct $op;
         impl<'a> Pair<'a, $op> {
-            fn new(x: Iter<'a>, y: Iter<'a>) -> Pair<'a, $op> {
+            fn new(x: BucketIter<'a>, y: BucketIter<'a>) -> Pair<'a, $op> {
                 Pair {
                     lhs: x.peekable(),
                     rhs: y.peekable(),
@@ -27,8 +27,8 @@ macro_rules! define_pair {
         }
         pub fn $fn<'a, I>(x: I, y: I) -> Pair<'a, $op>
             where I
-            : IntoIterator<IntoIter = Iter<'a>>
-            + IntoIterator<Item = <Iter<'a> as Iterator>::Item>
+            : IntoIterator<IntoIter = BucketIter<'a>>
+            + IntoIterator<Item = <BucketIter<'a> as Iterator>::Item>
         {
             <Pair<'a, $op>>::new(x.into_iter(), y.into_iter())
         }

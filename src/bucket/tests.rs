@@ -6,7 +6,9 @@ use self::rand::Rng;
 extern crate test;
 use self::test::Bencher;
 
-use super::*;
+use {bits, Bucket, BucketIter};
+use {Bounded, PopCount, Rank1, Select1};
+use bucket::pair;
 
 fn generate_bucket<R: Rng>(size: usize, rng: &mut R) -> Bucket {
     let mut bucket = Bucket::with_capacity(size);
@@ -83,8 +85,8 @@ impl<'a> IterTest<'a> {
         IterTest { bits, ones, dirs }
     }
     fn test(&mut self) {
-        let pop = Count::<u16>::new(self.ones);
-        let mut iter = Iter::map(self.bits, &pop);
+        let pop = bits::Count::<u16>::new(self.ones);
+        let mut iter = BucketIter::map(self.bits, &pop);
         for (i, &want) in self.dirs.iter().enumerate() {
             let got = iter.next();
             assert_eq!(got, want, "{:?}", i);
@@ -263,7 +265,7 @@ fn bucket_insert_remove() {
     while (i as u64) < Bucket::CAPACITY {
         assert!(b.insert(i), "insert failed");
         assert!(b.contains(i), "insert ok, but not contains");
-        if i == u16::MAX {
+        if i == <u16 as Bounded>::MAX {
             break;
         }
         i += 1;
@@ -289,13 +291,13 @@ fn bucket_insert_remove() {
 fn pop_count_max() {
     {
         let cnt: u64 = 1 << 16;
-        let pop = Count::<u16>::new(cnt);
-        assert!(pop.count() == cnt);
+        let pop = bits::Count::<u16>::new(cnt);
+        assert!(pop.value() == cnt);
     }
     {
         let cnt: u64 = 1 << 32;
-        let pop = Count::<u32>::new(cnt);
-        assert!(pop.count() == cnt);
+        let pop = bits::Count::<u32>::new(cnt);
+        assert!(pop.value() == cnt);
     }
 }
 

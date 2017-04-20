@@ -1,4 +1,4 @@
-use super::{Bits, Bucket, Select1};
+use {PopCount, Bucket, Select1};
 
 impl Select1<usize> for Bucket {
     fn select1(&self, c: usize) -> Option<u64> {

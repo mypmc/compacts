@@ -1,4 +1,4 @@
-use super::Bits;
+use PopCount;
 
 pub trait Rank0<T = usize> {
     /// Count how many zero bits there are up to a given position

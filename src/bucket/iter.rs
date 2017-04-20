@@ -2,31 +2,32 @@ use std::iter::{Iterator, ExactSizeIterator};
 use std::slice::Iter as SliceIter;
 use std::marker::PhantomData;
 
-use super::{Bits, Count, Bucket};
+use {bits, PopCount};
+use Bucket;
 
 /// module document.
 
 // each 'ones' are count of non-zero bit; for size_hint
 pub enum Iter<'a> {
     Vec {
-        pop: &'a Count<u16>,
+        pop: &'a bits::Count<u16>,
         iter: SliceIter<'a, u16>,
     },
     Map {
-        pop: &'a Count<u16>,
+        pop: &'a bits::Count<u16>,
         ptr: SlicePtr<'a, Forward>,
     },
 }
 
 impl<'a> Iter<'a> {
-    pub fn vec(bits: &'a [u16], pop: &'a Count<u16>) -> Iter<'a> {
-        debug_assert!(pop.count() == bits.len() as u64);
-        debug_assert!(pop.count() <= Bucket::CAPACITY);
+    pub fn vec(bits: &'a [u16], pop: &'a bits::Count<u16>) -> Iter<'a> {
+        debug_assert!(pop.value() == bits.len() as u64);
+        debug_assert!(pop.value() <= Bucket::CAPACITY);
         let iter = bits.iter();
         Iter::Vec { pop, iter }
     }
-    pub fn map(bits: &'a [u64], pop: &'a Count<u16>) -> Iter<'a> {
-        debug_assert!(pop.count() <= Bucket::CAPACITY);
+    pub fn map(bits: &'a [u64], pop: &'a bits::Count<u16>) -> Iter<'a> {
+        debug_assert!(pop.value() <= Bucket::CAPACITY);
         let ptr = SlicePtr::<'a, Forward>::new(bits);
         Iter::Map { pop, ptr }
     }
@@ -44,7 +45,7 @@ impl<'a> Iterator for Iter<'a> {
         match self {
             &Iter::Vec { ref iter, .. } => iter.size_hint(),
             &Iter::Map { ref pop, .. } => {
-                let ones = pop.count() as usize;
+                let ones = pop.value() as usize;
                 (ones, Some(ones))
             }
         }

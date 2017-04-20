@@ -1,27 +1,4 @@
-/// Constant sized bits.
-pub trait Bits {
-    /// Max bits size of this representation.
-    /// ones() + zeros() == CAPACITY
-    const CAPACITY: u64;
-
-    /// Count non-zero bits.
-    // REQUIRES: ones() <= Self::CAPACITY
-    fn ones(&self) -> u64 {
-        Self::CAPACITY - self.zeros()
-    }
-
-    /// Count zero bits.
-    // REQUIRES: zeros() <= Self::CAPACITY
-    fn zeros(&self) -> u64 {
-        Self::CAPACITY - self.ones()
-    }
-}
-
-/// Utility trait for internal use.
-pub trait Bounded {
-    const MIN: Self;
-    const MAX: Self;
-}
+use {Bounded, PopCount};
 
 /// Type prevent to use `u32` for `1 << 16`, or `u64` for `1 << 32`
 #[derive(Debug, Clone)]
@@ -29,29 +6,6 @@ pub enum Count<T: Bounded> {
     Ones(T),
     Full,
 }
-
-macro_rules! impl_Bits {
-    ( $( ($type: ty, $size: expr) ),* ) => ($(
-        impl Bounded for $type {
-            const MIN: $type =  0;
-            const MAX: $type = !0;
-        }
-
-        impl Bits for $type {
-            const CAPACITY: u64 = $size;
-            #[inline] fn ones(&self) -> u64 {
-                let ones = self.count_ones() as u64;
-                debug_assert!(ones <= Self::CAPACITY);
-                ones
-            }
-        }
-    )*)
-}
-impl_Bits!((u64, 64), (u32, 32), (u16, 16), (u8, 8));
-#[cfg(target_pointer_width = "32")]
-impl_Bits!{(usize, 32)}
-#[cfg(target_pointer_width = "64")]
-impl_Bits!{(usize, 64)}
 
 macro_rules! impl_Count {
     ( $( $type: ty ),* ) => ($(
@@ -69,14 +23,14 @@ macro_rules! impl_Count {
                     Count::Ones(c as $type)
                 }
             }
-            pub fn count(&self) -> u64 {
+            pub fn value(&self) -> u64 {
                 match self {
                     &Count::Ones(p) => p as u64,
                     &Count::Full    => <$type as Bounded>::MAX as u64 + 1,
                 }
             }
             pub fn incr(&mut self) {
-                let ones = self.count();
+                let ones = self.value();
                 match self {
                     this @ &mut Count::Ones(..) => {
                         if ones < <$type as Bounded>::MAX as u64 {
@@ -91,7 +45,7 @@ macro_rules! impl_Count {
                 }
             }
             pub fn decr(&mut self) {
-                let ones = self.count();
+                let ones = self.value();
                 match self {
                     this @ &mut Count::Ones(..) => {
                         if ones > <$type as Bounded>::MIN as u64 {
@@ -155,3 +109,9 @@ self.into()
     }
 }
 */
+
+#[test]
+fn split_merge() {
+    let w = 0b_1100_u64;
+    assert!(w == <u64 as SplitMerge>::merge(w.split()));
+}

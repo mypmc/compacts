@@ -1,25 +1,26 @@
 use std::collections::BTreeMap;
 
-use super::{Count, Bucket};
-use super::{Bits, Bounded, SplitMerge};
+use {Bounded, PopCount, Bucket};
+// use {Rank0, Rank1, Select1, Select0};
+use bits::{self, SplitMerge};
 
 pub struct BitMap {
-    pop: Count<u32>,
+    pop: bits::Count<u32>,
     map: BTreeMap<u16, Bucket>,
 }
 
-impl Bits for BitMap {
+impl PopCount for BitMap {
     const CAPACITY: u64 = Bucket::CAPACITY * Bucket::CAPACITY;
 
     fn ones(&self) -> u64 {
-        self.pop.count()
+        self.pop.value()
     }
 }
 
 impl BitMap {
     pub fn new() -> Self {
         BitMap {
-            pop: Count::MIN,
+            pop: bits::Count::MIN,
             map: BTreeMap::new(),
         }
     }
@@ -29,7 +30,7 @@ impl BitMap {
     /// # Examples
     ///
     /// ```rust
-    /// use cwt::{Bits, BitMap};
+    /// use cwt::{PopCount, BitMap};
     ///
     /// let mut bits = BitMap::new();
     /// bits.insert(1);
@@ -51,7 +52,7 @@ impl BitMap {
     /// # Examples
     ///
     /// ```rust
-    /// use cwt::{Bits, BitMap};
+    /// use cwt::{PopCount, BitMap};
     ///
     /// let mut bits = BitMap::new();
     /// assert_eq!(bits.insert(3), true);
@@ -74,7 +75,7 @@ impl BitMap {
     /// # Examples
     ///
     /// ```rust
-    /// use cwt::{Bits, BitMap};
+    /// use cwt::{PopCount, BitMap};
     ///
     /// let mut bits = BitMap::new();
     /// assert_eq!(bits.insert(3), true);

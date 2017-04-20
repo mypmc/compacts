@@ -2,7 +2,7 @@ extern crate cwt;
 
 use std::u32;
 
-use self::cwt::{Bits, BitMap};
+use self::cwt::{PopCount, BitMap};
 
 #[test]
 #[ignore]

@@ -1,14 +1,14 @@
 extern crate cwt;
 
-use self::cwt::{Bits, SplitMerge, Rank0, Rank1, Select1, Select0};
+use self::cwt::{PopCount, Rank1, Select1};
 
-struct RankSelect<T: Bits> {
+struct RankSelect<T: PopCount> {
     bits: T,
     case: (usize, Option<u64>),
 }
 
-impl<T: Bits> RankSelect<T>
-    where T: Rank0 + Rank1 + Select1 + Select0
+impl<T> RankSelect<T>
+    where T: PopCount + Rank1 + Select1
 {
     fn run(&self) {
         let &RankSelect { ref bits, ref case } = self;
@@ -17,7 +17,7 @@ impl<T: Bits> RankSelect<T>
         let s9 = bits.select1(arg);
         assert_eq!(s9, want);
 
-        let r9 = bits.rank1(<T as Bits>::CAPACITY as usize);
+        let r9 = bits.rank1(<T as PopCount>::CAPACITY as usize);
         assert_eq!(r9, bits.ones());
 
         if let Some(s9) = s9 {
@@ -49,10 +49,4 @@ fn rank_select() {
     for test in TESTS_64 {
         test.run();
     }
-}
-
-#[test]
-fn split_merge() {
-    let w = 0b_1100_u64;
-    assert!(w == <u64 as SplitMerge>::merge(w.split()));
 }

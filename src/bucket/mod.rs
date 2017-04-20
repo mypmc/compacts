@@ -3,14 +3,12 @@
 use std::{fmt, u16};
 use std::iter::{IntoIterator, FromIterator};
 
-use super::{Bits, Bounded, Count};
-use super::{Rank0, Rank1, Select0, Select1};
+use {bits, PopCount, Bounded};
 
 macro_rules! keypos {
     ( $bit: expr, $key: ident, $pos: ident ) => (
-        // 64 == Bucket::BITS_CAPACITY
-        let key  = $bit / 64;
-        let $pos = $bit % 64;
+        let key  = $bit / <u64 as PopCount>::CAPACITY as u16;
+        let $pos = $bit % <u64 as PopCount>::CAPACITY as u16;
         let $key = key as usize;
     );
 }
@@ -43,24 +41,24 @@ mod tests;
 #[derive(Clone)]
 pub enum Bucket {
     // Vec hold bit as is, sorted order.
-    Vec(Count<u16>, Vec<u16>),
+    Vec(bits::Count<u16>, Vec<u16>),
 
     // Map hold u64 as a bitarray, each non-zero bit represents element.
-    Map(Count<u16>, Vec<u64>),
+    Map(bits::Count<u16>, Vec<u64>),
 }
-impl Bits for Bucket {
+impl PopCount for Bucket {
     const CAPACITY: u64 = 1 << 16;
 
     fn ones(&self) -> u64 {
         match self {
-            &Bucket::Vec(ref pop, _) => pop.count(),
-            &Bucket::Map(ref pop, _) => pop.count(),
+            &Bucket::Vec(ref pop, _) => pop.value(),
+            &Bucket::Map(ref pop, _) => pop.value(),
         }
     }
 }
 
 impl Bucket {
-    const BITS_CAPACITY: u64 = <u64 as Bits>::CAPACITY;
+    const BITS_CAPACITY: u64 = <u64 as PopCount>::CAPACITY;
 
     //pub const VEC_CAPACITY: u64 = 1 << 12;
     //pub const VEC_CAPACITY: u64 = 1 << 11;
@@ -75,13 +73,13 @@ impl Bucket {
     }
 
     pub fn new() -> Bucket {
-        Bucket::Vec(Count::MIN, Vec::new())
+        Bucket::Vec(bits::Count::MIN, Vec::new())
     }
     pub fn with_capacity(cap: usize) -> Bucket {
         if cap as u64 <= Self::VEC_CAPACITY {
-            Bucket::Vec(Count::MIN, Vec::with_capacity(cap))
+            Bucket::Vec(bits::Count::MIN, Vec::with_capacity(cap))
         } else {
-            Bucket::Map(Count::MIN, Vec::with_capacity(cap))
+            Bucket::Map(bits::Count::MIN, Vec::with_capacity(cap))
         }
     }
 
@@ -121,8 +119,8 @@ impl Bucket {
 impl fmt::Debug for Bucket {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.count()),
-            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.count()),
+            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.value()),
+            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.value()),
         }
     }
 }

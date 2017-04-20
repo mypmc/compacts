@@ -1,5 +1,7 @@
 use std::ops;
-use super::{pair, Bits, Count, Bucket};
+
+use {bits, PopCount, Bucket};
+use bucket::pair;
 
 macro_rules! clone_intersect_with {
     ( $clone: ident, $source: expr, $target: expr ) => {
@@ -25,7 +27,7 @@ impl Bucket {
                         ones += 1;
                     }
                 }
-                *pop = Count::<u16>::new(ones as u64);
+                *pop = bits::Count::<u16>::new(ones as u64);
                 vec.truncate(ones);
             }
 
@@ -41,7 +43,7 @@ impl Bucket {
                     ones += p.ones();
                     *x = p;
                 }
-                *pop = Count::<u16>::new(ones);
+                *pop = bits::Count::<u16>::new(ones);
             }
         }
     }
