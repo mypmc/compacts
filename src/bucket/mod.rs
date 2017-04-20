@@ -8,7 +8,7 @@ use super::{Rank0, Rank1, Select0, Select1};
 
 macro_rules! keypos {
     ( $bit: expr, $key: ident, $pos: ident ) => (
-        // 64 == Bucket::BITS_SIZE
+        // 64 == Bucket::BITS_CAPACITY
         let key  = $bit / 64;
         let $pos = $bit % 64;
         let $key = key as usize;
@@ -49,7 +49,7 @@ pub enum Bucket {
     Map(Count<u16>, Vec<u64>),
 }
 impl Bits for Bucket {
-    const SIZE: u64 = 1 << 16;
+    const CAPACITY: u64 = 1 << 16;
 
     fn ones(&self) -> u64 {
         match self {
@@ -60,25 +60,25 @@ impl Bits for Bucket {
 }
 
 impl Bucket {
-    const BITS_SIZE: u64 = <u64 as Bits>::SIZE;
+    const BITS_CAPACITY: u64 = <u64 as Bits>::CAPACITY;
 
-    //pub const VEC_SIZE: u64 = 1 << 12;
-    //pub const VEC_SIZE: u64 = 1 << 11;
-    const VEC_SIZE: u64 = 1 << 10;
+    //pub const VEC_CAPACITY: u64 = 1 << 12;
+    //pub const VEC_CAPACITY: u64 = 1 << 11;
+    const VEC_CAPACITY: u64 = 1 << 10;
 
     #[allow(dead_code)]
-    const MAP_SIZE: u64 = Bucket::SIZE / Bucket::BITS_SIZE;
+    const MAP_CAPACITY: u64 = Bucket::CAPACITY / Bucket::BITS_CAPACITY;
 
     #[allow(dead_code)]
     fn load_factor(&self) -> f64 {
-        self.ones() as f64 / Self::SIZE as f64
+        self.ones() as f64 / Self::CAPACITY as f64
     }
 
     pub fn new() -> Bucket {
         Bucket::Vec(Count::MIN, Vec::new())
     }
     pub fn with_capacity(cap: usize) -> Bucket {
-        if cap as u64 <= Self::VEC_SIZE {
+        if cap as u64 <= Self::VEC_CAPACITY {
             Bucket::Vec(Count::MIN, Vec::with_capacity(cap))
         } else {
             Bucket::Map(Count::MIN, Vec::with_capacity(cap))
@@ -96,8 +96,8 @@ impl Bucket {
     fn fitted(&mut self) -> bool {
         let ones = self.ones();
         match self {
-            &mut Bucket::Vec(..) if ones > Self::VEC_SIZE => false,
-            &mut Bucket::Map(..) if ones <= Self::VEC_SIZE => false,
+            &mut Bucket::Vec(..) if ones > Self::VEC_CAPACITY => false,
+            &mut Bucket::Map(..) if ones <= Self::VEC_CAPACITY => false,
             _ => true,
         }
     }
@@ -220,7 +220,7 @@ impl<'a> FromIterator<&'a u16> for Bucket {
 impl FromIterator<bool> for Bucket {
     fn from_iter<I: IntoIterator<Item = bool>>(iterable: I) -> Bucket {
         let iter = iterable.into_iter();
-        iter.take(Bucket::SIZE as usize)
+        iter.take(Bucket::CAPACITY as usize)
             .enumerate()
             .filter_map(|(i, p)| if p { Some(i as u16) } else { None })
             .collect::<Bucket>()

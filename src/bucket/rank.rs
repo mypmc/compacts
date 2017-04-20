@@ -8,7 +8,7 @@ impl Rank0<usize> for Bucket {
 
 impl Rank1<usize> for Bucket {
     fn rank1(&self, i: usize) -> u64 {
-        if i as u64 >= Self::SIZE {
+        if i as u64 >= Self::CAPACITY {
             return self.ones();
         }
         let rank = match self {
@@ -20,8 +20,8 @@ impl Rank1<usize> for Bucket {
                 }
             }
             &Bucket::Map(_, ref bits) => {
-                let q = i / Self::BITS_SIZE as usize;
-                let r = i % Self::BITS_SIZE as usize;
+                let q = i / Self::BITS_CAPACITY as usize;
+                let r = i % Self::BITS_CAPACITY as usize;
                 bits.iter().take(q).fold(0, |acc, w| acc + w.ones()) +
                 bits.get(q).map_or(0, |w| w.rank1(r))
             }

@@ -35,7 +35,7 @@ impl RankSelect {
     }
     fn max_rank_is_equals_to_ones(&self) {
         let ones = self.bucket.ones();
-        let rank = self.bucket.rank1(Bucket::SIZE as usize);
+        let rank = self.bucket.rank1(Bucket::CAPACITY as usize);
         assert_eq!(ones, rank, "{:?}", self);
     }
     fn rank_select_identity<R: Rng>(&self, rng: &mut R) {
@@ -52,14 +52,14 @@ impl RankSelect {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 static LENGTHS: &'static [u64] =
-    &[0, Bucket::VEC_SIZE, Bucket::VEC_SIZE * 2, Bucket::SIZE / 2, Bucket::SIZE];
+    &[0, Bucket::VEC_CAPACITY, Bucket::VEC_CAPACITY * 2, Bucket::CAPACITY / 2, Bucket::CAPACITY];
 
 #[test]
 fn bucket_rank_select() {
     let mut rng = rand::thread_rng();
     let lens = {
-        let mut vec = vec![rng.gen_range(10, Bucket::VEC_SIZE),
-                           rng.gen_range(Bucket::VEC_SIZE + 1, Bucket::SIZE - 1)];
+        let mut vec = vec![rng.gen_range(10, Bucket::VEC_CAPACITY),
+                           rng.gen_range(Bucket::VEC_CAPACITY + 1, Bucket::CAPACITY - 1)];
         vec.extend_from_slice(LENGTHS);
         vec.sort();
         vec
@@ -116,11 +116,11 @@ impl<'a> TestOp<'a> {
 
 macro_rules! init_bucket {
     ( VEC; $bucket: ident, $rng: expr ) => {
-        let size = $rng.gen_range(0, Bucket::VEC_SIZE);
+        let size = $rng.gen_range(0, Bucket::VEC_CAPACITY);
         init_bucket!($bucket, size as usize, $rng);
     };
     ( MAP; $bucket: ident, $rng: expr ) => {
-        let size = $rng.gen_range(Bucket::VEC_SIZE, Bucket::SIZE);
+        let size = $rng.gen_range(Bucket::VEC_CAPACITY, Bucket::CAPACITY);
         init_bucket!($bucket, size as usize, $rng);
     };
     ( $bucket: ident, $size: expr, $rng: expr ) => {
@@ -252,15 +252,15 @@ fn bucket_bitop_XOR() {
 fn bucket_insert_remove() {
     let mut b = Bucket::new();
     let mut i = 0u16;
-    while (i as u64) < Bucket::VEC_SIZE {
+    while (i as u64) < Bucket::VEC_CAPACITY {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
         assert!(b.contains(i));
         i += 1;
     }
-    assert_eq!(i as u64, Bucket::VEC_SIZE);
-    assert_eq!(b.ones(), Bucket::VEC_SIZE);
+    assert_eq!(i as u64, Bucket::VEC_CAPACITY);
+    assert_eq!(b.ones(), Bucket::VEC_CAPACITY);
 
-    while (i as u64) < Bucket::SIZE {
+    while (i as u64) < Bucket::CAPACITY {
         assert!(b.insert(i), "insert failed");
         assert!(b.contains(i), "insert ok, but not contains");
         if i == u16::MAX {
@@ -270,7 +270,7 @@ fn bucket_insert_remove() {
     }
 
     b.optimize();
-    assert_eq!(b.ones(), Bucket::SIZE);
+    assert_eq!(b.ones(), Bucket::CAPACITY);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));

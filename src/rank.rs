@@ -21,7 +21,7 @@ macro_rules! impl_rank9 {
         impl Rank1<$key> for $type {
             #[inline]
             fn rank1(&self, i: $key) -> u64 {
-                let rank = if i as u64 >= Self::SIZE {
+                let rank = if i as u64 >= Self::CAPACITY {
                     self.ones()
                 } else {
                     let this = *self;

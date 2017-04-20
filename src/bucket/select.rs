@@ -13,7 +13,7 @@ impl Select1<usize> for Bucket {
                     let w = x.ones();
                     if r < w {
                         let j = i as u64;
-                        return Some(Self::BITS_SIZE * j + x.select1(r).unwrap_or(0));
+                        return Some(Self::BITS_CAPACITY * j + x.select1(r).unwrap_or(0));
                     }
                     r -= w;
                 }
@@ -26,7 +26,7 @@ impl Select1<usize> for Bucket {
 /*
 impl Select0 for Bucket {
     fn select0(&self, c: usize) -> Option<usize> {
-        if c >= Self::SIZE - self.ones() {
+        if c >= Self::CAPACITY - self.ones() {
             return None;
         }
         match self {
@@ -38,7 +38,7 @@ impl Select0 for Bucket {
                 for (i, x) in bits.iter().enumerate() {
                     let w = x.zeros();
                     if r < w {
-                        return Some(Self::BITS_SIZE * i + x.select0(r).unwrap_or(0));
+                        return Some(Self::BITS_CAPACITY * i + x.select0(r).unwrap_or(0));
                     }
                     r -= w;
                 }

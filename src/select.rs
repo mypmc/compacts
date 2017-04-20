@@ -38,7 +38,7 @@ macro_rules! impl_select9 {
                 let s3 = (p5 >> 0x7).wrapping_mul(X01);
                 let p6 = (le8(s3, (p4 as u64 * X01)) >> 7).wrapping_mul(X01) >> 56;
                 let p = p1 + p6;
-                if p >= Self::SIZE { None } else { Some(p) }
+                if p >= Self::CAPACITY { None } else { Some(p) }
             }
         }
         impl Select0<$key> for $type {

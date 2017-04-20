@@ -17,7 +17,7 @@ impl<T: Bits> RankSelect<T>
         let s9 = bits.select1(arg);
         assert_eq!(s9, want);
 
-        let r9 = bits.rank1(<T as Bits>::SIZE as usize);
+        let r9 = bits.rank1(<T as Bits>::CAPACITY as usize);
         assert_eq!(r9, bits.ones());
 
         if let Some(s9) = s9 {

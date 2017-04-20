@@ -21,12 +21,12 @@ pub enum Iter<'a> {
 impl<'a> Iter<'a> {
     pub fn vec(bits: &'a [u16], pop: &'a Count<u16>) -> Iter<'a> {
         debug_assert!(pop.count() == bits.len() as u64);
-        debug_assert!(pop.count() <= Bucket::SIZE);
+        debug_assert!(pop.count() <= Bucket::CAPACITY);
         let iter = bits.iter();
         Iter::Vec { pop, iter }
     }
     pub fn map(bits: &'a [u64], pop: &'a Count<u16>) -> Iter<'a> {
-        debug_assert!(pop.count() <= Bucket::SIZE);
+        debug_assert!(pop.count() <= Bucket::CAPACITY);
         let ptr = SlicePtr::<'a, Forward>::new(bits);
         Iter::Map { pop, ptr }
     }
@@ -81,7 +81,7 @@ impl<'a> SlicePtr<'a, Forward> {
     }
     fn goto_next(&mut self) {
         self.pos += 1;
-        if self.pos == Bucket::BITS_SIZE as usize {
+        if self.pos == Bucket::BITS_CAPACITY as usize {
             self.pos = 0;
             self.idx += 1;
         }
@@ -96,7 +96,7 @@ impl<'a> SlicePtr<'a, Forward> {
             if i >= self.bits.len() {
                 return None;
             } else if self.bits[i] & (1u64 << p) != 0 {
-                let bit = Some((i * Bucket::BITS_SIZE as usize + p) as u16);
+                let bit = Some((i * Bucket::BITS_CAPACITY as usize + p) as u16);
                 self.goto_next();
                 return bit;
             }

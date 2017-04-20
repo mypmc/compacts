@@ -9,7 +9,7 @@ pub struct BitMap {
 }
 
 impl Bits for BitMap {
-    const SIZE: u64 = Bucket::SIZE * Bucket::SIZE;
+    const CAPACITY: u64 = Bucket::CAPACITY * Bucket::CAPACITY;
 
     fn ones(&self) -> u64 {
         self.pop.count()
