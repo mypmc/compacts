@@ -9,6 +9,7 @@ use self::test::Bencher;
 use {bits, Bucket, BucketIter};
 use {Bounded, PopCount, Rank1, Select1};
 use bucket::pair;
+use super::VEC_CAPACITY;
 
 fn generate_bucket<R: Rng>(size: usize, rng: &mut R) -> Bucket {
     let mut bucket = Bucket::with_capacity(size);
@@ -54,14 +55,14 @@ impl RankSelect {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 static LENGTHS: &'static [u64] =
-    &[0, Bucket::VEC_CAPACITY, Bucket::VEC_CAPACITY * 2, Bucket::CAPACITY / 2, Bucket::CAPACITY];
+    &[0, VEC_CAPACITY, VEC_CAPACITY * 2, Bucket::CAPACITY / 2, Bucket::CAPACITY];
 
 #[test]
 fn bucket_rank_select() {
     let mut rng = rand::thread_rng();
     let lens = {
-        let mut vec = vec![rng.gen_range(10, Bucket::VEC_CAPACITY),
-                           rng.gen_range(Bucket::VEC_CAPACITY + 1, Bucket::CAPACITY - 1)];
+        let mut vec = vec![rng.gen_range(10, VEC_CAPACITY),
+                           rng.gen_range(VEC_CAPACITY + 1, Bucket::CAPACITY - 1)];
         vec.extend_from_slice(LENGTHS);
         vec.sort();
         vec
@@ -117,12 +118,28 @@ impl<'a> TestOp<'a> {
 }
 
 macro_rules! init_bucket {
+    ( MIN_VEC; $bucket: ident, $rng: expr ) => {
+        let size = 0;
+        init_bucket!($bucket, size as usize, $rng);
+    };
+    ( MAX_VEC; $bucket: ident, $rng: expr ) => {
+        let size = VEC_CAPACITY;
+        init_bucket!($bucket, size as usize, $rng);
+    };
+    ( MIN_MAP; $bucket: ident, $rng: expr ) => {
+        let size = VEC_CAPACITY + 1;
+        init_bucket!($bucket, size as usize, $rng);
+    };
+    ( MAX_MAP; $bucket: ident, $rng: expr ) => {
+        let size = Bucket::CAPACITY - 1;
+        init_bucket!($bucket, size as usize, $rng);
+    };
     ( VEC; $bucket: ident, $rng: expr ) => {
-        let size = $rng.gen_range(0, Bucket::VEC_CAPACITY);
+        let size = $rng.gen_range(0, VEC_CAPACITY);
         init_bucket!($bucket, size as usize, $rng);
     };
     ( MAP; $bucket: ident, $rng: expr ) => {
-        let size = $rng.gen_range(Bucket::VEC_CAPACITY, Bucket::CAPACITY);
+        let size = $rng.gen_range(VEC_CAPACITY, Bucket::CAPACITY);
         init_bucket!($bucket, size as usize, $rng);
     };
     ( $bucket: ident, $size: expr, $rng: expr ) => {
@@ -172,57 +189,40 @@ macro_rules! bitops_test {
         let bitand = test.run();
         for bit in &bitand {
             assert!(lhs.contains(bit) && rhs.contains(bit),
-                    "bitand={bitand:?} lhs={lhs:?} rhs={rhs:?}",
-                    bitand=bitand, lhs=lhs, rhs=rhs);
+                    "AND ({bit:?}): result={result:?} lhs={lhs:?} rhs={rhs:?}",
+                    bit=bit, result=bitand, lhs=lhs, rhs=rhs);
         }
         let pair = pair!(intersection, lhs, rhs);
-        let mut c = 0;
-        for (i, j) in pair.zip(&bitand){
-            c += 1;
-            assert!(i == j, "i:{:?} j:{:?}", i, j);
-            assert!((lhs.contains(i) && rhs.contains(i)) && (lhs.contains(j) && rhs.contains(j)),
-                    "bitand={bitand:?} lhs={lhs:?} rhs={rhs:?}",
-                    bitand=bitand, lhs=lhs, rhs=rhs);
-        }
-        assert!(c == bitand.ones());
+        let c = pair.collect::<Bucket>().ones();
+        assert!(c == bitand.ones(),
+                "{c:?} {ones:?} lhs={lhs:?} rhs={rhs:?}",
+                c = c, ones = bitand.ones(), lhs=lhs, rhs=rhs);
     };
     ( $this: ident | $that: ident ) => {
         bitops!($this | $that; lhs, rhs, test);
         let bitor = test.run();
         for bit in &bitor {
             assert!(lhs.contains(bit) || rhs.contains(bit),
-                    "bitor={bitor:?} lhs={lhs:?} rhs={rhs:?}",
-                    bitor=bitor, lhs=lhs, rhs=rhs);
+                    "OR ({bit:?}): result={result:?} lhs={lhs:?} rhs={rhs:?}",
+                    bit=bit, result=bitor, lhs=lhs.contains(bit), rhs=rhs.contains(bit));
         }
         let pair = pair!(union, lhs, rhs);
-        let mut c = 0;
-        for (i, j) in pair.zip(&bitor){
-            c += 1;
-            assert!(i == j, "i:{:?} j:{:?}", i, j);
-            assert!((lhs.contains(i) || rhs.contains(i)) && (lhs.contains(j) || rhs.contains(j)),
-                    "bitor={bitor:?} lhs={lhs:?} rhs={rhs:?}",
-                    bitor=bitor, lhs=lhs, rhs=rhs);
-        }
-        assert!(c == bitor.ones());
+        let c = pair.collect::<Bucket>().ones();
+        assert!(c == bitor.ones(), "{c:?} {ones:?} lhs={lhs:?} rhs={rhs:?}",
+                c=c,ones=bitor.ones(), lhs=lhs, rhs=rhs);
     };
     ( $this: ident ^ $that: ident ) => {
         bitops!($this ^ $that; lhs, rhs, test);
         let bitxor = test.run();
         for bit in &bitxor {
             assert!(!(lhs.contains(bit) && rhs.contains(bit)),
-                    "bitxor={bitxor:?} lhs={lhs:?} rhs={rhs:?}",
-                    bitxor=bitxor, lhs=lhs, rhs=rhs);
+                    "XOR ({bit:?}): result={result:?} lhs={lhs:?} rhs={rhs:?}",
+                    bit=bit, result=bitxor, lhs=lhs.contains(bit), rhs=rhs.contains(bit));
         }
         let pair = pair!(symmetric_difference, lhs, rhs);
-        let mut c = 0;
-        for (i, j) in pair.zip(&bitxor){
-            c += 1;
-            assert!(i == j, "i:{:?} j:{:?}", i, j);
-            assert!(!(lhs.contains(i) && rhs.contains(i)) && !(lhs.contains(j) && rhs.contains(j)),
-                    "bitxor={bitxor:?} lhs={lhs:?} rhs={rhs:?}",
-                    bitxor=bitxor, lhs=lhs, rhs=rhs);
-        }
-        assert!(c == bitxor.ones());
+        let c = pair.collect::<Bucket>().ones();
+        assert!(c == bitxor.ones(), "{c:?} {ones:?} lhs={lhs:?} rhs={rhs:?}",
+                c=c,ones=bitxor.ones(), lhs=lhs, rhs=rhs);
     };
 }
 
@@ -232,6 +232,16 @@ fn bucket_bitop_AND() {
     bitops_test!(VEC & MAP);
     bitops_test!(MAP & VEC);
     bitops_test!(MAP & MAP);
+
+    bitops_test!(MIN_VEC & MIN_VEC);
+    bitops_test!(MIN_VEC & MIN_MAP);
+    bitops_test!(MIN_MAP & MIN_VEC);
+    bitops_test!(MIN_MAP & MIN_MAP);
+
+    bitops_test!(MAX_VEC & MAX_VEC);
+    bitops_test!(MAX_VEC & MAX_MAP);
+    bitops_test!(MAX_MAP & MAX_VEC);
+    bitops_test!(MAX_MAP & MAX_MAP);
 }
 
 #[test]
@@ -240,6 +250,16 @@ fn bucket_bitop_OR() {
     bitops_test!(VEC | MAP);
     bitops_test!(MAP | VEC);
     bitops_test!(MAP | MAP);
+
+    bitops_test!(MIN_VEC | MIN_VEC);
+    bitops_test!(MIN_VEC | MIN_MAP);
+    bitops_test!(MIN_MAP | MIN_VEC);
+    bitops_test!(MIN_MAP | MIN_MAP);
+
+    bitops_test!(MAX_VEC | MAX_VEC);
+    bitops_test!(MAX_VEC | MAX_MAP);
+    bitops_test!(MAX_MAP | MAX_VEC);
+    bitops_test!(MAX_MAP | MAX_MAP);
 }
 
 #[test]
@@ -248,19 +268,29 @@ fn bucket_bitop_XOR() {
     bitops_test!(VEC ^ MAP);
     bitops_test!(MAP ^ VEC);
     bitops_test!(MAP ^ MAP);
+
+    bitops_test!(MIN_VEC ^ MIN_VEC);
+    bitops_test!(MIN_VEC ^ MIN_MAP);
+    bitops_test!(MIN_MAP ^ MIN_VEC);
+    bitops_test!(MIN_MAP ^ MIN_MAP);
+
+    bitops_test!(MAX_VEC ^ MAX_VEC);
+    bitops_test!(MAX_VEC ^ MAX_MAP);
+    bitops_test!(MAX_MAP ^ MAX_VEC);
+    bitops_test!(MAX_MAP ^ MAX_MAP);
 }
 
 #[test]
 fn bucket_insert_remove() {
     let mut b = Bucket::new();
     let mut i = 0u16;
-    while (i as u64) < Bucket::VEC_CAPACITY {
+    while (i as u64) < VEC_CAPACITY {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
         assert!(b.contains(i));
         i += 1;
     }
-    assert_eq!(i as u64, Bucket::VEC_CAPACITY);
-    assert_eq!(b.ones(), Bucket::VEC_CAPACITY);
+    assert_eq!(i as u64, VEC_CAPACITY);
+    assert_eq!(b.ones(), VEC_CAPACITY);
 
     while (i as u64) < Bucket::CAPACITY {
         assert!(b.insert(i), "insert failed");

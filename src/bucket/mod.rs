@@ -38,14 +38,35 @@ mod select;
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone)]
-pub enum Bucket {
-    // Vec hold bit as is, sorted order.
-    Vec(bits::Count<u16>, Vec<u16>),
+const VEC_CAPACITY: u64 = 1 << 10;
+const MAP_CAPACITY: u64 = 1024;
 
-    // Map hold u64 as a bitarray, each non-zero bit represents element.
-    Map(bits::Count<u16>, Vec<u64>),
+//#[derive(Clone)]
+pub enum Bucket {
+    // Vec holds bit as is, with sorted order.
+    Vec(bits::Count<u16>, Vec<u16>),
+    // Each elements represents bit-array.
+    // Cow<[u64]>
+    Map(bits::Count<u16>, Box<[u64; MAP_CAPACITY as usize]>),
 }
+
+impl fmt::Debug for Bucket {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.value()),
+            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.value()),
+        }
+    }
+}
+impl Clone for Bucket {
+    fn clone(&self) -> Self {
+        match self {
+            &Bucket::Vec(ref pop, ref vec) => Bucket::Vec(pop.clone(), vec.clone()),
+            &Bucket::Map(ref pop, box map) => Bucket::Map(pop.clone(), Box::new(map)),
+        }
+    }
+}
+
 impl PopCount for Bucket {
     const CAPACITY: u64 = 1 << 16;
 
@@ -60,13 +81,6 @@ impl PopCount for Bucket {
 impl Bucket {
     const BITS_CAPACITY: u64 = <u64 as PopCount>::CAPACITY;
 
-    //pub const VEC_CAPACITY: u64 = 1 << 12;
-    //pub const VEC_CAPACITY: u64 = 1 << 11;
-    const VEC_CAPACITY: u64 = 1 << 10;
-
-    #[allow(dead_code)]
-    const MAP_CAPACITY: u64 = Bucket::CAPACITY / Bucket::BITS_CAPACITY;
-
     #[allow(dead_code)]
     fn load_factor(&self) -> f64 {
         self.ones() as f64 / Self::CAPACITY as f64
@@ -76,10 +90,12 @@ impl Bucket {
         Bucket::Vec(bits::Count::MIN, Vec::new())
     }
     pub fn with_capacity(cap: usize) -> Bucket {
-        if cap as u64 <= Self::VEC_CAPACITY {
-            Bucket::Vec(bits::Count::MIN, Vec::with_capacity(cap))
+        if cap as u64 <= VEC_CAPACITY {
+            let vec = Vec::with_capacity(cap);
+            Bucket::Vec(bits::Count::MIN, vec)
         } else {
-            Bucket::Map(bits::Count::MIN, Vec::with_capacity(cap))
+            let arr = Box::new([0; MAP_CAPACITY as usize]);
+            Bucket::Map(bits::Count::MIN, arr)
         }
     }
 
@@ -94,33 +110,24 @@ impl Bucket {
     fn fitted(&mut self) -> bool {
         let ones = self.ones();
         match self {
-            &mut Bucket::Vec(..) if ones > Self::VEC_CAPACITY => false,
-            &mut Bucket::Map(..) if ones <= Self::VEC_CAPACITY => false,
+            &mut Bucket::Vec(..) if ones > VEC_CAPACITY => false,
+            &mut Bucket::Map(..) if ones <= VEC_CAPACITY => false,
             _ => true,
         }
     }
     fn shrink(&mut self) {
         match self {
             &mut Bucket::Vec(_, ref mut bits) => bits.shrink_to_fit(),
-            &mut Bucket::Map(_, ref mut bits) => bits.shrink_to_fit(),
+            &mut Bucket::Map(..) => { /* ignore */ }
         }
     }
 }
 
 impl Bucket {
-    fn iter(&self) -> Iter {
+    pub fn iter(&self) -> Iter {
         match self {
             &Bucket::Vec(ref pop, ref bits) => Iter::vec(&bits[..], pop),
             &Bucket::Map(ref pop, ref bits) => Iter::map(&bits[..], pop),
-        }
-    }
-}
-
-impl fmt::Debug for Bucket {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.value()),
-            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.value()),
         }
     }
 }
@@ -149,21 +156,13 @@ impl Bucket {
             }
             &mut Bucket::Map(ref mut popc, ref mut bits) => {
                 bitmask!(bit, key, mask);
-                if let Some(map) = bits.get_mut(key) {
-                    if *map & mask != 0 {
-                        return false;
-                    } else {
-                        *map |= mask;
-                        popc.incr();
-                        return true;
-                    }
+                if bits[key] & mask != 0 {
+                    false
+                } else {
+                    bits[key] |= mask;
+                    popc.incr();
+                    true
                 }
-                if key > bits.len() {
-                    bits.resize(key, 0);
-                }
-                bits.insert(key, mask);
-                popc.incr();
-                return true;
             }
         }
     }
@@ -184,16 +183,13 @@ impl Bucket {
             }
             &mut Bucket::Map(ref mut popc, ref mut bits) => {
                 bitmask!(bit, key, mask);
-                if let Some(map) = bits.get_mut(key) {
-                    if *map & mask != 0 {
-                        *map &= !mask;
-                        popc.decr();
-                        return true;
-                    } else {
-                        return false;
-                    };
+                if bits[key] & mask != 0 {
+                    bits[key] &= !mask;
+                    popc.decr();
+                    true
+                } else {
+                    false
                 }
-                return false;
             }
         }
     }

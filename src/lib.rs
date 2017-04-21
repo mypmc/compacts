@@ -1,5 +1,6 @@
 #![allow(unused_features)]
 #![feature(associated_consts)]
+#![feature(box_patterns)]
 #![feature(test)]
 
 /// Inspired from:
@@ -24,3 +25,16 @@ pub use bit_map::BitMap;
 use pop_count::Bounded;
 use bucket::Bucket;
 use bucket::Iter as BucketIter;
+use dir::{Direction, Forward};
+
+mod dir {
+    pub trait Direction {}
+
+    #[derive(Debug, Clone)]
+    pub struct Forward;
+    impl Direction for Forward {}
+
+    //#[derive(Debug, Clone)]
+    //pub struct Reverse;
+    //impl Direction for Reverse {}
+}

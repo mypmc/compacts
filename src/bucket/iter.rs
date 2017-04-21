@@ -4,10 +4,11 @@ use std::marker::PhantomData;
 
 use {bits, PopCount};
 use Bucket;
+use {Direction, Forward};
 
 /// module document.
-
 // each 'ones' are count of non-zero bit; for size_hint
+#[derive(Debug, Clone)]
 pub enum Iter<'a> {
     Vec {
         pop: &'a bits::Count<u16>,
@@ -62,9 +63,8 @@ impl<'a> ExactSizeIterator for Iter<'a> {
     */
 }
 
-pub struct Forward;
-
-pub struct SlicePtr<'a, T> {
+#[derive(Debug, Clone)]
+pub struct SlicePtr<'a, T: Direction> {
     bits: &'a [u64],
     idx: usize,
     pos: usize,

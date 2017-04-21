@@ -4,6 +4,9 @@ use {Bounded, PopCount, Bucket};
 // use {Rank0, Rank1, Select1, Select0};
 use bits::{self, SplitMerge};
 
+// mod iter;
+// use self::iter::Iter;
+
 pub struct BitMap {
     pop: bits::Count<u32>,
     map: BTreeMap<u16, Bucket>,
@@ -39,9 +42,9 @@ impl BitMap {
     /// assert_eq!(bits.contains(2), false);
     /// ```
     pub fn contains(&self, x: u32) -> bool {
-        let (hi, lo) = x.split();
-        if let Some(bucket) = self.map.get(&hi) {
-            bucket.contains(lo)
+        let (key, bit) = x.split();
+        if let Some(bucket) = self.map.get(&key) {
+            bucket.contains(bit)
         } else {
             false
         }
@@ -61,9 +64,9 @@ impl BitMap {
     /// assert_eq!(bits.ones(), 1);
     /// ```
     pub fn insert(&mut self, x: u32) -> bool {
-        let (hi, lo) = x.split();
-        let mut bucket = self.map.entry(hi).or_insert(Bucket::with_capacity(1));
-        let ok = bucket.insert(lo);
+        let (key, bit) = x.split();
+        let mut bucket = self.map.entry(key).or_insert(Bucket::with_capacity(1));
+        let ok = bucket.insert(bit);
         if ok {
             self.pop.incr();
         }
@@ -84,9 +87,9 @@ impl BitMap {
     /// assert_eq!(bits.ones(), 0);
     /// ```
     pub fn remove(&mut self, x: u32) -> bool {
-        let (hi, lo) = x.split();
-        if let Some(bucket) = self.map.get_mut(&hi) {
-            let ok = bucket.remove(lo);
+        let (key, bit) = x.split();
+        if let Some(bucket) = self.map.get_mut(&key) {
+            let ok = bucket.remove(bit);
             if ok {
                 self.pop.decr();
             }
@@ -95,3 +98,9 @@ impl BitMap {
         return false;
     }
 }
+
+//impl BitMap {
+//    fn iter<'a>(&'a self) -> Iter<'a> {
+//        Iter::new(&self.map)
+//    }
+//}
