@@ -55,14 +55,14 @@ impl RankSelect {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 static LENGTHS: &'static [u64] =
-    &[0, VEC_CAPACITY, VEC_CAPACITY * 2, Bucket::CAPACITY / 2, Bucket::CAPACITY];
+    &[0, VEC_CAPACITY as u64, (VEC_CAPACITY * 2) as u64, Bucket::CAPACITY / 2, Bucket::CAPACITY];
 
 #[test]
 fn bucket_rank_select() {
     let mut rng = rand::thread_rng();
     let lens = {
-        let mut vec = vec![rng.gen_range(10, VEC_CAPACITY),
-                           rng.gen_range(VEC_CAPACITY + 1, Bucket::CAPACITY - 1)];
+        let mut vec = vec![rng.gen_range(10, VEC_CAPACITY as u64),
+                           rng.gen_range(VEC_CAPACITY as u64 + 1, Bucket::CAPACITY - 1)];
         vec.extend_from_slice(LENGTHS);
         vec.sort();
         vec
@@ -139,7 +139,7 @@ macro_rules! init_bucket {
         init_bucket!($bucket, size as usize, $rng);
     };
     ( MAP; $bucket: ident, $rng: expr ) => {
-        let size = $rng.gen_range(VEC_CAPACITY, Bucket::CAPACITY);
+        let size = $rng.gen_range(VEC_CAPACITY as u64, Bucket::CAPACITY);
         init_bucket!($bucket, size as usize, $rng);
     };
     ( $bucket: ident, $size: expr, $rng: expr ) => {
@@ -284,13 +284,13 @@ fn bucket_bitop_XOR() {
 fn bucket_insert_remove() {
     let mut b = Bucket::new();
     let mut i = 0u16;
-    while (i as u64) < VEC_CAPACITY {
+    while (i as usize) < VEC_CAPACITY {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
         assert!(b.contains(i));
         i += 1;
     }
-    assert_eq!(i as u64, VEC_CAPACITY);
-    assert_eq!(b.ones(), VEC_CAPACITY);
+    assert_eq!(i as usize, VEC_CAPACITY);
+    assert_eq!(b.ones(), VEC_CAPACITY as u64);
 
     while (i as u64) < Bucket::CAPACITY {
         assert!(b.insert(i), "insert failed");
