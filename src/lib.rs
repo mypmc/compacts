@@ -1,7 +1,7 @@
-#![allow(unused_features)]
 #![feature(associated_consts)]
 #![feature(box_patterns)]
-#![feature(test)]
+
+#![cfg_attr(test, feature(test))]
 
 /// Inspired from:
 ///   [Broadword implementation of rank/select queries](http://sux.di.unimi.it/paper.pdf);
