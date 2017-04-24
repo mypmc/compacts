@@ -6,8 +6,9 @@ use self::rand::Rng;
 extern crate test;
 use self::test::Bencher;
 
-use {bits, Bucket, BucketIter};
+use {bits, Bucket};
 use {Bounded, PopCount, Rank1, Select1};
+
 use bucket::pair;
 
 fn generate_bucket<R: Rng>(size: usize, rng: &mut R) -> Bucket {
@@ -54,7 +55,11 @@ impl RankSelect {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 static LENGTHS: &'static [u64] =
-    &[0, Bucket::VEC_CAPACITY as u64, (Bucket::VEC_CAPACITY * 2) as u64, Bucket::CAPACITY / 2, Bucket::CAPACITY];
+    &[0,
+      Bucket::VEC_CAPACITY as u64,
+      (Bucket::VEC_CAPACITY * 2) as u64,
+      Bucket::CAPACITY / 2,
+      Bucket::CAPACITY];
 
 #[test]
 fn bucket_rank_select() {
@@ -80,37 +85,9 @@ fn bucket_clone() {
     b2.insert(1);
     assert!(b1.ones() == 0, "{:?} {:?}", b1.ones(), b2.ones());
     assert!(b2.ones() == 2, "{:?} {:?}", b1.ones(), b2.ones());
-}
 
-struct IterTest<'a> {
-    bits: &'a [u64],
-    ones: u64,
-    dirs: &'a [Option<u16>],
-}
-impl<'a> IterTest<'a> {
-    fn run(bits: &'a [u64], dirs: &'a [Option<u16>]) {
-        Self::new(bits, dirs).test()
-    }
-    fn new(bits: &'a [u64], dirs: &'a [Option<u16>]) -> IterTest<'a> {
-        let ones = bits.iter().fold(0, |acc, &x| acc + x.ones());
-        IterTest { bits, ones, dirs }
-    }
-    fn test(&mut self) {
-        let pop = bits::Count::<u16>::new(self.ones);
-        let mut iter = BucketIter::map(self.bits, &pop);
-        for (i, &want) in self.dirs.iter().enumerate() {
-            let got = iter.next();
-            assert_eq!(got, want, "{:?}", i);
-        }
-    }
-}
-
-#[test]
-fn bucket_iter_next() {
-    {
-        let bits = &[1 | 1 << 63, 1 | 1 << 63, 1 | 1 << 63];
-        let dirs = &[Some(0), Some(63), Some(64), Some(127), Some(128), Some(191), None, None];
-        IterTest::run(bits, dirs);
+    for bit in b2 {
+        println!("{:?}", bit)
     }
 }
 

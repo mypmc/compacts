@@ -1,7 +1,6 @@
 //! Internal representaions of fixed size bit storage.
 
 use std::{fmt, u16};
-use std::iter::{IntoIterator, FromIterator};
 
 use {bits, PopCount, Bounded};
 
@@ -25,7 +24,7 @@ macro_rules! pair {
 }
 
 mod iter;
-pub use self::iter::Iter;
+pub use self::iter::{Iter, IntoIter, Pointer};
 
 mod pair;
 mod bitand;
@@ -43,23 +42,22 @@ pub enum Bucket {
     // Vec holds bit as is, with sorted order.
     Vec(bits::Count<u16>, Vec<u16>),
     // Each elements represents bit-array.
-    // Cow<[u64]>
     Map(bits::Count<u16>, Box<[u64; Bucket::MAP_CAPACITY]>),
 }
 
-impl fmt::Debug for Bucket {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.value()),
-            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.value()),
-        }
-    }
-}
 impl Clone for Bucket {
     fn clone(&self) -> Self {
         match self {
             &Bucket::Vec(ref pop, ref vec) => Bucket::Vec(pop.clone(), vec.clone()),
             &Bucket::Map(ref pop, box map) => Bucket::Map(pop.clone(), Box::new(map)),
+        }
+    }
+}
+impl fmt::Debug for Bucket {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Bucket::Vec(ref pop, _) => write!(fmt, "Vec({:?})", pop.value()),
+            &Bucket::Map(ref pop, _) => write!(fmt, "Map({:?})", pop.value()),
         }
     }
 }
@@ -125,15 +123,6 @@ impl Bucket {
 }
 
 impl Bucket {
-    pub fn iter(&self) -> Iter {
-        match self {
-            &Bucket::Vec(ref pop, ref bits) => Iter::vec(&bits[..], pop),
-            &Bucket::Map(ref pop, ref bits) => Iter::map(&bits[..], pop),
-        }
-    }
-}
-
-impl Bucket {
     pub fn contains(&self, bit: u16) -> bool {
         match self {
             &Bucket::Vec(_, ref bits) => bits.binary_search(&bit).is_ok(),
@@ -193,55 +182,5 @@ impl Bucket {
                 }
             }
         }
-    }
-}
-
-impl FromIterator<u16> for Bucket {
-    fn from_iter<I: IntoIterator<Item = u16>>(iterable: I) -> Self {
-        let iter = iterable.into_iter();
-        let (min, maybe) = iter.size_hint();
-        let mut repr = Bucket::with_capacity(if let Some(max) = maybe { max } else { min });
-        let ones = insert_u16_all(iter, &mut repr);
-        debug_assert_eq!(ones, repr.ones());
-        repr
-    }
-}
-impl<'a> FromIterator<&'a u16> for Bucket {
-    fn from_iter<I: IntoIterator<Item = &'a u16>>(iterable: I) -> Self {
-        let iter = iterable.into_iter();
-        iter.cloned().collect::<Bucket>()
-    }
-}
-impl FromIterator<bool> for Bucket {
-    fn from_iter<I: IntoIterator<Item = bool>>(iterable: I) -> Bucket {
-        let iter = iterable.into_iter();
-        iter.take(Bucket::CAPACITY as usize)
-            .enumerate()
-            .filter_map(|(i, p)| if p { Some(i as u16) } else { None })
-            .collect::<Bucket>()
-    }
-}
-impl<'a> FromIterator<&'a bool> for Bucket {
-    fn from_iter<I: IntoIterator<Item = &'a bool>>(iterable: I) -> Bucket {
-        let iter = iterable.into_iter();
-        iter.cloned().collect::<Bucket>()
-    }
-}
-
-fn insert_u16_all<It: Iterator<Item = u16>>(it: It, repr: &mut Bucket) -> u64 {
-    let mut ones = 0;
-    for item in it {
-        if repr.insert(item) {
-            ones += 1;
-        }
-    }
-    ones
-}
-
-impl<'a> IntoIterator for &'a Bucket {
-    type Item = <Iter<'a> as Iterator>::Item;
-    type IntoIter = Iter<'a>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
     }
 }

@@ -11,13 +11,14 @@ mod pop_count;
 mod rank;
 mod select;
 mod bucket;
-mod bit_map;
 mod bits;
+
+mod bit_vec;
 
 pub use pop_count::PopCount;
 pub use rank::{Rank0, Rank1};
 pub use select::{Select0, Select1};
-pub use bit_map::BitMap;
+pub use bit_vec::BitVec;
 
 
 /* Private API */
@@ -25,7 +26,6 @@ pub use bit_map::BitMap;
 use pop_count::Bounded;
 use bucket::Bucket;
 use bucket::Iter as BucketIter;
-use dir::{Direction, Forward};
 
 mod dir {
     pub trait Direction {}

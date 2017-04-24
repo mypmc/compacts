@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::collections::btree_map::Iter as KeyValues;
-use {BitMap, Bucket, BucketIter};
+use {BitVec, Bucket, BucketIter};
 
 pub struct Iter<'a> {
     inner: Inner<'a>,
