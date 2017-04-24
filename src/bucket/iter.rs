@@ -82,7 +82,7 @@ impl<'a> SlicePtr<'a, Forward> {
     }
     fn goto_next(&mut self) {
         self.pos += 1;
-        if self.pos == Bucket::BITS_CAPACITY as usize {
+        if self.pos == Bucket::BITS_SIZE {
             self.pos = 0;
             self.idx += 1;
         }
@@ -97,7 +97,7 @@ impl<'a> SlicePtr<'a, Forward> {
             if i >= self.bits.len() {
                 return None;
             } else if self.bits[i] & (1u64 << p) != 0 {
-                let bit = Some((i * Bucket::BITS_CAPACITY as usize + p) as u16);
+                let bit = Some((i * Bucket::BITS_SIZE + p) as u16);
                 self.goto_next();
                 return bit;
             }

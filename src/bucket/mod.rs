@@ -38,17 +38,13 @@ mod select;
 #[cfg(test)]
 mod tests;
 
-const VEC_CAPACITY: usize = 1 << 10;
-
-const MAP_CAPACITY: usize = 1024;
-
 //#[derive(Clone)]
 pub enum Bucket {
     // Vec holds bit as is, with sorted order.
     Vec(bits::Count<u16>, Vec<u16>),
     // Each elements represents bit-array.
     // Cow<[u64]>
-    Map(bits::Count<u16>, Box<[u64; MAP_CAPACITY]>),
+    Map(bits::Count<u16>, Box<[u64; Bucket::MAP_CAPACITY]>),
 }
 
 impl fmt::Debug for Bucket {
@@ -80,7 +76,10 @@ impl PopCount for Bucket {
 }
 
 impl Bucket {
-    const BITS_CAPACITY: u64 = <u64 as PopCount>::CAPACITY;
+    const BITS_SIZE: usize = <u64 as PopCount>::CAPACITY as usize;
+
+    const VEC_CAPACITY: usize = 1024; // 1 << 10
+    const MAP_CAPACITY: usize = 1024;
 
     #[allow(dead_code)]
     fn load_factor(&self) -> f64 {
@@ -91,11 +90,11 @@ impl Bucket {
         Bucket::Vec(bits::Count::MIN, Vec::new())
     }
     pub fn with_capacity(cap: usize) -> Bucket {
-        if cap <= VEC_CAPACITY {
+        if cap <= Bucket::VEC_CAPACITY {
             let vec = Vec::with_capacity(cap);
             Bucket::Vec(bits::Count::MIN, vec)
         } else {
-            let arr = Box::new([0; MAP_CAPACITY]);
+            let arr = Box::new([0; Bucket::MAP_CAPACITY]);
             Bucket::Map(bits::Count::MIN, arr)
         }
     }
@@ -110,7 +109,7 @@ impl Bucket {
     }
     fn fitted(&mut self) -> bool {
         let ones = self.ones();
-        let max = VEC_CAPACITY as u64;
+        let max = Self::VEC_CAPACITY as u64;
         match self {
             &mut Bucket::Vec(..) if ones > max => false,
             &mut Bucket::Map(..) if ones <= max => false,

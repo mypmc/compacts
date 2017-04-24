@@ -9,7 +9,6 @@ use self::test::Bencher;
 use {bits, Bucket, BucketIter};
 use {Bounded, PopCount, Rank1, Select1};
 use bucket::pair;
-use super::VEC_CAPACITY;
 
 fn generate_bucket<R: Rng>(size: usize, rng: &mut R) -> Bucket {
     let mut bucket = Bucket::with_capacity(size);
@@ -55,14 +54,14 @@ impl RankSelect {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 static LENGTHS: &'static [u64] =
-    &[0, VEC_CAPACITY as u64, (VEC_CAPACITY * 2) as u64, Bucket::CAPACITY / 2, Bucket::CAPACITY];
+    &[0, Bucket::VEC_CAPACITY as u64, (Bucket::VEC_CAPACITY * 2) as u64, Bucket::CAPACITY / 2, Bucket::CAPACITY];
 
 #[test]
 fn bucket_rank_select() {
     let mut rng = rand::thread_rng();
     let lens = {
-        let mut vec = vec![rng.gen_range(10, VEC_CAPACITY as u64),
-                           rng.gen_range(VEC_CAPACITY as u64 + 1, Bucket::CAPACITY - 1)];
+        let mut vec = vec![rng.gen_range(10, Bucket::VEC_CAPACITY as u64),
+                           rng.gen_range(Bucket::VEC_CAPACITY as u64 + 1, Bucket::CAPACITY - 1)];
         vec.extend_from_slice(LENGTHS);
         vec.sort();
         vec
@@ -70,6 +69,17 @@ fn bucket_rank_select() {
     for &size in lens.iter() {
         RankSelect::run(size as usize, &mut rng);
     }
+}
+
+#[test]
+fn bucket_clone() {
+    let slice = Box::new([0; Bucket::VEC_CAPACITY]);
+    let b1 = Bucket::Map(bits::Count::<u16>::new(0), slice);
+    let mut b2 = b1.clone();
+    b2.insert(0);
+    b2.insert(1);
+    assert!(b1.ones() == 0, "{:?} {:?}", b1.ones(), b2.ones());
+    assert!(b2.ones() == 2, "{:?} {:?}", b1.ones(), b2.ones());
 }
 
 struct IterTest<'a> {
@@ -123,11 +133,11 @@ macro_rules! init_bucket {
         init_bucket!($bucket, size as usize, $rng);
     };
     ( MAX_VEC; $bucket: ident, $rng: expr ) => {
-        let size = VEC_CAPACITY;
+        let size = Bucket::VEC_CAPACITY;
         init_bucket!($bucket, size as usize, $rng);
     };
     ( MIN_MAP; $bucket: ident, $rng: expr ) => {
-        let size = VEC_CAPACITY + 1;
+        let size = Bucket::VEC_CAPACITY + 1;
         init_bucket!($bucket, size as usize, $rng);
     };
     ( MAX_MAP; $bucket: ident, $rng: expr ) => {
@@ -135,11 +145,11 @@ macro_rules! init_bucket {
         init_bucket!($bucket, size as usize, $rng);
     };
     ( VEC; $bucket: ident, $rng: expr ) => {
-        let size = $rng.gen_range(0, VEC_CAPACITY);
+        let size = $rng.gen_range(0, Bucket::VEC_CAPACITY);
         init_bucket!($bucket, size as usize, $rng);
     };
     ( MAP; $bucket: ident, $rng: expr ) => {
-        let size = $rng.gen_range(VEC_CAPACITY as u64, Bucket::CAPACITY);
+        let size = $rng.gen_range(Bucket::VEC_CAPACITY as u64, Bucket::CAPACITY);
         init_bucket!($bucket, size as usize, $rng);
     };
     ( $bucket: ident, $size: expr, $rng: expr ) => {
@@ -284,13 +294,13 @@ fn bucket_bitop_XOR() {
 fn bucket_insert_remove() {
     let mut b = Bucket::new();
     let mut i = 0u16;
-    while (i as usize) < VEC_CAPACITY {
+    while (i as usize) < Bucket::VEC_CAPACITY {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
         assert!(b.contains(i));
         i += 1;
     }
-    assert_eq!(i as usize, VEC_CAPACITY);
-    assert_eq!(b.ones(), VEC_CAPACITY as u64);
+    assert_eq!(i as usize, Bucket::VEC_CAPACITY);
+    assert_eq!(b.ones(), Bucket::VEC_CAPACITY as u64);
 
     while (i as u64) < Bucket::CAPACITY {
         assert!(b.insert(i), "insert failed");

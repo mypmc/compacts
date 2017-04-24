@@ -2,6 +2,8 @@ use {PopCount, Bucket, Select1};
 
 impl Select1<usize> for Bucket {
     fn select1(&self, c: usize) -> Option<u64> {
+        let bits_size: u64 = Self::BITS_SIZE as u64;
+
         if c as u64 >= self.ones() {
             return None;
         }
@@ -13,7 +15,7 @@ impl Select1<usize> for Bucket {
                     let w = x.ones();
                     if r < w {
                         let j = i as u64;
-                        return Some(Self::BITS_CAPACITY * j + x.select1(r).unwrap_or(0));
+                        return Some(bits_size * j + x.select1(r).unwrap_or(0));
                     }
                     r -= w;
                 }
@@ -38,7 +40,7 @@ impl Select0 for Bucket {
                 for (i, x) in bits.iter().enumerate() {
                     let w = x.zeros();
                     if r < w {
-                        return Some(Self::BITS_CAPACITY * i + x.select0(r).unwrap_or(0));
+                        return Some(Self::BITS_SIZE * i + x.select0(r).unwrap_or(0));
                     }
                     r -= w;
                 }

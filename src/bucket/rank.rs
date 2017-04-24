@@ -20,8 +20,8 @@ impl Rank1<usize> for Bucket {
                 }
             }
             &Bucket::Map(_, ref bits) => {
-                let q = i / Self::BITS_CAPACITY as usize;
-                let r = i % Self::BITS_CAPACITY as usize;
+                let q = i / Self::BITS_SIZE;
+                let r = i % Self::BITS_SIZE;
                 bits.iter().take(q).fold(0, |acc, w| acc + w.ones()) +
                 bits.get(q).map_or(0, |w| w.rank1(r))
             }
