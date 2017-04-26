@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 use std::collections::btree_map::Iter as KeyValues;
-use {BitVec, Bucket, BucketIter};
+use {BitVec, Block, BlockIter};
 
 pub struct Iter<'a> {
     inner: Inner<'a>,
 }
 impl<'a> Iter<'a> {
-    pub fn new(bmap: &'a BTreeMap<u16, Bucket>) -> Iter<'a> {
+    pub fn new(bmap: &'a BTreeMap<u16, Block>) -> Iter<'a> {
         let inner = Inner::Move(bmap.iter());
         Iter { inner }
     }
@@ -14,18 +14,18 @@ impl<'a> Iter<'a> {
 
 #[derive(Debug, Clone)]
 pub enum Inner<'a> {
-    Move(KeyValues<'a, u16, Bucket>),
+    Move(KeyValues<'a, u16, Block>),
 
     Seek {
-        kvs: KeyValues<'a, u16, Bucket>,
+        kvs: KeyValues<'a, u16, Block>,
         key: u16,
-        bit: BucketIter<'a>,
+        bit: BlockIter<'a>,
     },
 }
 
 
 impl<'a> Inner<'a> {
-    fn new(bmap: &'a BTreeMap<u16, Bucket>) -> Inner<'a> {
+    fn new(bmap: &'a BTreeMap<u16, Block>) -> Inner<'a> {
         let mut kvs = bmap.iter();
         if let Some((&key, bucket)) = kvs.next() {
             let bit = bucket.iter();

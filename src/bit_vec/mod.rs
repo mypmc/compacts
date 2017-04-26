@@ -1,100 +1,151 @@
+#[macro_use]
+mod macros;
+mod block;
+mod pairwise;
+
 use std::collections::BTreeMap;
+use std::ops::Index;
 
-use {Bounded, PopCount, Bucket};
-// use {Rank0, Rank1, Select1, Select0};
-use bits::{self, SplitMerge};
+use dict::Ranked;
+use prim::{self, Split};
+use thunk::Thunk;
 
-// mod iter;
-// use self::iter::Iter;
+use self::block::Block;
 
-pub struct BitVec {
-    pop_count: bits::Count<u32>,
-    buckets: BTreeMap<u16, Bucket>,
+#[derive(Debug)]
+pub struct BitVec<'a> {
+    weight: u64,
+    blocks: BTreeMap<u16, Thunk<'a, Block>>,
 }
 
-impl PopCount for BitVec {
-    const CAPACITY: u64 = Bucket::CAPACITY * Bucket::CAPACITY;
-
-    fn ones(&self) -> u64 {
-        self.pop_count.value()
+impl<'a> Clone for BitVec<'a> {
+    fn clone(&self) -> Self {
+        let mut vec = BitVec::new();
+        for (&k, t) in self.blocks.iter() {
+            let c = (**t).clone();
+            vec.blocks.insert(k, eval!(c));
+        }
+        vec
     }
 }
 
-impl BitVec {
+impl<'a> BitVec<'a> {
+    // const CAPACITY: u64 = 1 << 32;
+
+    pub fn count1(&self) -> u64 {
+        self.blocks
+            .values()
+            .fold(0, |acc, b| acc + b.count1() as u64)
+    }
+}
+
+impl<'a> BitVec<'a> {
+    pub fn count_blocks(&self) -> usize {
+        self.blocks.len()
+    }
+
+    pub fn optimize(&mut self) {
+        for b in self.blocks.values_mut() {
+            b.optimize();
+        }
+    }
+}
+
+impl<'a> BitVec<'a> {
     pub fn new() -> Self {
         BitVec {
-            pop_count: bits::Count::MIN,
-            buckets: BTreeMap::new(),
+            weight: 0,
+            blocks: BTreeMap::new(),
         }
     }
 
-    /// Returns `true` if the specified bit set in BitVec.
+    /// Clear contents.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use cwt::{PopCount, BitVec};
+    /// use cds::BitVec;
+    /// let mut bits = BitVec::new();
+    /// bits.insert(0);
+    /// assert!(bits.count1() == 1);
+    /// bits.clear();
+    /// assert!(bits.count1() == 0);
+    /// ```
+    pub fn clear(&mut self) {
+        self.weight = 0;
+        self.blocks.clear();
+    }
+
+    /// Return `true` if the specified bit set in BitVec.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use cds::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// bits.insert(1);
-    /// assert_eq!(bits.contains(0), false);
-    /// assert_eq!(bits.contains(1), true);
-    /// assert_eq!(bits.contains(2), false);
-    /// assert_eq!(bits.ones(), 1);
+    /// assert!(!bits.contains(0));
+    /// assert!(bits.contains(1));
+    /// assert!(!bits.contains(2));
+    /// assert_eq!(bits.count1(), 1);
     /// ```
     pub fn contains(&self, x: u32) -> bool {
         let (key, bit) = x.split();
-        if let Some(bucket) = self.buckets.get(&key) {
-            bucket.contains(bit)
+        if let Some(b) = self.blocks.get(&key) {
+            b.contains(bit)
         } else {
             false
         }
     }
 
-    /// Returns `true` if the value doesn't exists in the BitVec, and inserted to the BitVec.
+    /// Return `true` if the value doesn't exists in the BitVec,
+    /// and inserted to the BitVec successfully.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use cwt::{PopCount, BitVec};
+    /// use cds::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// assert_eq!(bits.insert(3), true);
-    /// assert_eq!(bits.insert(3), false);
-    /// assert_eq!(bits.contains(3), true);
-    /// assert_eq!(bits.ones(), 1);
+    /// assert!(bits.insert(3));
+    /// assert!(!bits.insert(3));
+    /// assert!(bits.contains(3));
+    /// assert_eq!(bits.count1(), 1);
     /// ```
     pub fn insert(&mut self, x: u32) -> bool {
         let (key, bit) = x.split();
-        let mut bucket = self.buckets
+        let mut b = self.blocks
             .entry(key)
-            .or_insert(Bucket::with_capacity(1));
-        let ok = bucket.insert(bit);
+            .or_insert(eval!(Block::with_capacity(64)));
+        let ok = b.insert(bit);
         if ok {
-            self.pop_count.incr();
+            self.weight += 1;
+            b.optimize();
         }
         ok
     }
 
-    /// Returns `true` if the value present and removed from the BitVec.
+    /// Return `true` if the value present and removed from the BitVec.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use cwt::{PopCount, BitVec};
+    /// use cds::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// assert_eq!(bits.insert(3), true);
-    /// assert_eq!(bits.remove(3), true);
-    /// assert_eq!(bits.contains(3), false);
-    /// assert_eq!(bits.ones(), 0);
+    /// assert!(bits.insert(3));
+    /// assert!(bits.remove(3));
+    /// assert!(!bits.contains(3));
+    /// assert_eq!(bits.count1(), 0);
     /// ```
     pub fn remove(&mut self, x: u32) -> bool {
         let (key, bit) = x.split();
-        if let Some(bucket) = self.buckets.get_mut(&key) {
-            let ok = bucket.remove(bit);
+        if let Some(b) = self.blocks.get_mut(&key) {
+            let ok = b.remove(bit);
             if ok {
-                self.pop_count.decr();
+                self.weight -= 1;
+                b.optimize();
             }
             return ok;
         }
@@ -102,8 +153,13 @@ impl BitVec {
     }
 }
 
-//impl BitVec {
-//    fn iter<'a>(&'a self) -> Iter<'a> {
-//        Iter::new(&self.map)
-//    }
-//}
+impl<'a> Index<u32> for BitVec<'a> {
+    type Output = bool;
+    fn index(&self, i: u32) -> &Self::Output {
+        if self.contains(i) {
+            prim::TRUE
+        } else {
+            prim::FALSE
+        }
+    }
+}
