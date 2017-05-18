@@ -14,7 +14,7 @@ mod tests;
 use self::bucket::Bucket;
 pub use self::bucket::{Iter, IntoIter};
 
-use prim::{self, Uint};
+use dict::prim::{self, Uint};
 use dict::Ranked;
 
 const U64_WIDTH: usize = <u64 as Uint>::WIDTH;
@@ -40,9 +40,9 @@ impl Block {
 impl fmt::Debug for Block {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let lf = self.load_factor();
-        match self {
-            &Block::Sorted(..) => write!(fmt, "Sorted({:.3})", lf),
-            &Block::Mapped(..) => write!(fmt, "Mapped({:.3})", lf),
+        match *self {
+            Block::Sorted(..) => write!(fmt, "Sorted({:.3})", lf),
+            Block::Mapped(..) => write!(fmt, "Mapped({:.3})", lf),
         }
     }
 }
@@ -58,11 +58,16 @@ impl Index<u16> for Block {
     }
 }
 
-impl Block {
-    pub fn new() -> Self {
+impl Default for Block {
+    fn default() -> Self {
         Block::Sorted(Bucket::<u16>::new())
     }
+}
 
+impl Block {
+    pub fn new() -> Self {
+        Block::default()
+    }
     pub fn with_capacity(w: usize) -> Self {
         if w <= THRESHOLD {
             Block::Sorted(Bucket::with_capacity(w))
@@ -74,31 +79,31 @@ impl Block {
 
 impl Block {
     pub fn is_sorted(&self) -> bool {
-        match self {
-            &Block::Sorted(..) => true,
+        match *self {
+            Block::Sorted(..) => true,
             _ => false,
         }
     }
     pub fn is_mapped(&self) -> bool {
-        match self {
-            &Block::Mapped(..) => true,
+        match *self {
+            Block::Mapped(..) => true,
             _ => false,
         }
     }
 
-    pub fn to_sorted(&mut self) {
+    pub fn as_sorted(&mut self) {
         if !self.is_sorted() {
-            *self = match self {
-                &mut Block::Mapped(ref b) => Block::Sorted(Bucket::<u16>::from(b)),
+            *self = match *self {
+                Block::Mapped(ref b) => Block::Sorted(Bucket::<u16>::from(b)),
                 _ => unreachable!(),
             };
         }
     }
 
-    pub fn to_mapped(&mut self) {
+    pub fn as_mapped(&mut self) {
         if !self.is_mapped() {
-            *self = match self {
-                &mut Block::Sorted(ref b) => Block::Mapped(Bucket::<u64>::from(b)),
+            *self = match *self {
+                Block::Sorted(ref b) => Block::Mapped(Bucket::<u64>::from(b)),
                 _ => unreachable!(),
             }
         }
@@ -119,8 +124,8 @@ impl Block {
         }
         let max = THRESHOLD as u32;
         match *self {
-            ref mut this @ Block::Sorted(..) if ones > max => this.to_mapped(),
-            ref mut this @ Block::Mapped(..) if ones <= max => this.to_sorted(),
+            ref mut this @ Block::Sorted(..) if ones > max => this.as_mapped(),
+            ref mut this @ Block::Mapped(..) if ones <= max => this.as_sorted(),
             _ => { /* ignore */ }
         }
     }
@@ -154,7 +159,7 @@ impl Extend<u16> for Block {
     fn extend<I>(&mut self, iterable: I)
         where I: IntoIterator<Item = u16>
     {
-        extend_by_u16!(self, iterable.into_iter());
+        extend_by_u16!(self, iterable);
     }
 }
 

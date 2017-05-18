@@ -40,7 +40,7 @@ impl<'a, T> Thunk<'a, T> {
     /// Evaluate a thunk.
     pub fn force(thunk: &Self) {
         unsafe {
-            let () = match *thunk.cell.get() {
+            match *thunk.cell.get() {
                 Expr::Lazy(_) => (),
                 Expr::InProgress => panic!("Thunk::force called recursively"),
                 Expr::Eval(_) => return, // already forced
@@ -74,7 +74,7 @@ struct Yield<'a, T> {
 
 impl<'a, T> Yield<'a, T> {
     fn new<F: 'a + FnOnce() -> T>(f: F) -> Yield<'a, T> {
-        let boxed = Box::new(|| f());
+        let boxed = Box::new(f);
         Yield { boxed }
     }
 
@@ -83,22 +83,22 @@ impl<'a, T> Yield<'a, T> {
     }
 }
 
-impl<'x, T> Deref for Thunk<'x, T> {
+impl<'a, T> Deref for Thunk<'a, T> {
     type Target = T;
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         Thunk::force(self);
-        match unsafe { &*self.cell.get() } {
-            &Expr::Eval(ref val) => val,
+        match *unsafe { &*self.cell.get() } {
+            Expr::Eval(ref val) => val,
             _ => unreachable!("Thunk::deref failed"),
         }
     }
 }
 
-impl<'x, T> DerefMut for Thunk<'x, T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+impl<'a, T> DerefMut for Thunk<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
         Thunk::force(self);
-        match unsafe { &mut *self.cell.get() } {
-            &mut Expr::Eval(ref mut val) => val,
+        match *unsafe { &mut *self.cell.get() } {
+            Expr::Eval(ref mut val) => val,
             _ => unreachable!("Thunk::deref_mut failed"),
         }
     }

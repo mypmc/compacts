@@ -1,6 +1,6 @@
-use bits::{Pairwise, PairwiseWith};
 use dict::Ranked;
-use bit_vec::pairwise;
+use pairwise;
+use self::pairwise::{Pairwise, PairwiseWith};
 
 use super::{Block, Bucket};
 
@@ -117,8 +117,8 @@ impl<'a> PairwiseWith<&'a Block> for Block {
             }
 
             (this @ &mut Block::Sorted(..), that @ &Block::Mapped(..)) => {
-                this.to_mapped();
-                this.union_with(&that)
+                this.as_mapped();
+                this.union_with(that)
             }
 
             (this, that) => {
@@ -142,7 +142,7 @@ impl<'a> PairwiseWith<&'a Block> for Block {
             }
 
             (this @ &mut Block::Sorted(..), that @ &Block::Mapped(..)) => {
-                this.to_mapped();
+                this.as_mapped();
                 this.difference_with(that);
             }
 
@@ -162,7 +162,7 @@ impl<'a> PairwiseWith<&'a Block> for Block {
             }
 
             (ref mut this @ &mut Block::Mapped(..), &Block::Sorted(ref b)) => {
-                for &bit in b.vector.iter() {
+                for &bit in &b.vector {
                     if this.contains(bit) {
                         this.remove(bit);
                     } else {
@@ -172,7 +172,7 @@ impl<'a> PairwiseWith<&'a Block> for Block {
             }
 
             (this @ &mut Block::Sorted(..), that @ &Block::Mapped(..)) => {
-                this.to_mapped();
+                this.as_mapped();
                 this.symmetric_difference_with(that)
             }
 

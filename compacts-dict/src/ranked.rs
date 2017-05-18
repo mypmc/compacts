@@ -1,4 +1,4 @@
-use prim::Uint;
+use super::prim::Uint;
 
 /// Ranked is a dict for bit.
 /// Type that implement `Index<T, Output = bool> + Ranked + Select0 + Select1`

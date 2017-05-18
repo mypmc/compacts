@@ -1,5 +1,5 @@
 use super::*;
-use prim::*;
+use super::prim::*;
 
 struct RankSelect {
     word: u64,

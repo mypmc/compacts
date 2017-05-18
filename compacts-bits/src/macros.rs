@@ -1,6 +1,6 @@
 macro_rules! keypos {
     ( $bit:expr, $key:ident, $pos:ident ) => (
-        use prim::Uint;
+        use dict::prim::Uint;
         let key  = $bit / <u64 as Uint>::WIDTH as u16;
         let $pos = $bit % <u64 as Uint>::WIDTH as u16;
         let $key = key as usize;
@@ -16,24 +16,24 @@ macro_rules! bitmask {
 
 macro_rules! delegate {
     ( $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use bit_vec::block::Block;
+        use block::Block;
         match $this {
             Block::Sorted(vec) => vec.$method( $( $args ),* ),
             Block::Mapped(vec) => vec.$method( $( $args ),* ),
         }
     }};
     ( ref $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use bit_vec::block::Block;
-        match $this {
-            &Block::Sorted(ref vec) => vec.$method( $( $args ),* ),
-            &Block::Mapped(ref vec) => vec.$method( $( $args ),* ),
+        use block::Block;
+        match *$this {
+            Block::Sorted(ref vec) => vec.$method( $( $args ),* ),
+            Block::Mapped(ref vec) => vec.$method( $( $args ),* ),
         }
     }};
     ( ref mut $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use bit_vec::block::Block;
-        match $this {
-            &mut Block::Sorted(ref mut vec) => vec.$method( $( $args ),* ),
-            &mut Block::Mapped(ref mut vec) => vec.$method( $( $args ),* ),
+        use block::Block;
+        match *$this {
+            Block::Sorted(ref mut vec) => vec.$method( $( $args ),* ),
+            Block::Mapped(ref mut vec) => vec.$method( $( $args ),* ),
         }
     }}
 }
@@ -69,10 +69,10 @@ macro_rules! bucket_foreach {
     ( $this:ident, $method:ident, $that:expr ) => {{
         use dict::Ranked;
 
-        debug_assert!($this.vector.len() == $that.vector.len());
+        assert_eq!($this.vector.len(), $that.vector.len());
 
-        let ref mut lhs = $this.vector;
-        let ref rhs = $that.vector;
+        let lhs = &mut $this.vector;
+        let rhs = &$that.vector;
         $this.weight = {
             let mut new = 0;
             for (x, y) in lhs.iter_mut().zip(rhs.iter()) {
@@ -197,7 +197,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block = block);
         }
         let expect = {
-            use bit_vec::pairwise::intersection;
+            use pairwise::intersection;
             let pair = intersection(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };
@@ -214,7 +214,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block = block);
         }
         let expect = {
-            use bit_vec::pairwise::union;
+            use pairwise::union;
             let pair = union(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };
@@ -232,7 +232,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block=block);
         }
         let expect = {
-            use bit_vec::pairwise::difference;
+            use pairwise::difference;
             let pair = difference(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };
@@ -250,7 +250,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block=block);
         }
         let expect = {
-            use bit_vec::pairwise::symmetric_difference;
+            use pairwise::symmetric_difference;
             let pair = symmetric_difference(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };

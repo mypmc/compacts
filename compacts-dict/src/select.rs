@@ -1,4 +1,4 @@
-use prim;
+use super::prim;
 
 pub trait Select1<T: prim::Uint> {
     /// Returns the position of 'c+1'th appearance of non-zero bit.

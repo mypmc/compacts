@@ -1,6 +1,6 @@
 //! Internal representaion of Block.
 
-use prim::Uint;
+use dict::prim::Uint;
 use dict::{self, Ranked};
 
 #[derive(Debug, Clone)]
@@ -138,7 +138,7 @@ impl<'r> From<&'r Bucket<u64>> for Bucket<u16> {
             for p in 0..<u64 as Uint>::WIDTH {
                 if bits[p] {
                     let bit = i * <u64 as Uint>::WIDTH + p;
-                    debug_assert!(bit as u16 <= u16::MAX);
+                    debug_assert!(bit <= u16::MAX as usize);
                     bucket.insert(bit as u16);
                 }
             }
@@ -251,26 +251,35 @@ pub enum IntoIter {
 }
 
 impl Bucket<u16> {
-    pub fn iter<'a>(&'a self) -> Iter<'a> {
-        debug_assert!(self.weight as usize == self.vector.len());
+    pub fn iter(&self) -> Iter {
+        assert_eq!(self.weight as usize, self.vector.len());
         debug_assert!(self.weight as usize <= Self::CAPACITY);
         let iter = (&self.vector[..]).iter();
         Iter::U16(iter.cloned())
     }
-    pub fn into_iter(self) -> IntoIter {
-        debug_assert!(self.weight as usize == self.vector.len());
+}
+impl IntoIterator for Bucket<u16> {
+    type Item = u16;
+    type IntoIter = IntoIter;
+    fn into_iter(self) -> IntoIter {
+        assert_eq!(self.weight as usize, self.vector.len());
         debug_assert!(self.weight as usize <= Self::CAPACITY);
         let iter = self.vector.into_iter();
         IntoIter::U16(iter)
     }
 }
+
 impl Bucket<u64> {
-    pub fn iter<'a>(&'a self) -> Iter<'a> {
+    pub fn iter(&self) -> Iter {
         debug_assert!(self.weight as usize <= Self::CAPACITY);
         let mapped = MappedIter::new(self.weight, Cow::Borrowed(self.vector.as_ref()));
         Iter::U64(mapped)
     }
-    pub fn into_iter(self) -> IntoIter {
+}
+impl IntoIterator for Bucket<u64> {
+    type Item = u16;
+    type IntoIter = IntoIter;
+    fn into_iter(self) -> IntoIter {
         debug_assert!(self.weight as usize <= Self::CAPACITY);
         let mapped = MappedIter::new(self.weight, Cow::Owned(self.vector));
         IntoIter::U64(mapped)
@@ -287,23 +296,23 @@ pub struct MappedIter<'a> {
 impl<'a> Iterator for Iter<'a> {
     type Item = u16;
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            &mut Iter::U16(ref mut it) => it.next(),
-            &mut Iter::U64(ref mut it) => it.next(),
+        match *self {
+            Iter::U16(ref mut it) => it.next(),
+            Iter::U64(ref mut it) => it.next(),
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            &Iter::U16(ref it) => it.size_hint(),
-            &Iter::U64(ref it) => it.size_hint(),
+        match *self {
+            Iter::U16(ref it) => it.size_hint(),
+            Iter::U64(ref it) => it.size_hint(),
         }
     }
 }
 impl<'a> ExactSizeIterator for Iter<'a> {
     fn len(&self) -> usize {
-        match self {
-            &Iter::U16(ref it) => it.len(),
-            &Iter::U64(ref it) => it.len(),
+        match *self {
+            Iter::U16(ref it) => it.len(),
+            Iter::U64(ref it) => it.len(),
         }
     }
 }
@@ -311,23 +320,23 @@ impl<'a> ExactSizeIterator for Iter<'a> {
 impl<'a> Iterator for IntoIter {
     type Item = u16;
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            &mut IntoIter::U16(ref mut it) => it.next(),
-            &mut IntoIter::U64(ref mut it) => it.next(),
+        match *self {
+            IntoIter::U16(ref mut it) => it.next(),
+            IntoIter::U64(ref mut it) => it.next(),
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self {
-            &IntoIter::U16(ref it) => it.size_hint(),
-            &IntoIter::U64(ref it) => it.size_hint(),
+        match *self {
+            IntoIter::U16(ref it) => it.size_hint(),
+            IntoIter::U64(ref it) => it.size_hint(),
         }
     }
 }
 impl ExactSizeIterator for IntoIter {
     fn len(&self) -> usize {
-        match self {
-            &IntoIter::U16(ref it) => it.len(),
-            &IntoIter::U64(ref it) => it.len(),
+        match *self {
+            IntoIter::U16(ref it) => it.len(),
+            IntoIter::U64(ref it) => it.len(),
         }
     }
 }

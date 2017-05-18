@@ -1,6 +1,11 @@
+#![feature(associated_consts)]
+
+extern crate num;
+
 use std::ops::{Index, Range};
 
-use prim::{self, Uint, Cast};
+pub mod prim;
+use self::prim::{Uint, Cast};
 
 mod ranked;
 mod select;
@@ -38,7 +43,7 @@ pub trait Dict<T: Uint>: Index<T>
     fn select(&self, item: &Self::Item, c: T) -> Option<T> {
         let zero = <Self::Rank as prim::Zero>::zero();
         let size = self.size();
-        let pos = search(zero..size, |i| {
+        let pos = search(&(zero..size), |i| {
             Cast::from::<Self::Rank>(i)
                 .and_then(|conv: T| {
                               let rank = self.rank(item, conv);
@@ -54,15 +59,25 @@ pub trait Dict<T: Uint>: Index<T>
     }
 }
 
-impl<T, U> Dict<T> for U
+pub trait BitDict<T: Uint>
+    : Index<T, Output = bool> + Ranked<T> + Select0<T> + Select1<T> {
+}
+
+impl<T, U> BitDict<T> for U
     where T: Uint,
           U: Index<T, Output = bool> + Ranked<T> + Select0<T> + Select1<T>
+{
+}
+
+impl<T, U> Dict<T> for U
+    where T: Uint,
+          U: BitDict<T>
 {
     type Item = bool;
     type Rank = U::Weight;
 
     fn size(&self) -> Self::Rank {
-        <U as Ranked<T>>::size(&self)
+        <Self as Ranked<T>>::size(self)
     }
     fn rank(&self, item: &Self::Item, i: T) -> Self::Rank {
         if *item { self.rank1(i) } else { self.rank0(i) }
@@ -81,7 +96,7 @@ impl<T, U> Dict<T> for U
 
 /// Find the smallest index i in range at which f(i) is true, assuming that
 /// f(i) == true implies f(i+1) == true.
-pub fn search<T, F>(range: Range<T>, f: F) -> T
+pub fn search<T, F>(range: &Range<T>, f: F) -> T
     where T: Uint,
           F: Fn(T) -> bool
 {
@@ -96,7 +111,7 @@ pub fn search<T, F>(range: Range<T>, f: F) -> T
             i = h.succ(); // f(i-1) == false
         }
     }
-    return i;
+    i
 }
 
 /// Bits is a struct to implement Index for u64.

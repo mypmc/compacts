@@ -1,7 +1,7 @@
 use super::U64_WIDTH;
 use super::Block;
 
-use prim::Cast;
+use dict::prim::Cast;
 use dict::{self, Ranked};
 
 impl dict::Select1<u16> for super::Block {
@@ -9,9 +9,9 @@ impl dict::Select1<u16> for super::Block {
         if c as u32 >= self.count1() {
             return None;
         }
-        match self {
-            &Block::Sorted(ref b) => b.vector.get(c as usize).map(|&u| u),
-            &Block::Mapped(ref b) => {
+        match *self {
+            Block::Sorted(ref b) => b.vector.get(c as usize).cloned(),
+            Block::Mapped(ref b) => {
                 let mut rem = c as u32;
                 for (i, bit) in b.vector.iter().enumerate() {
                     let ones = bit.count1();
@@ -33,9 +33,9 @@ impl dict::Select0<u16> for super::Block {
         if c32 >= self.count0() {
             return None;
         }
-        match self {
-            &Block::Sorted(..) => {
-                let pos = dict::search(0..Self::CAPACITY, |i| {
+        match *self {
+            Block::Sorted(..) => {
+                let pos = dict::search(&(0..Self::CAPACITY), |i| {
                     Cast::from::<u32>(i)
                         .and_then(|conv: u16| {
                                       let rank = self.rank0(conv);
@@ -49,7 +49,7 @@ impl dict::Select0<u16> for super::Block {
                     None
                 }
             }
-            &Block::Mapped(ref b) => {
+            Block::Mapped(ref b) => {
                 let mut rem = c32;
                 for (i, bit) in b.vector.iter().enumerate() {
                     let zeros = bit.count0();
@@ -73,9 +73,9 @@ impl dict::Ranked<u16> for super::Block {
     }
 
     fn count1(&self) -> Self::Weight {
-        match self {
-            &Block::Sorted(ref b) => b.weight,
-            &Block::Mapped(ref b) => b.weight,
+        match *self {
+            Block::Sorted(ref b) => b.weight,
+            Block::Mapped(ref b) => b.weight,
         }
     }
 
@@ -83,26 +83,26 @@ impl dict::Ranked<u16> for super::Block {
         if i as u32 >= Self::CAPACITY {
             return self.count1();
         }
-        let rank = match self {
-            &Block::Sorted(ref b) => {
-                let ref vec = b.vector;
-                let k = dict::search(0..vec.len(), |j| vec.get(j).map_or(false, |&v| v >= i));
+        match *self {
+            Block::Sorted(ref b) => {
+                let vec = &b.vector;
+                let k = dict::search(&(0..vec.len()), |j| vec.get(j).map_or(false, |&v| v >= i));
                 (if k < vec.len() && vec[k] == i {
                      k + 1
                  } else {
                      k
                  }) as Self::Weight
             }
-            &Block::Mapped(ref b) => {
+
+            Block::Mapped(ref b) => {
                 let q = i as usize / U64_WIDTH;
                 let r = i as usize % U64_WIDTH;
                 let r = r as u32;
-                let ref vec = b.vector;
+                let vec = &b.vector;
                 vec.iter().take(q).fold(0, |acc, w| acc + w.count1()) +
                 vec.get(q).map_or(0, |w| w.rank1(r))
             }
-        };
-        return rank;
+        }
     }
 }
 

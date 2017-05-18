@@ -1,17 +1,75 @@
 use std::iter::{Fuse, Peekable, ExactSizeIterator};
+use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, SubAssign};
 use std::cmp::{self, Ordering};
-use bits::PairwiseWith;
-use dict::Ranked;
-use super::BitVec;
 
-impl<'r, 'a, 'b> PairwiseWith<&'r BitVec<'b>> for BitVec<'a>
+use dict::Ranked;
+
+pub trait Pairwise<Rhs = Self> {
+    type Output;
+
+    fn intersection(&self, that: Rhs) -> Self::Output;
+
+    fn union(&self, that: Rhs) -> Self::Output;
+
+    fn difference(&self, that: Rhs) -> Self::Output;
+
+    fn symmetric_difference(&self, that: Rhs) -> Self::Output;
+}
+
+pub trait PairwiseWith<Rhs = Self> {
+    fn intersection_with(&mut self, that: Rhs);
+
+    fn union_with(&mut self, that: Rhs);
+
+    fn difference_with(&mut self, that: Rhs);
+
+    fn symmetric_difference_with(&mut self, that: Rhs);
+}
+
+impl<T> BitAndAssign<T> for PairwiseWith<T> {
+    fn bitand_assign(&mut self, that: T) {
+        self.intersection_with(that)
+    }
+}
+
+impl<T> BitOrAssign<T> for PairwiseWith<T> {
+    fn bitor_assign(&mut self, that: T) {
+        self.union_with(that)
+    }
+}
+
+impl<T> SubAssign<T> for PairwiseWith<T> {
+    fn sub_assign(&mut self, that: T) {
+        self.difference_with(that);
+    }
+}
+
+impl<T> BitXorAssign<T> for PairwiseWith<T> {
+    fn bitxor_assign(&mut self, that: T) {
+        self.symmetric_difference_with(that);
+    }
+}
+
+macro_rules! impl_pairwise {
+    ( $( $type:ty ),* ) => ($(
+        impl PairwiseWith for $type {
+            fn intersection_with(&mut self, rhs: $type)         {*self &=  rhs;}
+            fn union_with(&mut self, rhs: $type)                {*self |=  rhs;}
+            fn difference_with(&mut self, rhs: $type)           {*self &= !rhs;}
+            fn symmetric_difference_with(&mut self, rhs: $type) {*self ^=  rhs;}
+        }
+    )*);
+}
+impl_pairwise!(u8, u16, u32, u64, usize);
+
+impl<'r, 'a, 'b> PairwiseWith<&'r super::BitVec<'b>> for super::BitVec<'a>
     where 'a: 'r,
           'b: 'r
 {
-    fn intersection_with(&mut self, that: &'r BitVec<'b>) {
+    fn intersection_with(&mut self, that: &'r super::BitVec<'b>) {
         let keys = {
             let mut remove = Vec::with_capacity(self.blocks.len());
-            for (key, b) in self.blocks.iter_mut() {
+            for (key, b) in &mut self.blocks {
                 if that.blocks.contains_key(key) {
                     b.intersection_with(&that.blocks[key]);
                     let ones = b.count1();
@@ -32,14 +90,14 @@ impl<'r, 'a, 'b> PairwiseWith<&'r BitVec<'b>> for BitVec<'a>
         }
     }
 
-    fn union_with(&mut self, that: &'r BitVec<'b>) {
-        for (&key, thunk) in that.blocks.iter() {
+    fn union_with(&mut self, that: &'r super::BitVec<'b>) {
+        for (&key, thunk) in &that.blocks {
             let rb = (**thunk).clone();
             if !self.blocks.contains_key(&key) {
                 self.blocks.insert(key, eval!(rb));
                 continue;
             }
-            let mut lb = (**self.blocks.get(&key).unwrap()).clone();
+            let mut lb = (*self.blocks[&key]).clone();
             let deferred = lazy!(move {
                 trace!("evaluate UNION of <{:?} {:?}> key={:?}", lb, rb, key);
                 lb.union_with(&rb);
@@ -50,15 +108,16 @@ impl<'r, 'a, 'b> PairwiseWith<&'r BitVec<'b>> for BitVec<'a>
         }
     }
 
-    fn difference_with(&mut self, that: &'r BitVec<'b>) {
+    fn difference_with(&mut self, that: &'r super::BitVec<'b>) {
         let diff = {
             let mut thunks = Vec::with_capacity(64);
-            for (&key, thunk) in self.blocks.iter() {
+            for (&key, thunk) in &self.blocks {
                 if !that.blocks.contains_key(&key) {
                     continue;
                 }
                 let mut lb = (**thunk).clone();
-                let rb = (**that.blocks.get(&key).unwrap()).clone();
+                //let rb = (**that.blocks.get(&key).unwrap()).clone();
+                let rb = (*that.blocks[&key]).clone();
                 let deferred = lazy!(move {
                     trace!("evaluate DIFFERENCE of <{:?} {:?}> key={:?}", lb, rb, key);
                     lb.difference_with(&rb);
@@ -74,15 +133,16 @@ impl<'r, 'a, 'b> PairwiseWith<&'r BitVec<'b>> for BitVec<'a>
         }
     }
 
-    fn symmetric_difference_with(&mut self, that: &'r BitVec<'b>) {
-        for (&key, thunk) in that.blocks.iter() {
+    fn symmetric_difference_with(&mut self, that: &'r super::BitVec<'b>) {
+        for (&key, thunk) in &that.blocks {
             let rb = (**thunk).clone();
             if !self.blocks.contains_key(&key) {
                 self.blocks.insert(key, eval!(rb));
                 continue;
             }
 
-            let mut lb = (**self.blocks.get(&key).unwrap()).clone();
+            //let mut lb = (**self.blocks.get(&key).unwrap()).clone();
+            let mut lb = (*self.blocks[&key]).clone();
             let deferred = lazy!(move {
                 trace!("evaluate SYMMETRIC_DIFFERENCE of <{:?} {:?}> key={:?}", lb, rb, key);
                 lb.symmetric_difference_with(&rb);
@@ -146,7 +206,7 @@ impl<I1, I2, T> Iterator for Intersection<I1, I2, T>
             let compared = {
                 let x = self.lhs.peek();
                 let y = self.rhs.peek();
-                x.and_then(|x1| y.map(|y1| x1.cmp(&y1)))
+                x.and_then(|x1| y.map(|y1| x1.cmp(y1)))
             };
             match compared {
                 None => return None,

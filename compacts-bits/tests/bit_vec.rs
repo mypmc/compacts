@@ -1,12 +1,14 @@
 #[macro_use]
 extern crate log;
+
 extern crate env_logger;
 extern crate rand;
-extern crate cds;
+
+extern crate compacts_bits;
 
 use rand::Rng;
-use cds::BitVec;
-use cds::bits::PairwiseWith;
+
+use compacts_bits::{BitVec, PairwiseWith};
 
 macro_rules! bit_vec {
     ( ) => {&BitVec::new()};
@@ -35,8 +37,8 @@ fn similarity_coefficient() {
     let size = 1000;
     let range = 3000;
 
-    let ref p = bit_vec!(size, range, rng);
-    let ref q = bit_vec!(size, range, rng);
+    let p = &(bit_vec!(size, range, rng));
+    let q = &(bit_vec!(size, range, rng));
 
     let jaccard = {
         let mut p1 = p.clone();
@@ -68,10 +70,10 @@ macro_rules! pairwise_do {
         let _ = env_logger::init();
         let mut rng = rand::thread_rng();
         let mut v1 = bit_vec!(SIZE, RANGE, rng);
-        let ref v2 = bit_vec!(SIZE, RANGE, rng);
-        let ref v3 = bit_vec!(SIZE, RANGE, rng);
-        let ref v4 = bit_vec!(SIZE, RANGE, rng);
-        let ref v5 = bit_vec!(SIZE, RANGE, rng);
+        let v2 = &(bit_vec!(SIZE, RANGE, rng));
+        let v3 = &(bit_vec!(SIZE, RANGE, rng));
+        let v4 = &(bit_vec!(SIZE, RANGE, rng));
+        let v5 = &(bit_vec!(SIZE, RANGE, rng));
 
         if $e {
             trace!("This test should not cause any evaluations");

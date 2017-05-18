@@ -3,12 +3,9 @@
 extern crate rand;
 use self::rand::Rng;
 
-extern crate test;
-use self::test::Bencher;
-
 use super::*;
-use bits::PairwiseWith;
 use dict::*;
+use pairwise::PairwiseWith;
 
 #[test]
 fn block_intersection() {
@@ -188,36 +185,4 @@ fn block_clone() {
     b2.insert(1);
     assert!(b1.weight == 0, "{:?} {:?}", b1.weight, b2.weight);
     assert!(b2.weight == 2, "{:?} {:?}", b1.weight, b2.weight);
-}
-
-mod benchmarks {
-    #![cfg_attr(rustfmt, rustfmt_skip)]
-
-    use super::*;
-
-    #[bench] fn block_clone(b: &mut Bencher) {
-        let mut v = Block::Mapped(Bucket::<u64>::new());
-        b.iter(|| v = v.clone());
-    }
-
-    #[bench] fn vec_intersection_with_vec(b: &mut Bencher) {bench_block!(VEC.intersection_with(VEC), b);}
-    #[bench] fn vec_intersection_with_map(b: &mut Bencher) {bench_block!(VEC.intersection_with(MAP), b);}
-    #[bench] fn map_intersection_with_vec(b: &mut Bencher) {bench_block!(MAP.intersection_with(VEC), b);}
-    #[bench] fn map_intersection_with_map(b: &mut Bencher) {bench_block!(MAP.intersection_with(MAP), b);}
-
-    #[bench] fn vec_union_with_vec(b: &mut Bencher) {bench_block!(VEC.union_with(VEC), b);}
-    #[bench] fn vec_union_with_map(b: &mut Bencher) {bench_block!(VEC.union_with(MAP), b);}
-    #[bench] fn map_union_with_vec(b: &mut Bencher) {bench_block!(MAP.union_with(VEC), b);}
-    #[bench] fn map_union_with_map(b: &mut Bencher) {bench_block!(MAP.union_with(MAP), b);}
-
-    #[bench] fn vec_difference_with_vec(b: &mut Bencher) {bench_block!(VEC.difference_with(VEC), b);}
-    #[bench] fn vec_difference_with_map(b: &mut Bencher) {bench_block!(VEC.difference_with(MAP), b);}
-    #[bench] fn map_difference_with_vec(b: &mut Bencher) {bench_block!(MAP.difference_with(VEC), b);}
-    #[bench] fn map_difference_with_map(b: &mut Bencher) {bench_block!(MAP.difference_with(MAP), b);}
-
-    #[bench] fn vec_symmetric_difference_with_vec(b: &mut Bencher) {bench_block!(VEC.symmetric_difference_with(VEC), b);}
-    #[bench] fn vec_symmetric_difference_with_map(b: &mut Bencher) {bench_block!(VEC.symmetric_difference_with(MAP), b);}
-    #[bench] fn map_symmetric_difference_with_vec(b: &mut Bencher) {bench_block!(MAP.symmetric_difference_with(VEC), b);}
-    #[bench] fn map_symmetric_difference_with_map(b: &mut Bencher) {bench_block!(MAP.symmetric_difference_with(MAP), b);}
-
 }

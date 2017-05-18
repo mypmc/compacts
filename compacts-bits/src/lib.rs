@@ -1,18 +1,35 @@
+#![feature(associated_consts)]
+
+// Broadword implementation of rank/select queries
+// (http://sux.di.unimi.it/paper.pdf);
+// Springer Berlin Heidelberg, 2008. 154-168.
+
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate thunk;
+
+extern crate compacts_dict;
+
 #[macro_use]
 mod macros;
 mod block;
 mod pairwise;
+// mod iter;
+
+pub use pairwise::{Pairwise, PairwiseWith};
 
 use std::collections::BTreeMap;
 use std::ops::Index;
 
-use dict::Ranked;
-use prim::{self, Split};
-use thunk::Thunk;
+use compacts_dict as dict;
+use self::dict::Ranked;
+use self::dict::prim::{self, Split};
 
+use self::thunk::Thunk;
 use self::block::Block;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BitVec<'a> {
     weight: u64,
     blocks: BTreeMap<u16, Thunk<'a, Block>>,
@@ -21,7 +38,7 @@ pub struct BitVec<'a> {
 impl<'a> Clone for BitVec<'a> {
     fn clone(&self) -> Self {
         let mut vec = BitVec::new();
-        for (&k, t) in self.blocks.iter() {
+        for (&k, t) in &self.blocks {
             let c = (**t).clone();
             vec.blocks.insert(k, eval!(c));
         }
@@ -64,7 +81,8 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use cds::BitVec;
+    /// use compacts_bits::BitVec;
+    ///
     /// let mut bits = BitVec::new();
     /// bits.insert(0);
     /// assert!(bits.count1() == 1);
@@ -81,7 +99,7 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use cds::BitVec;
+    /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// bits.insert(1);
@@ -105,7 +123,7 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use cds::BitVec;
+    /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
@@ -117,7 +135,7 @@ impl<'a> BitVec<'a> {
         let (key, bit) = x.split();
         let mut b = self.blocks
             .entry(key)
-            .or_insert(eval!(Block::with_capacity(64)));
+            .or_insert_with(|| eval!(Block::with_capacity(64)));
         let ok = b.insert(bit);
         if ok {
             self.weight += 1;
@@ -131,7 +149,7 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use cds::BitVec;
+    /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
@@ -149,7 +167,7 @@ impl<'a> BitVec<'a> {
             }
             return ok;
         }
-        return false;
+        false
     }
 }
 

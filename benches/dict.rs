@@ -1,12 +1,13 @@
 #![feature(test)]
 
-extern crate cds;
 extern crate rand;
 extern crate test;
+extern crate compacts;
+
 use rand::Rng;
 
-use cds::dict::{Dict, Ranked, Select1, Bits};
-use cds::prim::TRUE;
+use compacts::dict::{Dict, Ranked, Select1, Bits};
+use compacts::dict::prim::TRUE;
 
 #[bench]
 fn dict_count1(bench: &mut test::Bencher) {

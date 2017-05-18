@@ -1,24 +1,27 @@
 #![feature(test)]
 
-extern crate cds;
+extern crate compacts;
 extern crate rand;
 extern crate test;
 
 use test::Bencher;
 use rand::Rng;
 
-use cds::BitVec;
-use cds::bits::PairwiseWith;
+use compacts::bits::BitVec;
+use compacts::bits::PairwiseWith;
 
 macro_rules! bit_vec {
+    ( 0, 1, $rng:expr ) => {{ BitVec::new() }};
     ( $size:expr, $end:expr, $rng:expr ) => {{
         bit_vec!($size, 0, $end, $rng)
     }};
     ( $size:expr, $start:expr, $end:expr, $rng:expr ) => {{
         let mut vec = BitVec::new();
-        for _ in 0..$size {
-            let gen = $rng.gen_range($start, $end);
-            vec.insert(gen);
+        if $size > 1 {
+            for _ in 0..$size {
+                let gen = $rng.gen_range($start, $end);
+                vec.insert(gen);
+            }
         }
         vec
     }};
@@ -43,7 +46,7 @@ const RANGE2: u32 = 100000000;
 fn bit_vec_intersection(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
-    let ref v2 = bit_vec!(SIZE, RANGE2, rng);
+    let v2 = &(bit_vec!(SIZE, RANGE2, rng));
     bench.iter(|| v1.intersection_with(v2));
 }
 
@@ -51,8 +54,8 @@ fn bit_vec_intersection(bench: &mut Bencher) {
 fn bit_vec_union(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
-    let ref v2 = bit_vec!(SIZE, RANGE2, rng);
-    let ref bv = bit_vec!(0, 1, rng);
+    let v2 = &(bit_vec!(SIZE, RANGE2, rng));
+    let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
                    v1.union_with(v2);
                    v1.intersection_with(bv);
@@ -63,8 +66,8 @@ fn bit_vec_union(bench: &mut Bencher) {
 fn bit_vec_difference(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
-    let ref v2 = bit_vec!(SIZE, RANGE2, rng);
-    let ref bv = bit_vec!(0, 1, rng);
+    let v2 = &(bit_vec!(SIZE, RANGE2, rng));
+    let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
                    v1.union_with(v2);
                    v1.intersection_with(bv);
@@ -75,9 +78,8 @@ fn bit_vec_difference(bench: &mut Bencher) {
 fn bit_vec_symmetric_difference(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
-    let ref v2 = bit_vec!(SIZE, RANGE2, rng);
-
-    let ref bv = bit_vec!(0, 1, rng);
+    let v2 = &(bit_vec!(SIZE, RANGE2, rng));
+    let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
                    v1.symmetric_difference_with(v2);
                    v1.intersection_with(bv);
