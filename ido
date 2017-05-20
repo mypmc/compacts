@@ -1,4 +1,0 @@
-for package in thunk compacts-dict compacts-bits ; do
-  cargo build --manifest-path $package/Cargo.toml
-  cargo $1 --manifest-path $package/Cargo.toml
-done

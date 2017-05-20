@@ -4,18 +4,17 @@ version = "0.1.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "MIT"
-keywords = ["compact", "compressed", "succinct", "rank", "select", "dictionary"]
 
-description = """compact dictionary"""
+keywords    = ["compact", "succinct", "rank", "select"]
 repository  = "https://github.com/feb29/compacts"
+description = "compact data structures"
 
-[dependencies.compacts-dict]
-path = "compacts-dict"
+[workspace]
+members = ["thunk", "compacts-dict", "compacts-bits"]
 
-[dependencies.compacts-bits]
-path = "compacts-bits"
+[dependencies]
+compacts-dict = { path = "compacts-dict" }
+compacts-bits = { path = "compacts-bits" }
 
 [dev-dependencies]
 rand = "0.3"
-log = "0.3"
-env_logger = "0.4"

@@ -99,7 +99,6 @@ impl<'r, 'a, 'b> PairwiseWith<&'r super::BitVec<'b>> for super::BitVec<'a>
             }
             let mut lb = (*self.blocks[&key]).clone();
             let deferred = lazy!(move {
-                trace!("evaluate UNION of <{:?} {:?}> key={:?}", lb, rb, key);
                 lb.union_with(&rb);
                 lb.optimize();
                 lb
@@ -119,7 +118,6 @@ impl<'r, 'a, 'b> PairwiseWith<&'r super::BitVec<'b>> for super::BitVec<'a>
                 //let rb = (**that.blocks.get(&key).unwrap()).clone();
                 let rb = (*that.blocks[&key]).clone();
                 let deferred = lazy!(move {
-                    trace!("evaluate DIFFERENCE of <{:?} {:?}> key={:?}", lb, rb, key);
                     lb.difference_with(&rb);
                     lb.optimize();
                     lb
@@ -144,7 +142,6 @@ impl<'r, 'a, 'b> PairwiseWith<&'r super::BitVec<'b>> for super::BitVec<'a>
             //let mut lb = (**self.blocks.get(&key).unwrap()).clone();
             let mut lb = (*self.blocks[&key]).clone();
             let deferred = lazy!(move {
-                trace!("evaluate SYMMETRIC_DIFFERENCE of <{:?} {:?}> key={:?}", lb, rb, key);
                 lb.symmetric_difference_with(&rb);
                 lb.optimize();
                 lb

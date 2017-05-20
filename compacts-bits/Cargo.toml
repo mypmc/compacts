@@ -3,9 +3,6 @@ name    = "compacts-bits"
 version = "0.1.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 
-[dependencies]
-log = "0.3"
-
 [dependencies.thunk]
 path = "../thunk"
 
@@ -13,5 +10,6 @@ path = "../thunk"
 path = "../compacts-dict"
 
 [dev-dependencies]
+log  = "0.3"
 rand = "0.3"
 env_logger = "0.4"

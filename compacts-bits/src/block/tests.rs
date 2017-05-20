@@ -1,11 +1,12 @@
 #![allow(non_snake_case, dead_code)]
 
 extern crate rand;
-use self::rand::Rng;
 
+use self::rand::Rng;
 use super::*;
-use dict::*;
+
 use pairwise::PairwiseWith;
+use dict::{Select1, Select0};
 
 #[test]
 fn block_intersection() {
@@ -185,4 +186,69 @@ fn block_clone() {
     b2.insert(1);
     assert!(b1.weight == 0, "{:?} {:?}", b1.weight, b2.weight);
     assert!(b2.weight == 2, "{:?} {:?}", b1.weight, b2.weight);
+}
+
+#[test]
+fn block_sorted_rank() {
+    use super::Bucket;
+
+    let vec = vec![0, 1, 4, 5, 8, 9];
+    let block = Block::Sorted(Bucket::<u16>::from(vec));
+
+    assert_eq!(1, block.rank1(0));
+    assert_eq!(0, block.rank0(0));
+    assert_eq!(2, block.rank1(1));
+    assert_eq!(0, block.rank0(1));
+    assert_eq!(2, block.rank1(2));
+    assert_eq!(1, block.rank0(2));
+    assert_eq!(2, block.rank1(3));
+    assert_eq!(2, block.rank0(3));
+    assert_eq!(3, block.rank1(4));
+    assert_eq!(2, block.rank0(4));
+    assert_eq!(4, block.rank1(5));
+    assert_eq!(2, block.rank0(5));
+    assert_eq!(4, block.rank1(6));
+    assert_eq!(3, block.rank0(6));
+    assert_eq!(4, block.rank1(7));
+    assert_eq!(4, block.rank0(7));
+    assert_eq!(5, block.rank1(8));
+    assert_eq!(4, block.rank0(8));
+    assert_eq!(6, block.rank1(9));
+    assert_eq!(4, block.rank0(9));
+    assert_eq!(6, block.rank1(10));
+    assert_eq!(5, block.rank0(10));
+    assert_eq!(6, block.rank1(100));
+    assert_eq!(95, block.rank0(100));
+    assert_eq!(6, block.rank1(200));
+    assert_eq!(195, block.rank0(200));
+}
+
+#[test]
+fn block_sorted_select() {
+    use dict::{Select1, Select0};
+    use super::Bucket;
+
+    let vec = vec![0, 1, 4, 5, 8, 9];
+    let block = Block::Sorted(Bucket::<u16>::from(vec));
+
+    assert_eq!(Some(0), block.select1(0));
+    assert_eq!(Some(2), block.select0(0));
+
+    assert_eq!(Some(1), block.select1(1));
+    assert_eq!(Some(3), block.select0(1));
+
+    assert_eq!(Some(4), block.select1(2));
+    assert_eq!(Some(6), block.select0(2));
+
+    assert_eq!(Some(5), block.select1(3));
+    assert_eq!(Some(7), block.select0(3));
+
+    assert_eq!(Some(8), block.select1(4));
+    assert_eq!(Some(10), block.select0(4));
+
+    assert_eq!(Some(9), block.select1(5));
+    assert_eq!(Some(11), block.select0(5));
+
+    assert_eq!(None, block.select1(6));
+    assert_eq!(Some(12), block.select0(6));
 }

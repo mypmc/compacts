@@ -5,8 +5,6 @@
 // Springer Berlin Heidelberg, 2008. 154-168.
 
 #[macro_use]
-extern crate log;
-#[macro_use]
 extern crate thunk;
 
 extern crate compacts_dict;

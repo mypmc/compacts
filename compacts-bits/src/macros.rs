@@ -137,34 +137,6 @@ macro_rules! bucket {
 }
 
 #[cfg(test)]
-macro_rules! bench_block {
-    ( $lhs:ident . $method:ident ( $rhs:ident ), $bench:expr ) => {{
-        let (mut this, that) = setup_pair!($lhs, $rhs);
-        $bench.iter( || this.$method(&that) );
-    }};
-}
-
-#[cfg(test)]
-macro_rules! bench_block_bitops {
-    ( $lhs:ident & $rhs:ident , $bench:expr ) => {{
-        let (this, that) = setup_pair!($lhs, $rhs);
-        $bench.iter( || &this & &that );
-    }};
-    ( $lhs:ident | $rhs:ident , $bench:expr ) => {{
-        let (this, that) = setup_pair!($lhs, $rhs);
-        $bench.iter( || &this | &that );
-    }};
-    ( $lhs:ident - $rhs:ident , $bench:expr ) => {{
-        let (this, that) = setup_pair!($lhs, $rhs);
-        $bench.iter( || &this - &that );
-    }};
-    ( $lhs:ident ^ $rhs:ident , $bench:expr ) => {{
-        let (this, that) = setup_pair!($lhs, $rhs);
-        $bench.iter( || &this ^ &that );
-    }};
-}
-
-#[cfg(test)]
 macro_rules! setup_pair {
     ( $this:ident, $that:ident ) => {{
         let mut rng = rand::thread_rng();
