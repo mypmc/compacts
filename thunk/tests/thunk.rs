@@ -29,18 +29,18 @@ fn thunks_in_Vec() {
     let removed = vec.remove(2);
     assert_eq!(vec.len(), 3);
 
-    for thunk in vec.iter() {
+    for thunk in &vec {
         Thunk::force(thunk); // can't unwrap because unwrap need owenership.
     }
 
     {
         let locked = arc.lock().unwrap();
-        assert!(*locked == vec![0, 1], "{:?}", *locked);
+        assert_eq!(*locked, vec![0, 1], "{:?}", *locked);
     }
-    assert!(Thunk::unwrap(removed) == 2); // removed thunk evaluate here.
+    assert_eq!(Thunk::unwrap(removed), 2); // removed thunk evaluate here.
     {
         let locked = arc.lock().unwrap();
-        assert!(*locked == vec![0, 1, 2], "{:?}", *locked);
+        assert_eq!(*locked, vec![0, 1, 2], "{:?}", *locked);
     }
 }
 
@@ -70,8 +70,8 @@ fn thunks_in_BTreeMap() {
         }
     }
 
-    assert!(map1.len() == 10);
-    assert!(map2.len() == 10);
+    assert_eq!(map1.len(), 10);
+    assert_eq!(map2.len(), 10);
 
     for i in 0..10 {
         if i % 2 == 0 {
@@ -85,11 +85,11 @@ fn thunks_in_BTreeMap() {
     }
 
     for &key in map1.keys() {
-        assert!(*map1[&key] == 10, "{:?} {:?}", key, *map1[&key]);
+        assert_eq!(*map1[&key], 10, "{:?} {:?}", key, *map1[&key]);
     }
 
     let v = arc.lock().unwrap();
-    assert!(*v == vec![10, 0, 8, 2, 6, 4, 4, 6, 2, 8], "{:?}", *v);
+    assert_eq!(*v, vec![10, 0, 8, 2, 6, 4, 4, 6, 2, 8], "{:?}", *v);
 }
 
 #[test]
@@ -121,9 +121,9 @@ fn evaluate_just_once() {
                       });
 
     assert_eq!(*c2.lock().unwrap(), 0);
-    *value;
+    Thunk::force(&value);
     assert_eq!(*c2.lock().unwrap(), 1);
-    *value;
+    Thunk::force(&value);
     assert_eq!(*c2.lock().unwrap(), 1);
 }
 
@@ -151,7 +151,7 @@ fn drop_just_once() {
         let drop = DropTest(c2);
         let lazy = lazy!(move {
             let drop_ref = &drop;
-            assert!(drop_ref.value() == 0, "drop_ref:{:?}", drop_ref.value());
+            assert_eq!(drop_ref.value(), 0, "drop_ref:{:?}", drop_ref.value());
             // DropTest::drop invoke here
         });
         Thunk::force(&lazy);
@@ -181,5 +181,5 @@ fn thunk_in_thunk() {
         (r1 + r2) * r1
     });
 
-    assert!(*t3 == 30);
+    assert_eq!(*t3, 30);
 }

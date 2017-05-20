@@ -137,21 +137,20 @@ impl Block {
     pub fn insert(&mut self, bit: u16) -> bool {delegate!(ref mut self, insert, bit)}
     pub fn remove(&mut self, bit: u16) -> bool {delegate!(ref mut self, remove, bit)}
     pub fn iter(&self) -> Iter                 {delegate!(ref self, iter)}
-    pub fn into_iter(self) -> IntoIter         {delegate!(self, into_iter)}
 }
 
 impl<'a> IntoIterator for &'a Block {
     type Item = <Iter<'a> as Iterator>::Item;
     type IntoIter = Iter<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        self.iter()
+        delegate!(ref self, iter)
     }
 }
 impl IntoIterator for Block {
     type Item = <IntoIter as Iterator>::Item;
     type IntoIter = IntoIter;
     fn into_iter(self) -> Self::IntoIter {
-        self.into_iter()
+        delegate!(self, into_iter)
     }
 }
 
