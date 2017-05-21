@@ -18,6 +18,7 @@ mod pairwise;
 pub use pairwise::{Pairwise, PairwiseWith};
 
 use std::collections::BTreeMap;
+use std::fmt::{self, Debug, Formatter};
 use std::ops::Index;
 
 use compacts_dict as dict;
@@ -27,12 +28,17 @@ use self::dict::prim::{self, Split};
 use self::thunk::Thunk;
 use self::block::Block;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct BitVec<'a> {
-    weight: u64,
     blocks: BTreeMap<u16, Thunk<'a, Block>>,
 }
 
+impl<'a> Debug for BitVec<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let w = self.count1();
+        write!(f, "BitVec(weight={:?})", w)
+    }
+}
 impl<'a> Clone for BitVec<'a> {
     fn clone(&self) -> Self {
         let mut vec = BitVec::new();
@@ -68,10 +74,7 @@ impl<'a> BitVec<'a> {
 
 impl<'a> BitVec<'a> {
     pub fn new() -> Self {
-        BitVec {
-            weight: 0,
-            blocks: BTreeMap::new(),
-        }
+        BitVec { blocks: BTreeMap::new() }
     }
 
     /// Clear contents.
@@ -88,7 +91,6 @@ impl<'a> BitVec<'a> {
     /// assert!(bits.count1() == 0);
     /// ```
     pub fn clear(&mut self) {
-        self.weight = 0;
         self.blocks.clear();
     }
 
@@ -136,7 +138,6 @@ impl<'a> BitVec<'a> {
             .or_insert_with(|| eval!(Block::with_capacity(64)));
         let ok = b.insert(bit);
         if ok {
-            self.weight += 1;
             b.optimize();
         }
         ok
@@ -160,7 +161,6 @@ impl<'a> BitVec<'a> {
         if let Some(b) = self.blocks.get_mut(&key) {
             let ok = b.remove(bit);
             if ok {
-                self.weight -= 1;
                 b.optimize();
             }
             return ok;
