@@ -4,10 +4,10 @@ use self::pairwise::{Pairwise, PairwiseWith};
 
 use super::{Block, Bucket};
 
-impl<'a> Pairwise<&'a Block> for Block {
+impl<'a, 'b> Pairwise<&'b Block> for &'a Block {
     type Output = Block;
 
-    fn intersection(&self, that: &Block) -> Self::Output {
+    fn intersection(self, that: &Block) -> Self::Output {
         match (self, that) {
             (this @ &Block::Sorted(..), that @ &Block::Sorted(..)) => {
                 let pair = pairwise::intersection(this.iter(), that.iter());
@@ -21,7 +21,7 @@ impl<'a> Pairwise<&'a Block> for Block {
         }
     }
 
-    fn union(&self, that: &Block) -> Self::Output {
+    fn union(self, that: &Block) -> Self::Output {
         match (self, that) {
             (this @ &Block::Sorted(..), that @ &Block::Sorted(..)) => {
                 let pair = pairwise::union(this.iter(), that.iter());
@@ -35,7 +35,7 @@ impl<'a> Pairwise<&'a Block> for Block {
         }
     }
 
-    fn difference(&self, that: &Block) -> Self::Output {
+    fn difference(self, that: &Block) -> Self::Output {
         match (self, that) {
             (this @ &Block::Sorted(..), that @ &Block::Sorted(..)) => {
                 let pair = pairwise::difference(this.iter(), that.iter());
@@ -50,7 +50,7 @@ impl<'a> Pairwise<&'a Block> for Block {
         }
     }
 
-    fn symmetric_difference(&self, that: &Block) -> Self::Output {
+    fn symmetric_difference(self, that: &Block) -> Self::Output {
         match (self, that) {
             (this @ &Block::Sorted(..), that @ &Block::Sorted(..)) => {
                 let pair = pairwise::symmetric_difference(this.iter(), that.iter());

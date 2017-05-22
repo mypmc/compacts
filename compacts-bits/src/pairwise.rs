@@ -7,13 +7,44 @@ use dict::Ranked;
 pub trait Pairwise<Rhs = Self> {
     type Output;
 
-    fn intersection(&self, that: Rhs) -> Self::Output;
+    fn intersection(self, that: Rhs) -> Self::Output;
 
-    fn union(&self, that: Rhs) -> Self::Output;
+    fn union(self, that: Rhs) -> Self::Output;
 
-    fn difference(&self, that: Rhs) -> Self::Output;
+    fn difference(self, that: Rhs) -> Self::Output;
 
-    fn symmetric_difference(&self, that: Rhs) -> Self::Output;
+    fn symmetric_difference(self, that: Rhs) -> Self::Output;
+}
+
+impl<'r1, 'r2, 'a, 'b> Pairwise<&'r2 super::BitVec<'b>> for &'r1 super::BitVec<'a>
+    where 'a: 'r1,
+          'b: 'r2
+{
+    type Output = super::BitVec<'a>;
+
+    fn intersection(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self.clone();
+        this.intersection_with(that);
+        this
+    }
+
+    fn union(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self.clone();
+        this.union_with(that);
+        this
+    }
+
+    fn difference(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self.clone();
+        this.difference_with(that);
+        this
+    }
+
+    fn symmetric_difference(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self.clone();
+        this.symmetric_difference_with(that);
+        this
+    }
 }
 
 pub trait PairwiseWith<Rhs = Self> {
