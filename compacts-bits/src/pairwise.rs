@@ -129,11 +129,11 @@ impl<'r, 'a, 'b> PairwiseWith<&'r super::BitVec<'b>> for super::BitVec<'a>
                 continue;
             }
             let mut lb = (*self.blocks[&key]).clone();
-            let deferred = lazy!(move {
-                lb.union_with(&rb);
-                lb.optimize();
-                lb
-            });
+            let deferred = lazy!({
+                                     lb.union_with(&rb);
+                                     lb.optimize();
+                                     lb
+                                 });
             self.blocks.insert(key, deferred);
         }
     }
@@ -148,11 +148,11 @@ impl<'r, 'a, 'b> PairwiseWith<&'r super::BitVec<'b>> for super::BitVec<'a>
                 let mut lb = (**thunk).clone();
                 //let rb = (**that.blocks.get(&key).unwrap()).clone();
                 let rb = (*that.blocks[&key]).clone();
-                let deferred = lazy!(move {
-                    lb.difference_with(&rb);
-                    lb.optimize();
-                    lb
-                });
+                let deferred = lazy!({
+                                         lb.difference_with(&rb);
+                                         lb.optimize();
+                                         lb
+                                     });
                 thunks.push((key, deferred));
             }
             thunks
@@ -172,11 +172,11 @@ impl<'r, 'a, 'b> PairwiseWith<&'r super::BitVec<'b>> for super::BitVec<'a>
 
             //let mut lb = (**self.blocks.get(&key).unwrap()).clone();
             let mut lb = (*self.blocks[&key]).clone();
-            let deferred = lazy!(move {
-                lb.symmetric_difference_with(&rb);
-                lb.optimize();
-                lb
-            });
+            let deferred = lazy!({
+                                     lb.symmetric_difference_with(&rb);
+                                     lb.optimize();
+                                     lb
+                                 });
             self.blocks.insert(key, deferred);
         }
     }

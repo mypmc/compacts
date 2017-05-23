@@ -3,11 +3,12 @@ name    = "compacts-bits"
 version = "0.1.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 
-[dependencies.thunk]
-path = "../thunk"
-
 [dependencies.compacts-dict]
 path = "../compacts-dict"
+
+[dependencies.karabiner]
+git  = "https://github.com/feb29/karabiner"
+# path = "../../karabiner"
 
 [dev-dependencies]
 log  = "0.3"

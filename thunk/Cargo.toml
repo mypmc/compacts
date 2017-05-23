@@ -1,6 +1,0 @@
-[package]
-name    = "thunk"
-version = "0.1.0"
-authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
-
-[dependencies]

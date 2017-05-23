@@ -5,9 +5,10 @@
 // Springer Berlin Heidelberg, 2008. 154-168.
 
 #[macro_use]
-extern crate thunk;
-
+extern crate karabiner;
 extern crate compacts_dict;
+
+use karabiner::thunk;
 
 #[macro_use]
 mod macros;
@@ -67,6 +68,7 @@ impl<'a> BitVec<'a> {
 
     pub fn optimize(&mut self) {
         for b in self.blocks.values_mut() {
+            Thunk::force(b);
             b.optimize();
         }
     }
