@@ -1,5 +1,6 @@
-use super::*;
-use super::prim::*;
+extern crate compacts;
+use compacts::dict::*;
+use compacts::dict::prim::*;
 
 struct RankSelect {
     word: u64,

@@ -8,12 +8,15 @@ keywords    = ["compact", "succinct", "rank", "select"]
 repository  = "https://github.com/feb29/compacts"
 description = "compact data structures"
 
-[workspace]
-members = ["compacts-dict", "compacts-bits"]
-
 [dependencies]
-compacts-dict = { path = "compacts-dict" }
-compacts-bits = { path = "compacts-bits" }
+
+[dependencies.num]
+version = "0.1"
+
+[dependencies.karabiner]
+git = "https://github.com/feb29/karabiner"
 
 [dev-dependencies]
+log  = "0.3"
 rand = "0.3"
+env_logger = "0.4"

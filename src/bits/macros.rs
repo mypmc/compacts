@@ -16,21 +16,21 @@ macro_rules! bitmask {
 
 macro_rules! delegate {
     ( $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use block::Block;
+        use bits::block::Block;
         match $this {
             Block::Sorted(vec) => vec.$method( $( $args ),* ),
             Block::Mapped(vec) => vec.$method( $( $args ),* ),
         }
     }};
     ( ref $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use block::Block;
+        use bits::block::Block;
         match *$this {
             Block::Sorted(ref vec) => vec.$method( $( $args ),* ),
             Block::Mapped(ref vec) => vec.$method( $( $args ),* ),
         }
     }};
     ( ref mut $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use block::Block;
+        use bits::block::Block;
         match *$this {
             Block::Sorted(ref mut vec) => vec.$method( $( $args ),* ),
             Block::Mapped(ref mut vec) => vec.$method( $( $args ),* ),
@@ -169,7 +169,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block = block);
         }
         let expect = {
-            use pairwise::intersection;
+            use bits::pairwise::intersection;
             let pair = intersection(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };
@@ -186,7 +186,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block = block);
         }
         let expect = {
-            use pairwise::union;
+            use bits::pairwise::union;
             let pair = union(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };
@@ -204,7 +204,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block=block);
         }
         let expect = {
-            use pairwise::difference;
+            use bits::pairwise::difference;
             let pair = difference(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };
@@ -222,7 +222,7 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block=block);
         }
         let expect = {
-            use pairwise::symmetric_difference;
+            use bits::pairwise::symmetric_difference;
             let pair = symmetric_difference(lhs.iter(), rhs.iter());
             pair.collect::<Block>().count1()
         };

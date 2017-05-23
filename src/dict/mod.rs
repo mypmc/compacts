@@ -1,7 +1,3 @@
-#![feature(associated_consts)]
-
-extern crate num;
-
 use std::ops::{Index, Range};
 
 pub mod prim;
@@ -11,9 +7,6 @@ mod ranked;
 mod select;
 pub use self::ranked::Ranked;
 pub use self::select::{Select0, Select1};
-
-#[cfg(test)]
-mod tests;
 
 pub trait Dict<T: Uint>: Index<T>
     where <Self as Index<T>>::Output: PartialEq<Self::Item>
@@ -115,7 +108,7 @@ pub fn search<T, F>(range: &Range<T>, f: F) -> T
 }
 
 /// Bits is a struct to implement Index for u64.
-pub struct Bits(u64);
+pub struct Bits(pub u64);
 impl Bits {
     pub fn new(u: u64) -> Self {
         Bits(u)

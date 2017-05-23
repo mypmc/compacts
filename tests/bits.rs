@@ -4,11 +4,11 @@ extern crate log;
 extern crate env_logger;
 extern crate rand;
 
-extern crate compacts_bits;
+extern crate compacts;
 
-use rand::Rng;
+use self::rand::Rng;
 
-use compacts_bits::{BitVec, PairwiseWith};
+use compacts::bits::{BitVec, PairwiseWith};
 
 macro_rules! bit_vec {
     ( ) => {&BitVec::new()};

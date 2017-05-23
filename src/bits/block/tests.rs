@@ -5,7 +5,7 @@ extern crate rand;
 use self::rand::Rng;
 use super::*;
 
-use pairwise::PairwiseWith;
+use bits::pairwise::PairwiseWith;
 use dict::{Select1, Select0};
 
 #[test]

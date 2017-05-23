@@ -1,5 +1,5 @@
 use dict::Ranked;
-use pairwise;
+use bits::pairwise;
 use self::pairwise::{Pairwise, PairwiseWith};
 
 use super::{Block, Bucket};

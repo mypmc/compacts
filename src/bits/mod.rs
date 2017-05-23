@@ -1,32 +1,17 @@
-#![feature(associated_consts)]
-
-// Broadword implementation of rank/select queries
-// (http://sux.di.unimi.it/paper.pdf);
-// Springer Berlin Heidelberg, 2008. 154-168.
-
-#[macro_use]
-extern crate karabiner;
-extern crate compacts_dict;
-
-use karabiner::thunk;
-
 #[macro_use]
 mod macros;
 mod block;
 mod pairwise;
 // mod iter;
 
-pub use pairwise::{Pairwise, PairwiseWith};
+pub use self::pairwise::{Pairwise, PairwiseWith};
 
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug, Formatter};
 use std::ops::Index;
-
-use compacts_dict as dict;
-use self::dict::Ranked;
-use self::dict::prim::{self, Split};
-
-use self::thunk::Thunk;
+use dict::Ranked;
+use dict::prim::{self, Split};
+use karabiner::thunk::Thunk;
 use self::block::Block;
 
 #[derive(Default)]
@@ -84,7 +69,7 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts_bits::BitVec;
+    /// use compacts::bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// bits.insert(0);
@@ -101,7 +86,7 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts_bits::BitVec;
+    /// use compacts::bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// bits.insert(1);
@@ -125,7 +110,7 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts_bits::BitVec;
+    /// use compacts::bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
@@ -150,7 +135,7 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts_bits::BitVec;
+    /// use compacts::bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
