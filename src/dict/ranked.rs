@@ -21,9 +21,8 @@ pub trait Ranked<T: Uint> {
     type Weight: Uint + From<T>;
 
     /// `count1()` + `count0()` **SHOULD** be equal to `size`.
-    fn size(&self) -> Self::Weight {
-        self.count0() + self.count1()
-    }
+    fn size(&self) -> Self::Weight;
+    //fn size(&self) -> Self::Weight { self.count0() + self.count1() }
 
     /// Count occurences of non-zero bit, **SHOULD** be equal to `rank1(size)`.
     fn count1(&self) -> Self::Weight {

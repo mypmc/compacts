@@ -108,7 +108,11 @@ impl RankSelect {
             };
             let s1 = self.block.select1(c as u16).unwrap_or(0);
             let r1 = self.block.rank1(s1);
-            assert_eq!(c, r1, "{:?}", self);
+            if r1 != 0 {
+                assert_eq!(c, r1 - 1, "{:?}", self);
+            } else {
+                assert_eq!(c, 0, "{:?}", self);
+            }
         }
         {
             let c = if self.block.count0() == 0 {
@@ -118,26 +122,30 @@ impl RankSelect {
             };
             let s0 = self.block.select0(c as u16).unwrap_or(0);
             let r0 = self.block.rank0(s0);
-            assert_eq!(c, r0, "{:?}", self);
+            if r0 != 0 {
+                assert_eq!(c, r0 - 1, "{:?}", self);
+            } else {
+                assert_eq!(c, 0, "{:?}", self);
+            }
         }
     }
 }
 
-// #[test]
-// fn block_rank_select() {
-//     let mut rng = rand::thread_rng();
-//     let lenghs = vec![0,
-//                       THRESHOLD as u64,
-//                       THRESHOLD as u64 * 2,
-//                       Block::CAPACITY as u64 / 2,
-//                       Block::CAPACITY as u64,
-//                       rng.gen_range(10, THRESHOLD as u64),
-//                       rng.gen_range(THRESHOLD as u64 + 1, Block::CAPACITY as u64 - 1)];
+#[test]
+fn block_rank_select() {
+    let mut rng = rand::thread_rng();
+    let lenghs = vec![0,
+                      THRESHOLD as u64,
+                      THRESHOLD as u64 * 2,
+                      Block::CAPACITY as u64 / 2,
+                      Block::CAPACITY as u64,
+                      rng.gen_range(10, THRESHOLD as u64),
+                      rng.gen_range(THRESHOLD as u64 + 1, Block::CAPACITY as u64 - 1)];
 
-//     for &size in lenghs.iter() {
-//         RankSelect::run(size as usize, &mut rng);
-//     }
-// }
+    for &size in lenghs.iter() {
+        RankSelect::run(size as usize, &mut rng);
+    }
+}
 
 #[test]
 fn block_insert_remove() {

@@ -2,17 +2,17 @@
 mod macros;
 mod block;
 mod pairwise;
-// mod iter;
-
-pub use self::pairwise::{Pairwise, PairwiseWith};
 
 use std::collections::BTreeMap;
 use std::fmt::{self, Debug, Formatter};
 use std::ops::Index;
+
+pub use self::pairwise::{Pairwise, PairwiseWith};
+use self::block::Block;
+
 use dict::Ranked;
 use dict::prim::{self, Split};
 use karabiner::thunk::Thunk;
-use self::block::Block;
 
 #[derive(Default)]
 pub struct BitVec<'a> {
@@ -33,16 +33,6 @@ impl<'a> Clone for BitVec<'a> {
             vec.blocks.insert(k, eval!(c));
         }
         vec
-    }
-}
-
-impl<'a> BitVec<'a> {
-    // const CAPACITY: u64 = 1 << 32;
-
-    pub fn count1(&self) -> u64 {
-        self.blocks
-            .values()
-            .fold(0, |acc, b| acc + b.count1() as u64)
     }
 }
 
@@ -70,6 +60,7 @@ impl<'a> BitVec<'a> {
     ///
     /// ```rust
     /// use compacts::bits::BitVec;
+    /// use compacts::dict::Ranked;
     ///
     /// let mut bits = BitVec::new();
     /// bits.insert(0);
@@ -87,6 +78,7 @@ impl<'a> BitVec<'a> {
     ///
     /// ```rust
     /// use compacts::bits::BitVec;
+    /// use compacts::dict::Ranked;
     ///
     /// let mut bits = BitVec::new();
     /// bits.insert(1);
@@ -111,6 +103,7 @@ impl<'a> BitVec<'a> {
     ///
     /// ```rust
     /// use compacts::bits::BitVec;
+    /// use compacts::dict::Ranked;
     ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
@@ -136,6 +129,7 @@ impl<'a> BitVec<'a> {
     ///
     /// ```rust
     /// use compacts::bits::BitVec;
+    /// use compacts::dict::Ranked;
     ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
@@ -164,5 +158,37 @@ impl<'a> Index<u32> for BitVec<'a> {
         } else {
             prim::FALSE
         }
+    }
+}
+
+impl<'a> ::dict::Ranked<u32> for BitVec<'a> {
+    type Weight = u64;
+
+    fn size(&self) -> Self::Weight {
+        const CAPACITY: u64 = 1 << 32;
+        CAPACITY
+    }
+
+    fn count1(&self) -> u64 {
+        self.blocks
+            .values()
+            .map(|b| Self::Weight::from(b.count1()))
+            .sum()
+    }
+
+    fn rank1(&self, i: u32) -> Self::Weight {
+        let (hi, lo) = i.split();
+        let mut rank = 0;
+        for (&key, block) in &self.blocks {
+            if key > hi {
+                break;
+            } else if key == hi {
+                rank += Self::Weight::from(block.rank1(lo));
+                break;
+            } else {
+                rank += Self::Weight::from(block.count1());
+            }
+        }
+        rank
     }
 }

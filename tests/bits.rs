@@ -9,6 +9,7 @@ extern crate compacts;
 use self::rand::Rng;
 
 use compacts::bits::{BitVec, PairwiseWith};
+use compacts::dict::Ranked;
 
 macro_rules! bit_vec {
     ( ) => {&BitVec::new()};

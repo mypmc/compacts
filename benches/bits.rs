@@ -85,3 +85,20 @@ fn bit_vec_symmetric_difference(bench: &mut Bencher) {
                    v1.intersection_with(bv);
                });
 }
+
+#[bench]
+fn small_bit_vec_rank(bench: &mut Bencher) {
+    use compacts::dict::Ranked;
+    let mut rng = rand::thread_rng();
+    let v1 = bit_vec!(SIZE, RANGE1, rng);
+    let i = rng.gen();
+    bench.iter(|| v1.rank1(i));
+}
+#[bench]
+fn large_bit_vec_rank(bench: &mut Bencher) {
+    use compacts::dict::Ranked;
+    let mut rng = rand::thread_rng();
+    let v1 = bit_vec!(SIZE, RANGE2, rng);
+    let i = rng.gen();
+    bench.iter(|| v1.rank1(i));
+}
