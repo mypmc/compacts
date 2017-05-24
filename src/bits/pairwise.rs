@@ -16,6 +16,33 @@ pub trait Pairwise<Rhs = Self> {
     fn symmetric_difference(self, that: Rhs) -> Self::Output;
 }
 
+impl<'r, 'a, 'b> Pairwise<&'r super::BitVec<'b>> for super::BitVec<'a>
+    where 'b: 'r
+{
+    type Output = super::BitVec<'a>;
+
+    fn intersection(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self;
+        this.intersection_with(that);
+        this
+    }
+    fn union(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self;
+        this.union_with(that);
+        this
+    }
+    fn difference(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self;
+        this.difference_with(that);
+        this
+    }
+    fn symmetric_difference(self, that: &super::BitVec<'b>) -> Self::Output {
+        let mut this = self;
+        this.symmetric_difference_with(that);
+        this
+    }
+}
+
 impl<'r1, 'r2, 'a, 'b> Pairwise<&'r2 super::BitVec<'b>> for &'r1 super::BitVec<'a>
     where 'a: 'r1,
           'b: 'r2
