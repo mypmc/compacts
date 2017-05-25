@@ -101,6 +101,7 @@ macro_rules! pairwise_do {
         if !$e {
             trace!("POP_COUNT force evaluation of thunks");
             trace!("POP_COUNT={:?}", v1.count1());
+            trace!("{:?}", v1);
         }
     }
 }

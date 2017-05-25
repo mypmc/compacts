@@ -31,11 +31,10 @@ pub enum Block {
 impl Block {
     pub const CAPACITY: u32 = 1 << 16; // same type with Self::Weight
 
-    fn load_factor(&self) -> f64 {
+    pub fn load_factor(&self) -> f64 {
         self.count1() as f64 / Self::CAPACITY as f64
     }
 }
-
 
 impl fmt::Debug for Block {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

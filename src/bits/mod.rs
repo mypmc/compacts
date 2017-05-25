@@ -21,8 +21,9 @@ pub struct BitVec<'a> {
 
 impl<'a> Debug for BitVec<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let b = self.count_blocks();
         let w = self.count1();
-        write!(f, "BitVec(weight={:?})", w)
+        write!(f, "BitVec{{ blocks={:?} weight={:?} }}", b, w)
     }
 }
 impl<'a> Clone for BitVec<'a> {
