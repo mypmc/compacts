@@ -7,8 +7,8 @@ extern crate test;
 use test::Bencher;
 use rand::Rng;
 
-use compacts::bits::BitVec;
-use compacts::bits::PairwiseWith;
+use compacts::bits::*;
+use compacts::bits::ops::*;
 
 macro_rules! bit_vec {
     ( 0, 1, $rng:expr ) => {{ BitVec::new() }};
@@ -20,19 +20,19 @@ macro_rules! bit_vec {
         if $size > 1 {
             for _ in 0..$size {
                 let gen = $rng.gen_range($start, $end);
-                vec.insert(gen);
+                vec.set(gen);
             }
         }
         vec
     }};
 }
 
-// #[bench]
-// fn bit_vec_clone(bench: &mut Bencher) {
-//     let mut rng = rand::thread_rng();
-//     let mut v1 = bit_vec!(65_000, rng);
-//     bench.iter(|| v1 = v1.clone());
-// }
+#[bench]
+fn bit_vec_clone(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let mut v1 = bit_vec!(65_000, 2000000, rng);
+    bench.iter(|| v1 = v1.clone());
+}
 
 const SIZE: usize = 65000;
 const RANGE1: u32 = 1500000;
@@ -88,7 +88,6 @@ fn bit_vec_symmetric_difference(bench: &mut Bencher) {
 
 #[bench]
 fn small_bit_vec_rank(bench: &mut Bencher) {
-    use compacts::dict::Ranked;
     let mut rng = rand::thread_rng();
     let v1 = bit_vec!(SIZE, RANGE1, rng);
     let i = rng.gen();
@@ -96,7 +95,6 @@ fn small_bit_vec_rank(bench: &mut Bencher) {
 }
 #[bench]
 fn large_bit_vec_rank(bench: &mut Bencher) {
-    use compacts::dict::Ranked;
     let mut rng = rand::thread_rng();
     let v1 = bit_vec!(SIZE, RANGE2, rng);
     let i = rng.gen();

@@ -3,10 +3,13 @@
 extern crate rand;
 
 use self::rand::Rng;
-use super::*;
 
-use bits::pairwise::PairwiseWith;
-use dict::{Select1, Select0};
+use super::*;
+use super::inner::*;
+
+use pairwise::*;
+use rank::*;
+use select::*;
 
 #[test]
 fn block_intersection() {
@@ -95,16 +98,16 @@ impl RankSelect {
     }
 
     fn max_rank_is_equals_to_ones(&self) {
-        let ones = self.block.count1();
+        let ones = self.block.count_ones();
         let rank = self.block.rank1(!0u16);
         assert_eq!(ones, rank, "{:?}", self);
     }
     fn rank_select_identity<R: Rng>(&self, rng: &mut R) {
         {
-            let c = if self.block.count1() == 0 {
+            let c = if self.block.count_ones() == 0 {
                 0
             } else {
-                rng.gen_range(0, self.block.count1())
+                rng.gen_range(0, self.block.count_ones())
             };
             let s1 = self.block.select1(c as u16).unwrap_or(0);
             let r1 = self.block.rank1(s1);
@@ -115,10 +118,10 @@ impl RankSelect {
             }
         }
         {
-            let c = if self.block.count0() == 0 {
+            let c = if self.block.count_zeros() == 0 {
                 0
             } else {
-                rng.gen_range(0, self.block.count0())
+                rng.gen_range(0, self.block.count_zeros())
             };
             let s0 = self.block.select0(c as u16).unwrap_or(0);
             let r0 = self.block.rank0(s0);
@@ -135,12 +138,13 @@ impl RankSelect {
 fn block_rank_select() {
     let mut rng = rand::thread_rng();
     let lenghs = vec![0,
-                      THRESHOLD as u64,
-                      THRESHOLD as u64 * 2,
+                      <Bucket<u16>>::THRESHOLD as u64,
+                      <Bucket<u16>>::THRESHOLD as u64 * 2,
                       Block::CAPACITY as u64 / 2,
                       Block::CAPACITY as u64,
-                      rng.gen_range(10, THRESHOLD as u64),
-                      rng.gen_range(THRESHOLD as u64 + 1, Block::CAPACITY as u64 - 1)];
+                      rng.gen_range(10, <Bucket<u16>>::THRESHOLD as u64),
+                      rng.gen_range(<Bucket<u16>>::THRESHOLD as u64 + 1,
+                                    Block::CAPACITY as u64 - 1)];
 
     for &size in lenghs.iter() {
         RankSelect::run(size as usize, &mut rng);
@@ -151,14 +155,14 @@ fn block_rank_select() {
 fn block_insert_remove() {
     let mut b = Block::new();
     let mut i = 0u16;
-    while (i as usize) < THRESHOLD {
+    while (i as usize) < <Bucket<u16>>::THRESHOLD {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
         assert!(b.contains(i));
         i += 1;
     }
     assert!(b.is_sorted());
-    assert_eq!(i as usize, THRESHOLD);
-    assert_eq!(b.count1(), THRESHOLD as u32);
+    assert_eq!(i as usize, <Bucket<u16>>::THRESHOLD);
+    assert_eq!(b.count_ones(), <Bucket<u16>>::THRESHOLD as u32);
 
     while (i as u32) < Block::CAPACITY {
         assert!(b.insert(i), "insert failed");
@@ -169,9 +173,9 @@ fn block_insert_remove() {
         i += 1;
     }
 
-    assert!(b.is_sorted() && b.count1() == Block::CAPACITY);
+    assert!(b.is_sorted() && b.count_ones() == Block::CAPACITY);
     b.optimize();
-    assert!(b.is_mapped() && b.count1() == Block::CAPACITY);
+    assert!(b.is_mapped() && b.count_ones() == Block::CAPACITY);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));
@@ -181,9 +185,9 @@ fn block_insert_remove() {
     assert!(b.remove(i), format!("remove({:?}) failed", i));
     assert_eq!(i, 0);
 
-    assert!(b.is_mapped() && b.count1() == 0);
+    assert!(b.is_mapped() && b.count_ones() == 0);
     b.optimize();
-    assert!(b.is_sorted() && b.count1() == 0);
+    assert!(b.is_sorted() && b.count_ones() == 0);
 }
 
 #[test]
@@ -198,10 +202,8 @@ fn block_clone() {
 
 #[test]
 fn block_sorted_rank() {
-    use super::Bucket;
-
     let vec = vec![0, 1, 4, 5, 8, 9];
-    let block = Block::Sorted(Bucket::<u16>::from(vec));
+    let block = Vec16(Bucket::<u16>::from(vec));
 
     assert_eq!(1, block.rank1(0));
     assert_eq!(0, block.rank0(0));
@@ -233,11 +235,8 @@ fn block_sorted_rank() {
 
 #[test]
 fn block_sorted_select() {
-    use dict::{Select1, Select0};
-    use super::Bucket;
-
     let vec = vec![0, 1, 4, 5, 8, 9];
-    let block = Block::Sorted(Bucket::<u16>::from(vec));
+    let block = Vec16(Bucket::<u16>::from(vec));
 
     assert_eq!(Some(0), block.select1(0));
     assert_eq!(Some(2), block.select0(0));

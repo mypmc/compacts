@@ -6,17 +6,18 @@ readme  = "README.md"
 license = "MIT"
 keywords    = ["compact", "succinct", "rank", "select"]
 repository  = "https://github.com/feb29/compacts"
-description = "compact data structures"
+description = "succinct data structures"
+
+[workspace]
+members = ["compacts-prim", "compacts-bits", "compacts-dict"]
 
 [dependencies]
-
-[dependencies.num]
-version = "0.1"
+compacts-prim = { path = "./compacts-prim" }
+compacts-bits = { path = "./compacts-bits" }
+compacts-dict = { path = "./compacts-dict" }
 
 [dependencies.karabiner]
 git = "https://github.com/feb29/karabiner"
 
 [dev-dependencies]
-log  = "0.3"
 rand = "0.3"
-env_logger = "0.4"

@@ -1,6 +1,31 @@
 extern crate compacts;
+
+use compacts::bits::*;
 use compacts::dict::*;
-use compacts::dict::prim::*;
+
+struct Bits(u64);
+impl Rank<u32> for Bits {
+    type Weight = <u64 as Rank<u32>>::Weight;
+    fn rank1(&self, i: u32) -> Self::Weight {
+        self.0.rank1(i)
+    }
+}
+impl Select1<u32> for Bits {
+    fn select1(&self, c: u32) -> Option<u32> {
+        self.0.select1(c)
+    }
+}
+impl Select0<u32> for Bits {
+    fn select0(&self, c: u32) -> Option<u32> {
+        self.0.select0(c)
+    }
+}
+impl ::std::ops::Index<u32> for Bits {
+    type Output = bool;
+    fn index(&self, c: u32) -> &Self::Output {
+        if self.0 & (1 << c) != 0 { TRUE } else { FALSE }
+    }
+}
 
 struct RankSelect {
     word: u64,
@@ -13,10 +38,10 @@ impl RankSelect {
         let (arg, want) = case;
         {
             let r9 = word.rank1(64u32);
-            let ranked = &word as &Ranked<u32, Weight = u32>;
-            assert_eq!(r9, ranked.count1());
+            let ranked = &word as &Rank<u32, Weight = u32>;
+            assert_eq!(r9, word.count_ones());
             assert_eq!(r9, ranked.rank1(ranked.size()));
-            assert_eq!(ranked.size(), ranked.count1() + ranked.count0());
+            assert_eq!(ranked.size(), word.count_ones() + word.count_zeros());
 
             assert_eq!(word.rank1(64u32), Bits(word).rank(TRUE, 64u32));
             assert_eq!(word.rank0(64u32), Bits(word).rank(FALSE, 64u32));

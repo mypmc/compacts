@@ -1,17 +1,9 @@
-#[macro_use]
-mod macros;
-mod block;
 mod pairwise;
 
-use std::collections::BTreeMap;
 use std::fmt::{self, Debug, Formatter};
-use std::ops::Index;
-
-pub use self::pairwise::{Pairwise, PairwiseWith};
-use self::block::Block;
-
-use dict::Ranked;
-use dict::prim::{self, Split};
+use std::collections::BTreeMap;
+use split_merge::Split;
+use block::Block;
 use karabiner::thunk::Thunk;
 
 #[derive(Default)]
@@ -22,7 +14,7 @@ pub struct BitVec<'a> {
 impl<'a> Debug for BitVec<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let b = self.count_blocks();
-        let w = self.count1();
+        let w = self.count_ones();
         write!(f, "BitVec{{ blocks={:?} weight={:?} }}", b, w)
     }
 }
@@ -38,6 +30,20 @@ impl<'a> Clone for BitVec<'a> {
 }
 
 impl<'a> BitVec<'a> {
+    pub fn count_ones(&self) -> u64 {
+        self.blocks
+            .values()
+            .map(|b| u64::from(b.count_ones()))
+            .sum()
+    }
+
+    pub fn count_zeros(&self) -> u64 {
+        self.blocks
+            .values()
+            .map(|b| u64::from(b.count_zeros()))
+            .sum()
+    }
+
     pub fn count_blocks(&self) -> usize {
         self.blocks.len()
     }
@@ -60,14 +66,13 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::BitVec;
-    /// use compacts::dict::Ranked;
+    /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// bits.insert(0);
-    /// assert!(bits.count1() == 1);
+    /// bits.set(0);
+    /// assert!(bits.count_ones() == 1);
     /// bits.clear();
-    /// assert!(bits.count1() == 0);
+    /// assert!(bits.count_ones() == 0);
     /// ```
     pub fn clear(&mut self) {
         self.blocks.clear();
@@ -78,17 +83,16 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::BitVec;
-    /// use compacts::dict::Ranked;
+    /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// bits.insert(1);
-    /// assert!(!bits.contains(0));
-    /// assert!(bits.contains(1));
-    /// assert!(!bits.contains(2));
-    /// assert_eq!(bits.count1(), 1);
+    /// bits.set(1);
+    /// assert!(!bits.get(0));
+    /// assert!(bits.get(1));
+    /// assert!(!bits.get(2));
+    /// assert_eq!(bits.count_ones(), 1);
     /// ```
-    pub fn contains(&self, x: u32) -> bool {
+    pub fn get(&self, x: u32) -> bool {
         let (key, bit) = x.split();
         if let Some(b) = self.blocks.get(&key) {
             b.contains(bit)
@@ -97,22 +101,20 @@ impl<'a> BitVec<'a> {
         }
     }
 
-    /// Return `true` if the value doesn't exists in the BitVec,
-    /// and inserted to the BitVec successfully.
+    /// Return `true` if the value doesn't exists in the BitVec.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::BitVec;
-    /// use compacts::dict::Ranked;
+    /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// assert!(bits.insert(3));
-    /// assert!(!bits.insert(3));
-    /// assert!(bits.contains(3));
-    /// assert_eq!(bits.count1(), 1);
+    /// assert!(bits.set(3));
+    /// assert!(!bits.set(3));
+    /// assert!(bits.get(3));
+    /// assert_eq!(bits.count_ones(), 1);
     /// ```
-    pub fn insert(&mut self, x: u32) -> bool {
+    pub fn set(&mut self, x: u32) -> bool {
         let (key, bit) = x.split();
         let mut b = self.blocks
             .entry(key)
@@ -129,14 +131,13 @@ impl<'a> BitVec<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::BitVec;
-    /// use compacts::dict::Ranked;
+    /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// assert!(bits.insert(3));
+    /// assert!(bits.set(3));
     /// assert!(bits.remove(3));
-    /// assert!(!bits.contains(3));
-    /// assert_eq!(bits.count1(), 0);
+    /// assert!(!bits.get(3));
+    /// assert_eq!(bits.count_ones(), 0);
     /// ```
     pub fn remove(&mut self, x: u32) -> bool {
         let (key, bit) = x.split();
@@ -151,30 +152,23 @@ impl<'a> BitVec<'a> {
     }
 }
 
-impl<'a> Index<u32> for BitVec<'a> {
+impl<'a> ::std::ops::Index<u32> for BitVec<'a> {
     type Output = bool;
     fn index(&self, i: u32) -> &Self::Output {
-        if self.contains(i) {
-            prim::TRUE
+        if self.get(i) {
+            super::TRUE
         } else {
-            prim::FALSE
+            super::FALSE
         }
     }
 }
 
-impl<'a> ::dict::Ranked<u32> for BitVec<'a> {
+impl<'a> ::Rank<u32> for BitVec<'a> {
     type Weight = u64;
 
     fn size(&self) -> Self::Weight {
         const CAPACITY: u64 = 1 << 32;
         CAPACITY
-    }
-
-    fn count1(&self) -> u64 {
-        self.blocks
-            .values()
-            .map(|b| Self::Weight::from(b.count1()))
-            .sum()
     }
 
     fn rank1(&self, i: u32) -> Self::Weight {
@@ -187,7 +181,7 @@ impl<'a> ::dict::Ranked<u32> for BitVec<'a> {
                 rank += Self::Weight::from(block.rank1(lo));
                 break;
             } else {
-                rank += Self::Weight::from(block.count1());
+                rank += Self::Weight::from(block.count_ones());
             }
         }
         rank

@@ -1,55 +1,22 @@
-macro_rules! keypos {
-    ( $bit:expr, $key:ident, $pos:ident ) => (
-        use dict::prim::Uint;
-        let key  = $bit / <u64 as Uint>::WIDTH as u16;
-        let $pos = $bit % <u64 as Uint>::WIDTH as u16;
-        let $key = key as usize;
-    );
-}
-
-macro_rules! bitmask {
-    ( $bit:expr, $key:ident, $mask:ident ) => (
-        keypos!($bit, $key, pos);
-        let $mask = 1 << pos;
-    );
-}
-
 macro_rules! delegate {
     ( $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use bits::block::Block;
         match $this {
-            Block::Sorted(vec) => vec.$method( $( $args ),* ),
-            Block::Mapped(vec) => vec.$method( $( $args ),* ),
+            Vec16(vec) => vec.$method( $( $args ),* ),
+            Vec64(vec) => vec.$method( $( $args ),* ),
         }
     }};
     ( ref $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use bits::block::Block;
         match *$this {
-            Block::Sorted(ref vec) => vec.$method( $( $args ),* ),
-            Block::Mapped(ref vec) => vec.$method( $( $args ),* ),
+            Vec16(ref vec) => vec.$method( $( $args ),* ),
+            Vec64(ref vec) => vec.$method( $( $args ),* ),
         }
     }};
     ( ref mut $this: ident, $method: ident $(, $args: expr )* ) => {{
-        use bits::block::Block;
         match *$this {
-            Block::Sorted(ref mut vec) => vec.$method( $( $args ),* ),
-            Block::Mapped(ref mut vec) => vec.$method( $( $args ),* ),
+            Vec16(ref mut vec) => vec.$method( $( $args ),* ),
+            Vec64(ref mut vec) => vec.$method( $( $args ),* ),
         }
     }}
-}
-
-macro_rules! extend_by_u16 {
-    ( $bucket_or_block: expr, $iter: expr ) => {
-        {
-            let mut ones = 0;
-            for item in $iter {
-                if $bucket_or_block.insert(item) {
-                    ones += 1;
-                }
-            }
-            ones
-        }
-    }
 }
 
 macro_rules! bucket_foreach {
@@ -67,8 +34,6 @@ macro_rules! bucket_foreach {
     }};
 
     ( $this:ident, $method:ident, $that:expr ) => {{
-        use dict::Ranked;
-
         assert_eq!($this.vector.len(), $that.vector.len());
 
         let lhs = &mut $this.vector;
@@ -77,7 +42,7 @@ macro_rules! bucket_foreach {
             let mut new = 0;
             for (x, y) in lhs.iter_mut().zip(rhs.iter()) {
                 (*x).$method(*y);
-                new += x.count1();
+                new += x.count_ones();
             }
             new
         };
@@ -89,32 +54,32 @@ macro_rules! block {
     ( MIN_VEC; $rng: expr ) => {{
         let size = 0;
         let b = bucket!(u16; size as usize, $rng);
-        Block::Sorted(b)
+        Vec16(b)
     }};
     ( MAX_VEC; $rng: expr ) => {{
-        let size = THRESHOLD;
+        let size = <Bucket<u16>>::THRESHOLD;
         let b = bucket!(u16; size as usize, $rng);
-        Block::Sorted(b)
+        Vec16(b)
     }};
     ( MIN_MAP; $rng: expr ) => {{
-        let size = THRESHOLD + 1;
+        let size = <Bucket<u16>>::THRESHOLD + 1;
         let b = bucket!(u64; size as usize, $rng);
-        Block::Mapped(b)
+        Vec64(b)
     }};
     ( MAX_MAP; $rng: expr ) => {{
         let size = Block::CAPACITY - 1;
         let b = bucket!(u64; size as usize, $rng);
-        Block::Mapped(b)
+        Vec64(b)
     }};
     ( VEC; $rng: expr ) => {{
-        let size = $rng.gen_range(0, THRESHOLD);
+        let size = $rng.gen_range(0, <Bucket<u16>>::THRESHOLD);
         let b = bucket!(u16; size as usize, $rng);
-        Block::Sorted(b)
+        Vec16(b)
     }};
     ( MAP; $rng: expr ) => {{
-        let size = $rng.gen_range(THRESHOLD, Block::CAPACITY as usize);
+        let size = $rng.gen_range(<Bucket<u16>>::THRESHOLD, Block::CAPACITY as usize);
         let b = bucket!(u64; size as usize, $rng);
-        Block::Mapped(b)
+        Vec64(b)
     }};
 }
 
@@ -169,13 +134,13 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block = block);
         }
         let expect = {
-            use bits::pairwise::intersection;
+            use pairwise::intersection;
             let pair = intersection(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count1()
+            pair.collect::<Block>().count_ones()
         };
-        assert!(block.count1() == expect,
+        assert!(block.count_ones() == expect,
                 "{lhs:?} AND {rhs:?}: got={got:?} want={want:?} ",
-                lhs = lhs, rhs = rhs, got = block.count1(), want = expect);
+                lhs = lhs, rhs = rhs, got = block.count_ones(), want = expect);
     };
 
     ( $this:ident | $that:ident ) => {
@@ -186,13 +151,13 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block = block);
         }
         let expect = {
-            use bits::pairwise::union;
+            use pairwise::union;
             let pair = union(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count1()
+            pair.collect::<Block>().count_ones()
         };
-        assert!(block.count1() == expect,
+        assert!(block.count_ones() == expect,
                 "{lhs:?} OR {rhs:?}: got={got:?} want={want:?}",
-                lhs = lhs, rhs = rhs, got = block.count1(), want = expect);
+                lhs = lhs, rhs = rhs, got = block.count_ones(), want = expect);
     };
 
     ( $this:ident - $that:ident ) => {
@@ -204,13 +169,13 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block=block);
         }
         let expect = {
-            use bits::pairwise::difference;
+            use pairwise::difference;
             let pair = difference(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count1()
+            pair.collect::<Block>().count_ones()
         };
-        assert!(block.count1() == expect,
+        assert!(block.count_ones() == expect,
                 "{lhs:?} - {rhs:?}: got={got:?} want={want:?}",
-                lhs = lhs, rhs = rhs, got = block.count1(), want = expect);
+                lhs = lhs, rhs = rhs, got = block.count_ones(), want = expect);
     };
 
     ( $this:ident ^ $that:ident ) => {
@@ -222,12 +187,12 @@ macro_rules! bitops_test {
                     lhs = lhs, rhs = rhs, block=block);
         }
         let expect = {
-            use bits::pairwise::symmetric_difference;
+            use pairwise::symmetric_difference;
             let pair = symmetric_difference(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count1()
+            pair.collect::<Block>().count_ones()
         };
-        assert!(block.count1() == expect,
+        assert!(block.count_ones() == expect,
                 "{lhs:?} XOR {rhs:?}: got={got:?} want={want:?}",
-                lhs = lhs, rhs = rhs, got = block.count1(), want = expect);
+                lhs = lhs, rhs = rhs, got = block.count_ones(), want = expect);
     };
 }
