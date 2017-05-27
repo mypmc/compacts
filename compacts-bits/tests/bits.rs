@@ -1,15 +1,13 @@
 #[macro_use]
 extern crate log;
-
 extern crate env_logger;
 extern crate rand;
-
-extern crate compacts;
+extern crate compacts_bits;
 
 use self::rand::Rng;
 
-use compacts::bits::{BitVec, PairwiseWith};
-use compacts::dict::Ranked;
+use compacts_bits::BitVec;
+use compacts_bits::ops::*;
 
 macro_rules! bit_vec {
     ( ) => {&BitVec::new()};
@@ -21,7 +19,7 @@ macro_rules! bit_vec {
         let mut vec = BitVec::new();
         for _ in 0..$size {
             let gen = $rng.gen_range($start, $end);
-            vec.insert(gen);
+            vec.set(gen);
         }
         vec
     }};
@@ -44,19 +42,19 @@ fn similarity_coefficient() {
     let jaccard = {
         let mut p1 = p.clone();
         p1.intersection_with(q);
-        p1.count1() as f64 / (p.count1() + q.count1() + p1.count1()) as f64
+        p1.count_ones() as f64 / (p.count_ones() + q.count_ones() + p1.count_ones()) as f64
     };
 
     let dice = {
         let mut p1 = p.clone();
         p1.intersection_with(q);
-        (2f64 * (p1.count1() as f64)) / (p.count1() as f64 + q.count1() as f64)
+        (2f64 * (p1.count_ones() as f64)) / (p.count_ones() as f64 + q.count_ones() as f64)
     };
 
     let simpson = {
         let mut p1 = p.clone();
         p1.intersection_with(q);
-        (p1.count1() as f64) / (p.count1() as f64).min(q.count1() as f64)
+        (p1.count_ones() as f64) / (p.count_ones() as f64).min(q.count_ones() as f64)
     };
 
     info!("Jaccard = {:.5?}", jaccard);
@@ -100,7 +98,7 @@ macro_rules! pairwise_do {
         trace!("COUNT_BLOCKS={:?}", v1.count_blocks());
         if !$e {
             trace!("POP_COUNT force evaluation of thunks");
-            trace!("POP_COUNT={:?}", v1.count1());
+            trace!("POP_COUNT={:?}", v1.count_ones());
             trace!("{:?}", v1);
         }
     }

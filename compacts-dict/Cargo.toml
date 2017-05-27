@@ -1,0 +1,8 @@
+[package]
+name    = "compacts-dict"
+version = "0.1.0"
+authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
+
+[dependencies]
+compacts-prim = { path = "../compacts-prim" }
+compacts-bits = { path = "../compacts-bits" }

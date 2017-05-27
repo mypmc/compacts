@@ -1,17 +1,15 @@
 //! Internal representaion of Block.
 
-use dict::prim::Uint;
-use dict::{self, Ranked};
-
 #[derive(Debug, Clone)]
-pub struct Bucket<T: Uint> {
+pub struct Bucket<T: ::UnsignedInt> {
     pub weight: u32,
     pub vector: Vec<T>,
 }
 
-impl<T: Uint> Bucket<T> {
+impl<T: ::UnsignedInt> Bucket<T> {
     pub const CAPACITY: usize = 1 << 16;
 }
+
 impl Bucket<u16> {
     pub const THRESHOLD: usize = 1 << 12; // 16 * (1 << 12) == 65536
 }
@@ -25,6 +23,7 @@ impl Bucket<u16> {
         let vector = Vec::new();
         Bucket { weight, vector }
     }
+
     pub fn with_capacity(cap: usize) -> Self {
         let bounded = if cap <= Self::THRESHOLD {
             cap
@@ -40,6 +39,7 @@ impl Bucket<u16> {
         self.vector.shrink_to_fit()
     }
 }
+
 impl Bucket<u64> {
     pub fn new() -> Self {
         let weight = 0;
@@ -134,10 +134,9 @@ impl<'r> From<&'r Bucket<u64>> for Bucket<u16> {
         let mut bucket = Bucket::with_capacity(that.weight as usize);
         let iter = that.vector.iter();
         for (i, w) in iter.cloned().enumerate().filter(|&(_, v)| v != 0) {
-            let bits = dict::Bits::new(w);
-            for p in 0..<u64 as Uint>::WIDTH {
-                if bits[p] {
-                    let bit = i * <u64 as Uint>::WIDTH + p;
+            for p in 0..<u64 as ::UnsignedInt>::WIDTH {
+                if w & (1 << p) != 0 {
+                    let bit = i * <u64 as ::UnsignedInt>::WIDTH + p;
                     debug_assert!(bit <= u16::MAX as usize);
                     bucket.insert(bit as u16);
                 }
@@ -198,7 +197,7 @@ impl From<Vec<u64>> for Bucket<u64> {
     fn from(vector: Vec<u64>) -> Self {
         let weight = {
             let iter = vector.iter().take(Self::THRESHOLD);
-            iter.fold(0, |acc, w| acc + w.count1())
+            iter.fold(0, |acc, w| acc + w.count_ones())
         };
         Bucket { weight, vector }
     }
@@ -207,7 +206,7 @@ impl<'a> From<&'a [u64]> for Bucket<u64> {
     fn from(slice: &'a [u64]) -> Self {
         let weight = {
             let iter = slice.iter().take(Self::THRESHOLD);
-            iter.fold(0, |acc, w| acc + w.count1())
+            iter.fold(0, |acc, w| acc + w.count_ones())
         };
         let vector = slice.to_owned();
         Bucket { weight, vector }
@@ -243,11 +242,11 @@ type ClonedIter<'a, T> = Cloned<SliceIter<'a, T>>;
 
 pub enum Iter<'a> {
     U16(ClonedIter<'a, u16>),
-    U64(MappedIter<'a>),
+    U64(PackedIter<'a>),
 }
 pub enum IntoIter {
     U16(VecIntoIter<u16>),
-    U64(MappedIter<'static>),
+    U64(PackedIter<'static>),
 }
 
 impl Bucket<u16> {
@@ -272,7 +271,7 @@ impl IntoIterator for Bucket<u16> {
 impl Bucket<u64> {
     pub fn iter(&self) -> Iter {
         debug_assert!(self.weight as usize <= Self::CAPACITY);
-        let mapped = MappedIter::new(self.weight, Cow::Borrowed(self.vector.as_ref()));
+        let mapped = PackedIter::new(self.weight, Cow::Borrowed(self.vector.as_ref()));
         Iter::U64(mapped)
     }
 }
@@ -281,12 +280,12 @@ impl IntoIterator for Bucket<u64> {
     type IntoIter = IntoIter;
     fn into_iter(self) -> IntoIter {
         debug_assert!(self.weight as usize <= Self::CAPACITY);
-        let mapped = MappedIter::new(self.weight, Cow::Owned(self.vector));
+        let mapped = PackedIter::new(self.weight, Cow::Owned(self.vector));
         IntoIter::U64(mapped)
     }
 }
 
-pub struct MappedIter<'a> {
+pub struct PackedIter<'a> {
     len: u32,
     cow: Cow<'a, [u64]>,
     idx: usize,
@@ -341,7 +340,7 @@ impl ExactSizeIterator for IntoIter {
     }
 }
 
-impl<'a> Iterator for MappedIter<'a> {
+impl<'a> Iterator for PackedIter<'a> {
     type Item = u16;
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -363,19 +362,19 @@ impl<'a> Iterator for MappedIter<'a> {
         (len, Some(len))
     }
 }
-impl<'a> ExactSizeIterator for MappedIter<'a> {
+impl<'a> ExactSizeIterator for PackedIter<'a> {
     fn len(&self) -> usize {
         self.len as usize
     }
 }
 
-impl<'a> MappedIter<'a> {
+impl<'a> PackedIter<'a> {
     const BITS_WIDTH: usize = 64;
 
     fn new(len: u32, cow: Cow<'a, [u64]>) -> Self {
         let idx = 0;
         let pos = 0;
-        MappedIter { len, cow, idx, pos }
+        PackedIter { len, cow, idx, pos }
     }
     fn move_next(&mut self) {
         self.pos += 1;

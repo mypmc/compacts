@@ -1,19 +1,17 @@
-use super::prim;
-
-pub trait Select1<T: prim::Uint> {
+pub trait Select1<T: ::UnsignedInt> {
     /// Returns the position of 'c+1'th appearance of non-zero bit.
     fn select1(&self, c: T) -> Option<T>;
 }
-pub trait Select0<T: prim::Uint> {
+pub trait Select0<T: ::UnsignedInt> {
     /// Returns the position of 'c+1'th appearance of non-zero bit.
     fn select0(&self, c: T) -> Option<T>;
 }
 
-macro_rules! impl_Select_for_Bits {
+macro_rules! impl_Select {
     ( $( $pos:ty ),* ) => ($(
         impl Select1<$pos> for u64 {
             fn select1(&self, c: $pos) -> Option<$pos> {
-                let width = <u64 as prim::Uint>::WIDTH as u64;
+                let width = <u64 as ::UnsignedInt>::WIDTH as u64;
                 debug_assert!(c as u64 <= width);
                 let x = self;
                 let w = c as u64;
@@ -37,15 +35,9 @@ macro_rules! impl_Select_for_Bits {
                 (!self).select1(c)
             }
         }
-        impl Select1<$pos> for super::Bits {
-            fn select1(&self, c: $pos) -> Option<$pos> { (self.0).select1(c) }
-        }
-        impl Select0<$pos> for super::Bits {
-            fn select0(&self, c: $pos) -> Option<$pos> { (self.0).select0(c) }
-        }
     )*)
 }
-impl_Select_for_Bits!(usize, u64, u32, u16, u8);
+impl_Select!(usize, u64, u32, u16, u8);
 
 const X01: u64 = 0x0101010101010101;
 const X02: u64 = 0x2020202020202020;

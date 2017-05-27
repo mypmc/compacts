@@ -1,45 +1,4 @@
-pub use num::{Unsigned, PrimInt as Int, Bounded, One, Zero, NumCast as Cast};
-
-pub trait Uint: Unsigned + Int {
-    const WIDTH: usize;
-
-    fn min_bound() -> Self {
-        Self::min_value()
-    }
-    fn max_bound() -> Self {
-        Self::max_value()
-    }
-
-    fn succ(&self) -> Self {
-        *self + Self::one()
-    }
-    fn pred(&self) -> Self {
-        *self - Self::one()
-    }
-    fn incr(&mut self) {
-        *self = self.succ()
-    }
-    fn decr(&mut self) {
-        *self = self.pred()
-    }
-}
-
-macro_rules! impl_Uint {
-    ( $( ( $this:ty, $size:expr ) ),* ) => ($(
-        impl Uint for $this {
-            const WIDTH: usize = $size;
-        }
-    )*)
-}
-
-impl_Uint!((u64, 64), (u32, 32), (u16, 16), (u8, 8));
-#[cfg(target_pointer_width = "32")]
-impl_Uint!((usize, 32));
-#[cfg(target_pointer_width = "64")]
-impl_Uint!((usize, 64));
-
-pub static TRUE: &bool = &true;
-pub static FALSE: &bool = &false;
+use UnsignedInt;
 
 pub trait Split {
     type Parts;
