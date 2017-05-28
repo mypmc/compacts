@@ -39,22 +39,21 @@ fn similarity_coefficient() {
     let p = &(bit_vec!(size, range, rng));
     let q = &(bit_vec!(size, range, rng));
 
+    debug!("{:?}", Some(p.clone()).intersection(Some(q.clone())));
+
     let jaccard = {
-        let mut p1 = p.clone();
-        p1.intersection_with(q);
-        p1.count_ones() as f64 / (p.count_ones() + q.count_ones() + p1.count_ones()) as f64
+        let r = p.intersection(q);
+        r.count_ones() as f64 / (p.count_ones() + q.count_ones() - r.count_ones()) as f64
     };
 
     let dice = {
-        let mut p1 = p.clone();
-        p1.intersection_with(q);
-        (2f64 * (p1.count_ones() as f64)) / (p.count_ones() as f64 + q.count_ones() as f64)
+        let r = p.intersection(q);
+        (2.0 * (r.count_ones() as f64)) / (p.count_ones() + q.count_ones()) as f64
     };
 
     let simpson = {
-        let mut p1 = p.clone();
-        p1.intersection_with(q);
-        (p1.count_ones() as f64) / (p.count_ones() as f64).min(q.count_ones() as f64)
+        let r = p.intersection(q);
+        (r.count_ones() as f64) / (p.count_ones() as f64).min(q.count_ones() as f64)
     };
 
     info!("Jaccard = {:.5?}", jaccard);

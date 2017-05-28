@@ -1,3 +1,46 @@
+use ops::*;
+
+macro_rules! impl_op {
+    ( $op:ident, $fn_name:ident, $fn:ident ) => {
+        impl<'a, 'b> $op<super::BitVec<'b>> for super::BitVec<'a> {
+            type Output = super::BitVec<'a>;
+            fn $fn_name(self, that: super::BitVec<'b>) -> Self::Output {
+                let mut this = self;
+                this.$fn(&that);
+                this
+            }
+        }
+        impl<'r, 'a, 'b> $op<&'r super::BitVec<'b>> for super::BitVec<'a>
+            where 'b: 'r
+        {
+            type Output = super::BitVec<'a>;
+            fn $fn_name(self, that: &super::BitVec<'b>) -> Self::Output {
+                let mut this = self;
+                this.$fn(that);
+                this
+            }
+        }
+        impl<'r1, 'r2, 'a, 'b> $op<&'r2 super::BitVec<'b>> for &'r1 super::BitVec<'a>
+            where 'a: 'r1,
+        'b: 'r2
+        {
+            type Output = super::BitVec<'a>;
+            fn $fn_name(self, that: &super::BitVec<'b>) -> Self::Output {
+                let mut this = self.clone();
+                this.$fn(that);
+                this
+            }
+        }
+
+    }
+}
+impl_op!(Intersection, intersection, intersection_with);
+impl_op!(Union, union, union_with);
+impl_op!(Difference, difference, difference_with);
+impl_op!(SymmetricDifference,
+         symmetric_difference,
+         symmetric_difference_with);
+
 impl<'r, 'a, 'b> ::ops::IntersectionWith<&'r super::BitVec<'b>> for super::BitVec<'a>
     where 'a: 'r,
           'b: 'r

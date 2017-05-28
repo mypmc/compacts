@@ -1,4 +1,6 @@
 #![feature(associated_consts)]
+#![feature(inclusive_range)]
+#![feature(inclusive_range_syntax)]
 
 #[macro_use]
 extern crate karabiner;

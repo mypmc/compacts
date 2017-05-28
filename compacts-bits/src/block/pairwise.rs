@@ -80,7 +80,7 @@ impl<'a> IntersectionWith<&'a Block> for Block {
             }
 
             (&mut Vec64(ref mut b1), &Vec16(ref b2)) => {
-                let b3 = super::inner::Bucket::from(b2);
+                let b3 = super::inner::Seq64::from(b2);
                 bucket_foreach!(b1 & b3);
             }
 

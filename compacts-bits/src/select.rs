@@ -10,6 +10,7 @@ pub trait Select0<T: ::UnsignedInt> {
 macro_rules! impl_Select {
     ( $( $pos:ty ),* ) => ($(
         impl Select1<$pos> for u64 {
+            #[inline]
             fn select1(&self, c: $pos) -> Option<$pos> {
                 let width = <u64 as ::UnsignedInt>::WIDTH as u64;
                 debug_assert!(c as u64 <= width);
@@ -31,6 +32,7 @@ macro_rules! impl_Select {
             }
         }
         impl Select0<$pos> for u64 {
+            #[inline]
             fn select0(&self, c: $pos) -> Option<$pos> {
                 (!self).select1(c)
             }

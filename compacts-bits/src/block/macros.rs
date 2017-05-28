@@ -57,12 +57,12 @@ macro_rules! block {
         Vec16(b)
     }};
     ( MAX_VEC; $rng: expr ) => {{
-        let size = <Bucket<u16>>::THRESHOLD;
+        let size = inner::Seq16::THRESHOLD;
         let b = bucket!(u16; size as usize, $rng);
         Vec16(b)
     }};
     ( MIN_MAP; $rng: expr ) => {{
-        let size = <Bucket<u16>>::THRESHOLD + 1;
+        let size = inner::Seq16::THRESHOLD + 1;
         let b = bucket!(u64; size as usize, $rng);
         Vec64(b)
     }};
@@ -72,12 +72,12 @@ macro_rules! block {
         Vec64(b)
     }};
     ( VEC; $rng: expr ) => {{
-        let size = $rng.gen_range(0, <Bucket<u16>>::THRESHOLD);
+        let size = $rng.gen_range(0, inner::Seq16::THRESHOLD);
         let b = bucket!(u16; size as usize, $rng);
         Vec16(b)
     }};
     ( MAP; $rng: expr ) => {{
-        let size = $rng.gen_range(<Bucket<u16>>::THRESHOLD, Block::CAPACITY as usize);
+        let size = $rng.gen_range(inner::Seq16::THRESHOLD, Block::CAPACITY as usize);
         let b = bucket!(u64; size as usize, $rng);
         Vec64(b)
     }};
@@ -86,14 +86,14 @@ macro_rules! block {
 #[cfg(test)]
 macro_rules! bucket {
     ( u16; $size: expr, $rng: expr ) => {{
-        let mut bucket = Bucket::<u16>::with_capacity($size);
+        let mut bucket = inner::Seq16::with_capacity($size);
         for _ in 0..$size {
             bucket.insert($rng.gen());
         }
         bucket
     }};
     ( u64; $size: expr, $rng: expr ) => {{
-        let mut bucket = Bucket::<u64>::new();
+        let mut bucket = inner::Seq64::new();
         for _ in 0..$size {
             bucket.insert($rng.gen());
         }

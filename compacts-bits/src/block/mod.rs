@@ -2,8 +2,6 @@
 mod macros;
 
 mod inner;
-// mod rle16;
-
 mod rank_select;
 mod pairwise;
 
@@ -14,9 +12,9 @@ use std::fmt;
 
 #[derive(Clone)]
 pub enum Block {
-    Vec16(inner::Bucket<u16>),
-    Vec64(inner::Bucket<u64>),
-    // Rle16(rle16::Bucket),
+    Vec16(inner::Seq16),
+    Vec64(inner::Seq64),
+    // Rle16(inner::Rle16),
 }
 use self::Block::*;
 
@@ -32,7 +30,7 @@ impl fmt::Debug for Block {
 
 impl Default for Block {
     fn default() -> Self {
-        Vec16(inner::Bucket::<u16>::new())
+        Vec16(inner::Seq16::new())
     }
 }
 
@@ -48,9 +46,9 @@ impl Block {
 
     pub fn with_capacity(weight: usize) -> Self {
         if weight <= VEC16_THRESHOLD {
-            Vec16(inner::Bucket::with_capacity(weight))
+            Vec16(inner::Seq16::with_capacity(weight))
         } else {
-            Vec64(inner::Bucket::<u64>::new())
+            Vec64(inner::Seq64::new())
         }
     }
 
@@ -89,7 +87,7 @@ impl Block {
     pub fn as_sorted(&mut self) {
         if !self.is_sorted() {
             *self = match *self {
-                Vec64(ref b) => Vec16(inner::Bucket::<u16>::from(b)),
+                Vec64(ref b) => Vec16(inner::Seq16::from(b)),
                 _ => unreachable!(),
             };
         }
@@ -98,7 +96,7 @@ impl Block {
     pub fn as_mapped(&mut self) {
         if !self.is_mapped() {
             *self = match *self {
-                Vec16(ref b) => Vec64(inner::Bucket::<u64>::from(b)),
+                Vec16(ref b) => Vec64(inner::Seq64::from(b)),
                 _ => unreachable!(),
             }
         }
@@ -110,7 +108,7 @@ impl Block {
         if ones == 0 {
             self.clear();
         }
-        let max = <inner::Bucket<u16>>::THRESHOLD as u32;
+        let max = <inner::Seq16>::THRESHOLD as u32;
         match *self {
             ref mut this @ Vec16(..) if ones > max => this.as_mapped(),
             ref mut this @ Vec64(..) if ones <= max => this.as_sorted(),
