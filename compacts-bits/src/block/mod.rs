@@ -24,17 +24,19 @@ impl fmt::Debug for Block {
         match *self {
             Vec16(..) => write!(fmt, "Vec16({:.3})", lf),
             Vec64(..) => write!(fmt, "Vec64({:.3})", lf),
+            // Rle16(..) => write!(fmt, "Rle16({:.3})", lf),
         }
     }
 }
 
 impl Default for Block {
     fn default() -> Self {
-        Vec16(inner::Seq16::new())
+        // default is seq64.
+        Vec64(inner::Seq64::new())
     }
 }
 
-const VEC16_THRESHOLD: usize = 4096; // 4096 * 16 == 65536
+// const VEC16_THRESHOLD: usize = 4096; // 4096 * 16 == 65536
 // const VEC64_THRESHOLD: usize = 1024; // 1024 * 64 == 65536
 
 impl Block {
@@ -42,14 +44,6 @@ impl Block {
 
     pub fn new() -> Self {
         Block::default()
-    }
-
-    pub fn with_capacity(weight: usize) -> Self {
-        if weight <= VEC16_THRESHOLD {
-            Vec16(inner::Seq16::with_capacity(weight))
-        } else {
-            Vec64(inner::Seq64::new())
-        }
     }
 
     pub fn load_factor(&self) -> f64 {
@@ -60,6 +54,7 @@ impl Block {
         match *self {
             Vec16(ref data) => data.weight,
             Vec64(ref data) => data.weight,
+            // Rle16(ref data) => data.weight,
         }
     }
 
@@ -71,38 +66,32 @@ impl Block {
         *self = Self::default();
     }
 
-    pub fn is_sorted(&self) -> bool {
-        match *self {
-            Vec16(..) => true,
-            _ => false,
-        }
-    }
-    pub fn is_mapped(&self) -> bool {
-        match *self {
-            Vec64(..) => true,
-            _ => false,
+    pub fn as_vec16(&mut self) {
+        *self = match *self {
+            Vec64(ref b) => Vec16(inner::Seq16::from(b)),
+            // Rle16(ref b) => Vec16(inner::Seq16::from(b)),
+            _ => unreachable!(),
         }
     }
 
-    pub fn as_sorted(&mut self) {
-        if !self.is_sorted() {
-            *self = match *self {
-                Vec64(ref b) => Vec16(inner::Seq16::from(b)),
-                _ => unreachable!(),
-            };
+    pub fn as_vec64(&mut self) {
+        *self = match *self {
+            Vec16(ref b) => Vec64(inner::Seq64::from(b)),
+            // Rle16(ref b) => Vec64(inner::Seq64::from(b)),
+            _ => unreachable!(),
         }
     }
 
-    pub fn as_mapped(&mut self) {
-        if !self.is_mapped() {
-            *self = match *self {
-                Vec16(ref b) => Vec64(inner::Seq64::from(b)),
-                _ => unreachable!(),
-            }
-        }
-    }
+    // pub fn as_rle16(&mut self) {
+    //     *self = match *self {
+    //         Vec16(ref b) => Rle16(inner::Rle16::from(b)),
+    //         Vec64(ref b) => Rle16(inner::Rle16::from(b)),
+    //         _ => { /* ignore */ }
+    //     }
+    // }
 
     /// May convert to more efficient block representaions.
+    /// This may consume many time and resource. So, don't call too much.
     pub fn optimize(&mut self) {
         let ones = self.count_ones();
         if ones == 0 {
@@ -110,8 +99,8 @@ impl Block {
         }
         let max = <inner::Seq16>::THRESHOLD as u32;
         match *self {
-            ref mut this @ Vec16(..) if ones > max => this.as_mapped(),
-            ref mut this @ Vec64(..) if ones <= max => this.as_sorted(),
+            ref mut this @ Vec16(..) if ones > max => this.as_vec64(),
+            ref mut this @ Vec64(..) if ones <= max => this.as_vec16(),
             _ => { /* ignore */ }
         }
     }
@@ -160,8 +149,7 @@ impl ::std::iter::FromIterator<u16> for Block {
         where I: ::std::iter::IntoIterator<Item = u16>
     {
         let iter = iterable.into_iter();
-        let (min, maybe) = iter.size_hint();
-        let mut block = Block::with_capacity(if let Some(max) = maybe { max } else { min });
+        let mut block = Block::new();
         let ones = extend_by_u16!(&mut block, iter);
         debug_assert_eq!(ones, block.count_ones());
         block

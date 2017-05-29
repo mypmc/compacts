@@ -19,36 +19,6 @@ macro_rules! delegate {
     }}
 }
 
-macro_rules! bucket_foreach {
-    ( $this:ident & $that:expr ) => {{
-        bucket_foreach!($this, intersection_with, $that)
-    }};
-    ( $this:ident | $that:expr ) => {{
-        bucket_foreach!($this, union_with,  $that)
-    }};
-    ( $this:ident - $that:expr ) => {{
-        bucket_foreach!($this, difference_with, $that)
-    }};
-    ( $this:ident ^ $that:expr ) => {{
-        bucket_foreach!($this, symmetric_difference_with, $that)
-    }};
-
-    ( $this:ident, $method:ident, $that:expr ) => {{
-        assert_eq!($this.vector.len(), $that.vector.len());
-
-        let lhs = &mut $this.vector;
-        let rhs = &$that.vector;
-        $this.weight = {
-            let mut new = 0;
-            for (x, y) in lhs.iter_mut().zip(rhs.iter()) {
-                (*x).$method(*y);
-                new += x.count_ones();
-            }
-            new
-        };
-    }};
-}
-
 #[cfg(test)]
 macro_rules! block {
     ( MIN_VEC; $rng: expr ) => {{

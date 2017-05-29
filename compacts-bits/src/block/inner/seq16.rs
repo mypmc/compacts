@@ -123,3 +123,44 @@ impl<'a> FromIterator<&'a u16> for Seq16 {
         Seq16::from_iter(iter.cloned())
     }
 }
+
+impl<'a> ::ops::IntersectionWith<&'a Seq16> for Seq16 {
+    fn intersection_with(&mut self, seq16: &'a Seq16) {
+        *self = ::pairwise::intersection(self.iter(), seq16.iter()).collect()
+    }
+}
+
+impl<'a> ::ops::IntersectionWith<&'a Seq64> for Seq16 {
+    fn intersection_with(&mut self, seq64: &'a Seq64) {
+        let weight = {
+            let mut new = 0;
+            for i in 0..self.vector.len() {
+                if seq64.contains(self.vector[i]) {
+                    self.vector[new] = self.vector[i];
+                    new += 1;
+                }
+            }
+            new
+        };
+        self.vector.truncate(weight);
+        self.weight = weight as u32;
+    }
+}
+
+impl<'a> ::ops::UnionWith<&'a Seq16> for Seq16 {
+    fn union_with(&mut self, seq16: &'a Seq16) {
+        *self = ::pairwise::union(self.iter(), seq16.iter()).collect()
+    }
+}
+
+impl<'a> ::ops::DifferenceWith<&'a Seq16> for Seq16 {
+    fn difference_with(&mut self, seq16: &'a Seq16) {
+        *self = ::pairwise::difference(self.iter(), seq16.iter()).collect()
+    }
+}
+
+impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq16> for Seq16 {
+    fn symmetric_difference_with(&mut self, seq16: &'a Seq16) {
+        *self = ::pairwise::symmetric_difference(self.iter(), seq16.iter()).collect()
+    }
+}

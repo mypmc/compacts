@@ -5,6 +5,9 @@ authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 
 [dependencies]
 
+[dependencies.itertools]
+version = "0.6.0"
+
 [dependencies.compacts-prim]
 path = "../compacts-prim"
 

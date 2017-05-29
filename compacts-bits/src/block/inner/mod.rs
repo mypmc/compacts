@@ -2,6 +2,7 @@ mod seq16;
 mod seq64;
 mod rle16;
 mod iter;
+mod range;
 #[cfg(test)]
 mod tests;
 

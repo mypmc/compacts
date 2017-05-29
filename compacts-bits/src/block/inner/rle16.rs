@@ -1,5 +1,6 @@
 use std::ops::RangeInclusive;
-use super::{Seq16, Seq64, Rle16};
+use super::{range, Seq16, Seq64, Rle16};
+use self::range::Folding;
 use Select1;
 
 #[derive(Debug, Default, Clone)]
@@ -171,5 +172,41 @@ impl<'a> ::std::iter::FromIterator<&'a u16> for Rle16 {
             b.push_monotonic(bit);
         }
         b.build()
+    }
+}
+
+impl<'a, 'b> ::ops::Intersection<&'b Rle16> for &'a Rle16 {
+    type Output = Rle16;
+    fn intersection(self, rle16: &'b Rle16) -> Self::Output {
+        let chunks = Folding::new(&self.ranges, &rle16.ranges).intersection();
+        let (weight, ranges) = range::repair(chunks);
+        Rle16 { weight, ranges }
+    }
+}
+
+impl<'a, 'b> ::ops::Union<&'b Rle16> for &'a Rle16 {
+    type Output = Rle16;
+    fn union(self, rle16: &'b Rle16) -> Self::Output {
+        let chunks = Folding::new(&self.ranges, &rle16.ranges).union();
+        let (weight, ranges) = range::repair(chunks);
+        Rle16 { weight, ranges }
+    }
+}
+
+impl<'a, 'b> ::ops::Difference<&'b Rle16> for &'a Rle16 {
+    type Output = Rle16;
+    fn difference(self, rle16: &'b Rle16) -> Self::Output {
+        let chunks = Folding::new(&self.ranges, &rle16.ranges).difference();
+        let (weight, ranges) = range::repair(chunks);
+        Rle16 { weight, ranges }
+    }
+}
+
+impl<'a, 'b> ::ops::SymmetricDifference<&'b Rle16> for &'a Rle16 {
+    type Output = Rle16;
+    fn symmetric_difference(self, rle16: &'b Rle16) -> Self::Output {
+        let chunks = Folding::new(&self.ranges, &rle16.ranges).symmetric_difference();
+        let (weight, ranges) = range::repair(chunks);
+        Rle16 { weight, ranges }
     }
 }

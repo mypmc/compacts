@@ -101,7 +101,6 @@ impl<'r> From<&'r Rle16> for Seq64 {
         seq.weight = that.weight;
         for r in &that.ranges {
             seq.insert_range(r);
-            // unimplemented!()
         }
         seq
     }
@@ -124,5 +123,96 @@ impl FromIterator<u16> for Seq64 {
         let ones = extend_by_u16!(vec64, iter);
         debug_assert_eq!(ones, vec64.weight);
         vec64
+    }
+}
+
+impl<'a> ::ops::IntersectionWith<&'a Seq16> for Seq64 {
+    fn intersection_with(&mut self, seq16: &'a Seq16) {
+        let seq = Self::from(seq16);
+        self.intersection_with(&seq);
+    }
+}
+
+impl<'a> ::ops::IntersectionWith<&'a Seq64> for Seq64 {
+    fn intersection_with(&mut self, seq64: &'a Seq64) {
+        assert_eq!(self.vector.len(), seq64.vector.len());
+        self.weight = {
+            let mut new = 0;
+            for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
+                x.intersection_with(*y);
+                new += x.count_ones();
+            }
+            new
+        };
+    }
+}
+
+impl<'a> ::ops::UnionWith<&'a Seq16> for Seq64 {
+    fn union_with(&mut self, seq16: &'a Seq16) {
+        for &bit in &seq16.vector {
+            self.insert(bit);
+        }
+    }
+}
+
+impl<'a> ::ops::UnionWith<&'a Seq64> for Seq64 {
+    fn union_with(&mut self, seq64: &'a Seq64) {
+        assert_eq!(self.vector.len(), seq64.vector.len());
+        self.weight = {
+            let mut new = 0;
+            for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
+                x.union_with(*y);
+                new += x.count_ones();
+            }
+            new
+        };
+    }
+}
+
+impl<'a> ::ops::DifferenceWith<&'a Seq16> for Seq64 {
+    fn difference_with(&mut self, seq16: &'a Seq16) {
+        for &bit in &seq16.vector {
+            self.remove(bit);
+        }
+    }
+}
+
+impl<'a> ::ops::DifferenceWith<&'a Seq64> for Seq64 {
+    fn difference_with(&mut self, seq64: &'a Seq64) {
+        assert_eq!(self.vector.len(), seq64.vector.len());
+        self.weight = {
+            let mut new = 0;
+            for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
+                x.difference_with(*y);
+                new += x.count_ones();
+            }
+            new
+        };
+    }
+}
+
+impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq16> for Seq64 {
+    fn symmetric_difference_with(&mut self, seq16: &'a Seq16) {
+        for &bit in &seq16.vector {
+            if self.contains(bit) {
+                self.remove(bit);
+            } else {
+                self.insert(bit);
+            }
+        }
+    }
+}
+
+impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq64> for Seq64 {
+    fn symmetric_difference_with(&mut self, seq64: &'a Seq64) {
+        assert_eq!(self.vector.len(), seq64.vector.len());
+        self.weight = {
+            let mut new = 0;
+            for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
+                x.symmetric_difference_with(*y);
+                new += x.count_ones();
+            }
+            new
+        };
     }
 }

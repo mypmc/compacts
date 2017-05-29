@@ -1,9 +1,12 @@
 #![feature(associated_consts)]
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
+#![feature(conservative_impl_trait)]
 
 #[macro_use]
 extern crate karabiner;
+
+extern crate itertools;
 
 extern crate compacts_prim as prim;
 

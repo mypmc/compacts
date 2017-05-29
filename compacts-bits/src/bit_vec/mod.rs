@@ -118,7 +118,7 @@ impl<'a> BitVec<'a> {
         let (key, bit) = x.split();
         let mut b = self.blocks
             .entry(key)
-            .or_insert_with(|| eval!(Block::with_capacity(64)));
+            .or_insert_with(|| eval!(Block::new()));
         let ok = b.insert(bit);
         if ok {
             b.optimize();

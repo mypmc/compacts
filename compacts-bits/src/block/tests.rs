@@ -89,10 +89,11 @@ impl RankSelect {
     }
 
     fn new<R: Rng>(size: usize, rng: &mut R) -> Self {
-        let mut block = Block::with_capacity(size);
+        let mut block = Block::new();
         for _ in 0..size {
             block.insert(rng.gen());
         }
+        block.optimize();
         RankSelect { size, block }
     }
 
@@ -159,7 +160,6 @@ fn block_insert_remove() {
         assert!(b.contains(i));
         i += 1;
     }
-    assert!(b.is_sorted());
     assert_eq!(i as usize, inner::Seq16::THRESHOLD);
     assert_eq!(b.count_ones(), inner::Seq16::THRESHOLD as u32);
 
@@ -172,9 +172,9 @@ fn block_insert_remove() {
         i += 1;
     }
 
-    assert!(b.is_sorted() && b.count_ones() == Block::CAPACITY);
+    assert!(b.count_ones() == Block::CAPACITY);
     b.optimize();
-    assert!(b.is_mapped() && b.count_ones() == Block::CAPACITY);
+    assert!(b.count_ones() == Block::CAPACITY);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));
@@ -184,9 +184,9 @@ fn block_insert_remove() {
     assert!(b.remove(i), format!("remove({:?}) failed", i));
     assert_eq!(i, 0);
 
-    assert!(b.is_mapped() && b.count_ones() == 0);
+    assert!(b.count_ones() == 0);
     b.optimize();
-    assert!(b.is_sorted() && b.count_ones() == 0);
+    assert!(b.count_ones() == 0);
 }
 
 #[test]
