@@ -42,15 +42,17 @@ impl Seq64 {
         const WIDTH: usize = <u64 as ::UnsignedInt>::WIDTH;
         let s = range.start as usize;
         let e = range.end as usize;
+        let sw = s / WIDTH;
+        let ew = e / WIDTH;
 
         let (head, last) = range_of(s, e + 1);
 
-        if (s / WIDTH) == (e / WIDTH) {
-            self.vector[s / WIDTH] |= head & last;
+        if sw == ew {
+            self.vector[sw] |= head & last;
         } else {
-            self.vector[s / WIDTH] |= head;
-            self.vector[e / WIDTH] |= last;
-            for i in ((s / WIDTH) + 1)..(e / WIDTH) {
+            self.vector[sw] |= head;
+            self.vector[ew] |= last;
+            for i in (sw + 1)..ew {
                 self.vector[i] = !0;
             }
         }

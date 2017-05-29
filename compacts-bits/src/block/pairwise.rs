@@ -3,74 +3,34 @@ use ops::*;
 use super::Block;
 use super::Block::*;
 
-impl<'a, 'b> Intersection<&'b Block> for &'a Block {
-    type Output = Block;
-    fn intersection(self, that: &Block) -> Self::Output {
-        match (self, that) {
-            (this @ &Vec16(..), that @ &Vec16(..)) => {
-                let pair = ::pairwise::intersection(this.iter(), that.iter());
-                pair.collect()
-            }
-            (this, that) => {
-                let mut cloned = this.clone();
-                cloned.intersection_with(that);
-                cloned
+macro_rules! impl_op {
+    ( $op:ident, $fn:ident, $fn_with:ident ) => {
+        impl<'a, 'b> $op<&'b Block> for &'a Block {
+            type Output = Block;
+            fn $fn(self, that: &Block) -> Self::Output {
+                match (self, that) {
+                    (this @ &Vec16(..), that @ &Vec16(..)) => {
+                        let pair = ::pairwise::$fn(this.iter(), that.iter());
+                        pair.collect()
+                    }
+                    (this, that) => {
+                        let mut cloned = this.clone();
+                        cloned.$fn_with(that);
+                        cloned
+                    }
+                }
             }
         }
+
     }
 }
 
-impl<'a, 'b> Union<&'b Block> for &'a Block {
-    type Output = Block;
-    fn union(self, that: &Block) -> Self::Output {
-        match (self, that) {
-            (this @ &Vec16(..), that @ &Vec16(..)) => {
-                let pair = ::pairwise::union(this.iter(), that.iter());
-                pair.collect()
-            }
-            (this, that) => {
-                let mut cloned = this.clone();
-                cloned.union_with(that);
-                cloned
-            }
-        }
-    }
-}
-
-impl<'a, 'b> Difference<&'b Block> for &'a Block {
-    type Output = Block;
-    fn difference(self, that: &Block) -> Self::Output {
-        match (self, that) {
-            (this @ &Vec16(..), that @ &Vec16(..)) => {
-                let pair = ::pairwise::difference(this.iter(), that.iter());
-                pair.collect()
-            }
-
-            (this, that) => {
-                let mut cloned = this.clone();
-                cloned.difference_with(that);
-                cloned
-            }
-        }
-    }
-}
-
-impl<'a, 'b> SymmetricDifference<&'b Block> for &'a Block {
-    type Output = Block;
-    fn symmetric_difference(self, that: &Block) -> Self::Output {
-        match (self, that) {
-            (this @ &Vec16(..), that @ &Vec16(..)) => {
-                let pair = ::pairwise::symmetric_difference(this.iter(), that.iter());
-                pair.collect()
-            }
-            (this, that) => {
-                let mut cloned = this.clone();
-                cloned.symmetric_difference_with(that);
-                cloned
-            }
-        }
-    }
-}
+impl_op!(Intersection, intersection, intersection_with);
+impl_op!(Union, union, union_with);
+impl_op!(Difference, difference, difference_with);
+impl_op!(SymmetricDifference,
+         symmetric_difference,
+         symmetric_difference_with);
 
 impl<'a> IntersectionWith<&'a Block> for Block {
     fn intersection_with(&mut self, target: &Block) {

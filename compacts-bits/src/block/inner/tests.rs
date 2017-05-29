@@ -25,19 +25,50 @@ fn inner_rle16() {
                       23456...23456,
                       range3.clone()];
 
-    for i in range1 {
-        vec16.insert(i);
-        vec64.insert(i);
+    {
+        for i in range1 {
+            vec16.insert(i);
+            vec64.insert(i);
+        }
+
+        let runlen1 = vec16.count_rle();
+        let runlen2 = vec64.count_rle();
+        assert_eq!(runlen1, runlen2);
+        assert_eq!(1, runlen1);
     }
-    for i in range2 {
-        vec16.insert(i);
-        vec64.insert(i);
+
+    {
+        for i in range2 {
+            vec16.insert(i);
+            vec64.insert(i);
+        }
+
+        let runlen1 = vec16.count_rle();
+        let runlen2 = vec64.count_rle();
+        assert_eq!(runlen1, runlen2);
+        assert_eq!(2, runlen1);
     }
-    vec16.insert(23456);
-    vec64.insert(23456);
-    for i in range3 {
-        vec16.insert(i);
-        vec64.insert(i);
+
+    {
+        vec16.insert(23456);
+        vec64.insert(23456);
+
+        let runlen1 = vec16.count_rle();
+        let runlen2 = vec64.count_rle();
+        assert_eq!(runlen1, runlen2);
+        assert_eq!(3, runlen2);
+    }
+
+    {
+        for i in range3 {
+            vec16.insert(i);
+            vec64.insert(i);
+        }
+
+        let runlen1 = vec16.count_rle();
+        let runlen2 = vec64.count_rle();
+        assert_eq!(runlen1, runlen2);
+        assert_eq!(4, runlen1);
     }
 
     let rle16_1 = Rle16::from(&vec16);

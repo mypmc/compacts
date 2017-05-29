@@ -6,8 +6,42 @@ use Select1;
 struct Rle16Builder {
     state: Option<(u16, u16)>, // idx, len
 
+    runlen: usize,
     weight: u32,
     ranges: Vec<RangeInclusive<u16>>,
+}
+
+macro_rules! monotonic {
+    ( $this:ident, $x:expr, $do:ident ) => {
+        if let Some((idx, len)) = $this.state {
+            let prev = $this.last_idx(idx, len);
+            if $x <= prev {
+                // leaped or duplicated
+            } else if $x == prev + 1 {
+                $this.weight += 1;
+                $this.state = Some((idx, len + 1));
+            } else {
+                $this.$do(idx, len);
+                $this.reset($x);
+            }
+        } else {
+            $this.reset($x);
+        }
+    };
+}
+
+macro_rules! packed {
+    ( $this:ident, $i:expr, $x:expr, $do:ident ) => {
+        {
+            const WIDTH: u16 = <u64 as ::UnsignedInt>::WIDTH as u16;
+            let mut word = $x;
+            while let Some(pos) = word.select1(0) {
+                let bit = ($i as u16 * WIDTH) + pos;
+                $this.$do(bit);
+                word &= !(1 << pos);
+            }
+        }
+    };
 }
 
 impl Rle16Builder {
@@ -26,6 +60,15 @@ impl Rle16Builder {
         }
     }
 
+    fn run(&self) -> usize {
+        if self.state.is_some() {
+            self.runlen + 1
+        } else {
+            self.runlen
+        }
+    }
+
+
     fn reset(&mut self, x: u16) {
         self.weight += 1;
         self.state = Some((x, 1));
@@ -36,36 +79,59 @@ impl Rle16Builder {
     }
 
     // assume sorted values, ignore leaped or duplicated.
+    fn incr_monotonic(&mut self, x: u16) {
+        monotonic!(self, x, incr_rle);
+    }
+
+    fn incr_packed_bits(&mut self, i: usize, x: u64) {
+        packed!(self, i, x, incr_monotonic)
+    }
+
+    // assume sorted values, ignore leaped or duplicated.
     fn push_monotonic(&mut self, x: u16) {
-        if let Some((idx, len)) = self.state {
-            let prev = self.last_idx(idx, len);
-            if x <= prev {
-                // leaped or duplicated
-            } else if x == prev + 1 {
-                self.weight += 1;
-                self.state = Some((idx, len + 1));
-            } else {
-                self.push_rle(idx, len);
-                self.reset(x);
-            }
-        } else {
-            self.reset(x);
-        }
+        monotonic!(self, x, push_rle);
     }
 
     fn push_packed_bits(&mut self, i: usize, x: u64) {
-        const WIDTH: u16 = <u64 as ::UnsignedInt>::WIDTH as u16;
-        let mut word = x;
-        while let Some(pos) = word.select1(0) {
-            let bit = (i as u16 * WIDTH) + pos;
-            self.push_monotonic(bit);
-            word &= !(1 << pos);
-        }
+        packed!(self, i, x, push_monotonic)
     }
 
+    #[inline]
+    fn incr_rle(&mut self, _idx: u16, _len: u16) {
+        self.runlen += 1;
+    }
+
+    #[inline]
     fn push_rle(&mut self, idx: u16, len: u16) {
         let end = self.last_idx(idx, len);
         self.ranges.push(idx...end);
+    }
+}
+
+impl Seq16 {
+    pub fn count_rle(&self) -> usize {
+        let mut b = Rle16Builder::new();
+        for &bit in &self.vector {
+            b.incr_monotonic(bit);
+        }
+        b.run()
+    }
+}
+
+impl Seq64 {
+    pub fn count_rle(&self) -> usize {
+        let mut b = Rle16Builder::new();
+        let vec = self.vector.iter().enumerate().filter(|&(_, &v)| v != 0);
+        for (i, &bit) in vec {
+            b.incr_packed_bits(i, bit);
+        }
+        b.run()
+    }
+}
+
+impl Rle16 {
+    pub fn count_rle(&self) -> usize {
+        self.ranges.len()
     }
 }
 
