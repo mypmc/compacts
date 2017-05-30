@@ -1,4 +1,5 @@
 use std::ops::RangeInclusive;
+use std::mem;
 use super::{range, Seq16, Seq64, Rle16};
 use self::range::Folding;
 use Select1;
@@ -117,6 +118,10 @@ impl Seq16 {
         }
         b.run()
     }
+    pub fn mem_in_rle(&self) -> usize {
+        let run = self.count_rle();
+        run * mem::size_of::<RangeInclusive<u16>>() + mem::size_of::<u32>()
+    }
 }
 
 impl Seq64 {
@@ -128,11 +133,18 @@ impl Seq64 {
         }
         b.run()
     }
+    pub fn mem_in_rle(&self) -> usize {
+        let run = self.count_rle();
+        run * mem::size_of::<RangeInclusive<u16>>() + mem::size_of::<u32>()
+    }
 }
 
 impl Rle16 {
     pub fn count_rle(&self) -> usize {
         self.ranges.len()
+    }
+    pub fn mem_in_rle(&self) -> usize {
+        self.mem()
     }
 }
 

@@ -8,20 +8,73 @@ mod tests;
 
 pub use self::iter::*;
 
+use std::ops::RangeInclusive;
+use std::mem;
+use std::fmt;
+
 pub const CAPACITY: usize = 1 << 16;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Seq<T> {
     pub weight: u32,
     pub vector: Vec<T>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Rle<T> {
     pub weight: u32,
-    pub ranges: Vec<::std::ops::RangeInclusive<T>>,
+    pub ranges: Vec<RangeInclusive<T>>,
 }
 
 pub type Seq16 = Seq<u16>;
 pub type Seq64 = Seq<u64>;
 pub type Rle16 = Rle<u16>;
+
+impl<T> Seq<T> {
+    pub fn len(&self) -> usize {
+        self.vector.len()
+    }
+    pub fn count_ones(&self) -> u32 {
+        self.weight
+    }
+    pub fn mem(&self) -> usize {
+        mem::size_of::<u32>() + mem::size_of::<T>() * self.vector.len()
+    }
+}
+
+impl<T> Rle<T> {
+    pub fn len(&self) -> usize {
+        self.ranges.len()
+    }
+    pub fn count_ones(&self) -> u32 {
+        self.weight
+    }
+    pub fn mem(&self) -> usize {
+        mem::size_of::<u32>() + mem::size_of::<RangeInclusive<T>>() * self.ranges.len()
+    }
+}
+
+impl fmt::Debug for Seq<u16> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let m = self.mem();
+        let l = self.len();
+        let w = self.count_ones();
+        write!(f, "seq16({:5} bytes {:5} {:5})", m, l, w)
+    }
+}
+impl fmt::Debug for Seq<u64> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let m = self.mem();
+        let l = self.len();
+        let w = self.count_ones();
+        write!(f, "seq64({:4} bytes {:5} {:5})", m, l, w)
+    }
+}
+impl fmt::Debug for Rle<u16> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let m = self.mem();
+        let l = self.len();
+        let w = self.count_ones();
+        write!(f, "rle16({:5} bytes {:5} {:5})", m, l, w)
+    }
+}

@@ -10,10 +10,6 @@ impl Seq16 {
         Seq16 { weight, vector }
     }
 
-    pub fn len(&self) -> usize {
-        self.vector.len()
-    }
-
     pub fn with_capacity(cap: usize) -> Self {
         let bounded = if cap <= Self::THRESHOLD {
             cap
