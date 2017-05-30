@@ -1,7 +1,8 @@
 #[macro_use]
 mod macros;
 
-mod inner;
+pub mod inner;
+
 mod rank_select;
 mod pairwise;
 

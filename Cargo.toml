@@ -9,7 +9,11 @@ repository  = "https://github.com/feb29/compacts"
 description = "succinct data structures"
 
 [workspace]
-members = ["compacts-prim", "compacts-bits", "compacts-dict"]
+members = [
+  "compacts-prim",
+  "compacts-bits",
+  "compacts-dict"
+]
 
 [dependencies]
 compacts-prim = { path = "./compacts-prim" }

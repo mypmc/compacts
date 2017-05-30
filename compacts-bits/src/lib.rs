@@ -38,3 +38,10 @@ pub static TRUE: &bool = &true;
 pub static FALSE: &bool = &false;
 
 use prim::UnsignedInt;
+
+
+pub mod internal {
+    //! This module is exposed for testing purpose.
+
+    pub use super::block::inner::*;
+}
