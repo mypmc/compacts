@@ -2,7 +2,6 @@ use std::ops::RangeInclusive;
 use std::mem;
 use super::{range, Seq16, Seq64, Rle16};
 use self::range::Folding;
-use Select1;
 
 #[derive(Debug, Default, Clone)]
 struct Rle16Builder {
@@ -37,10 +36,12 @@ macro_rules! packed {
         {
             const WIDTH: u16 = <u64 as ::UnsignedInt>::WIDTH as u16;
             let mut word = $x;
-            while let Some(pos) = word.select1(0) {
-                let bit = ($i as u16 * WIDTH) + pos;
-                $this.$do(bit);
-                word &= !(1 << pos);
+            for pos in 0..WIDTH {
+                if word & (1 << pos) != 0 {
+                    let bit = ($i as u16 * WIDTH) + pos;
+                    $this.$do(bit);
+                    word &= !(1 << pos);
+                }
             }
         }
     };

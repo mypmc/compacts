@@ -21,10 +21,9 @@ use self::Block::*;
 
 impl fmt::Debug for Block {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let lf = self.load_factor();
         match *self {
-            Vec16(..) => write!(fmt, "Vec16({:.3})", lf),
-            Vec64(..) => write!(fmt, "Vec64({:.3})", lf),
+            Vec16(ref d) => write!(fmt, "{:?}", d),
+            Vec64(ref d) => write!(fmt, "{:?}", d),
             // Rle16(..) => write!(fmt, "Rle16({:.3})", lf),
         }
     }
@@ -45,22 +44,6 @@ impl Block {
 
     pub fn new() -> Self {
         Block::default()
-    }
-
-    pub fn load_factor(&self) -> f64 {
-        self.count_ones() as f64 / Self::CAPACITY as f64
-    }
-
-    pub fn count_ones(&self) -> u32 {
-        match *self {
-            Vec16(ref data) => data.weight,
-            Vec64(ref data) => data.weight,
-            // Rle16(ref data) => data.weight,
-        }
-    }
-
-    pub fn count_zeros(&self) -> u32 {
-        Self::CAPACITY - self.count_ones()
     }
 
     pub fn clear(&mut self) {
@@ -109,6 +92,10 @@ impl Block {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 impl Block {
+    pub fn count_ones(&self)  -> u32 {delegate!(ref self, count_ones)}
+    pub fn count_zeros(&self) -> u32 {delegate!(ref self, count_zeros)}
+    pub fn load_factor(&self) -> f64 {delegate!(ref self, load_factor)}
+
     pub fn contains(&self, bit: u16) -> bool   {delegate!(ref self, contains, bit)}
     pub fn insert(&mut self, bit: u16) -> bool {delegate!(ref mut self, insert, bit)}
     pub fn remove(&mut self, bit: u16) -> bool {delegate!(ref mut self, remove, bit)}

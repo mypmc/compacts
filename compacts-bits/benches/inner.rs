@@ -13,8 +13,8 @@ use test::Bencher;
 use compacts_bits::internal::*;
 use compacts_bits::ops::*;
 
-const SIZE: u16 = 5000;
-const END: u16 = 5000;
+const SIZE: u16 = 10000;
+const END: u16 = 30000;
 
 const BIAS1: u16 = 172;
 const BIAS2: u16 = 171;
@@ -67,32 +67,6 @@ macro_rules! init_biased_seq64 {
     ( $seq:ident, $bias:expr ) => {
         init_biased_seq64!($seq, $bias, 128);
     };
-}
-
-#[bench]
-fn random_vec16_mem_in_rle16(bench: &mut Bencher) {
-    init_random_seq16!(seq);
-    let seq = &seq;
-    bench.iter(|| seq.mem_in_rle());
-}
-#[bench]
-fn random_vec64_mem_in_rle16(bench: &mut Bencher) {
-    init_random_seq64!(seq);
-    let seq = &seq;
-    bench.iter(|| seq.mem_in_rle());
-}
-
-#[bench]
-fn biased_vec16_mem_in_rle16(bench: &mut Bencher) {
-    init_biased_seq64!(seq, BIAS1, 2000);
-    let seq = &Seq16::from(seq);
-    bench.iter(|| seq.mem_in_rle());
-}
-#[bench]
-fn biased_vec64_mem_in_rle16(bench: &mut Bencher) {
-    init_biased_seq64!(seq, BIAS1, 2000);
-    let seq = &seq;
-    bench.iter(|| seq.mem_in_rle());
 }
 
 #[bench]
@@ -193,7 +167,7 @@ macro_rules! rle16_biased_of {
     }
 }
 macro_rules! rle16_random_of {
-    ( $bench:expr ) => {
+    ( $bench:expr, ( $b1:expr, $s1:expr ) , ( $b2:expr, $s2:expr ) ) => {
         init_random_seq64!(seq1);
         let v1 = Rle16::from(seq1.clone());
         let v2 = Seq16::from(seq1.clone());
@@ -204,38 +178,78 @@ macro_rules! rle16_random_of {
 }
 
 #[bench]
-fn rle16_random_of(bench: &mut Bencher) {
-    rle16_random_of!(bench);
+fn mem_in_rle16_16(bench: &mut Bencher) {
+    init_random_seq16!(seq);
+    bench.iter(|| seq.mem_in_rle())
 }
 #[bench]
-fn rle16_ranges_64(bench: &mut Bencher) {
+fn mem_in_rle16_64(bench: &mut Bencher) {
+    init_random_seq64!(seq);
+    bench.iter(|| seq.mem_in_rle())
+}
+
+#[bench]
+fn compare_mem_biased_64(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 64), (BIAS2, 64));
 }
 #[bench]
-fn rle16_ranges_128(bench: &mut Bencher) {
+fn compare_mem_biased_128(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 128), (BIAS2, 128));
 }
 #[bench]
-fn rle16_ranges_256(bench: &mut Bencher) {
+fn compare_mem_biased_256(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 256), (BIAS2, 256));
 }
 #[bench]
-fn rle16_ranges_512(bench: &mut Bencher) {
+fn compare_mem_biased_512(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 512), (BIAS2, 512));
 }
 #[bench]
-fn rle16_ranges_1024(bench: &mut Bencher) {
+fn compare_mem_biased_1024(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 1024), (BIAS2, 1024));
 }
 #[bench]
-fn rle16_ranges_2048(bench: &mut Bencher) {
+fn compare_mem_biased_2048(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 2048), (BIAS2, 2048));
 }
 #[bench]
-fn rle16_ranges_4096(bench: &mut Bencher) {
+fn compare_mem_biased_4096(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 4096), (BIAS2, 4096));
 }
 #[bench]
-fn rle16_ranges_8192(bench: &mut Bencher) {
+fn compare_mem_biased_8192(bench: &mut Bencher) {
     rle16_biased_of!(bench, (BIAS1, 8192), (BIAS2, 8192));
+}
+
+#[bench]
+fn compare_mem_random_64(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 64), (BIAS2, 64));
+}
+#[bench]
+fn compare_mem_random_128(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 128), (BIAS2, 128));
+}
+#[bench]
+fn compare_mem_random_256(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 256), (BIAS2, 256));
+}
+#[bench]
+fn compare_mem_random_512(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 512), (BIAS2, 512));
+}
+#[bench]
+fn compare_mem_random_1024(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 1024), (BIAS2, 1024));
+}
+#[bench]
+fn compare_mem_random_2048(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 2048), (BIAS2, 2048));
+}
+#[bench]
+fn compare_mem_random_4096(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 4096), (BIAS2, 4096));
+}
+#[bench]
+fn compare_mem_random_8192(bench: &mut Bencher) {
+    rle16_random_of!(bench, (BIAS1, 8192), (BIAS2, 8192));
 }

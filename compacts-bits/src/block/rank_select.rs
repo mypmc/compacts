@@ -42,7 +42,7 @@ impl ::Select0<u16> for super::Block {
                         .map_or(false, |rank: u16| rank > c)
                 });
                 if pos < Self::CAPACITY {
-                    Some(Cast::from::<u32>(pos).expect("pos < capacity, cast must not failed"))
+                    Some(pos as u16)
                 } else {
                     None
                 }
@@ -87,8 +87,7 @@ impl ::Rank<u16> for super::Block {
 
             Vec64(ref b) => {
                 let q = i as usize / <u64 as ::UnsignedInt>::WIDTH;
-                let r = i as usize % <u64 as ::UnsignedInt>::WIDTH;
-                let r = r as u32;
+                let r = i as u32 % <u64 as ::UnsignedInt>::WIDTH as u32;
                 let vec = &b.vector;
                 vec.iter().take(q).fold(0, |acc, w| acc + w.count_ones()) +
                 vec.get(q).map_or(0, |w| w.rank1(r))
