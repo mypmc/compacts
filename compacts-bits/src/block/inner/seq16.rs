@@ -1,5 +1,7 @@
 use std::iter::FromIterator;
 use super::{Seq16, Seq64, Rle16};
+use prim::Cast;
+use Rank;
 
 impl Seq16 {
     pub const THRESHOLD: usize = 1 << 12; // 16 * (1 << 12) == 65536
@@ -19,10 +21,6 @@ impl Seq16 {
         let weight = 0;
         let vector = Vec::with_capacity(bounded);
         Seq16 { weight, vector }
-    }
-
-    pub fn shrink_to_fit(&mut self) {
-        self.vector.shrink_to_fit()
     }
 
     #[inline]
@@ -122,7 +120,8 @@ impl<'a> FromIterator<&'a u16> for Seq16 {
 
 impl<'a> ::ops::IntersectionWith<&'a Seq16> for Seq16 {
     fn intersection_with(&mut self, seq16: &'a Seq16) {
-        *self = ::pairwise::intersection(self.iter(), seq16.iter()).collect()
+        let data = ::pairwise::intersection(self.iter(), seq16.iter()).collect();
+        *self = data;
     }
 }
 
@@ -145,18 +144,74 @@ impl<'a> ::ops::IntersectionWith<&'a Seq64> for Seq16 {
 
 impl<'a> ::ops::UnionWith<&'a Seq16> for Seq16 {
     fn union_with(&mut self, seq16: &'a Seq16) {
-        *self = ::pairwise::union(self.iter(), seq16.iter()).collect()
+        let data = ::pairwise::union(self.iter(), seq16.iter()).collect();
+        *self = data;
     }
 }
 
 impl<'a> ::ops::DifferenceWith<&'a Seq16> for Seq16 {
     fn difference_with(&mut self, seq16: &'a Seq16) {
-        *self = ::pairwise::difference(self.iter(), seq16.iter()).collect()
+        let data = ::pairwise::difference(self.iter(), seq16.iter()).collect();
+        *self = data;
     }
 }
 
 impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq16> for Seq16 {
     fn symmetric_difference_with(&mut self, seq16: &'a Seq16) {
-        *self = ::pairwise::symmetric_difference(self.iter(), seq16.iter()).collect()
+        let data = ::pairwise::symmetric_difference(self.iter(), seq16.iter()).collect();
+        *self = data;
+    }
+}
+
+impl ::Rank<u16> for Seq16 {
+    type Weight = u32;
+
+    fn size(&self) -> Self::Weight {
+        super::CAPACITY as u32
+    }
+
+    fn rank1(&self, i: u16) -> Self::Weight {
+        if i as usize >= super::CAPACITY {
+            return self.count_ones();
+        }
+        let vec = &self.vector;
+        let k = ::prim::search(&(0..vec.len()), |j| vec.get(j).map_or(false, |&v| v >= i));
+        (if k < vec.len() && vec[k] == i {
+             k + 1 // found
+         } else {
+             k // not found
+         }) as Self::Weight
+    }
+}
+
+impl ::Select1<u16> for Seq16 {
+    fn select1(&self, c: u16) -> Option<u16> {
+        if c as u32 >= self.count_ones() {
+            return None;
+        }
+        self.vector.get(c as usize).cloned()
+    }
+}
+
+impl ::Select0<u16> for Seq16 {
+    fn select0(&self, c: u16) -> Option<u16> {
+        let c32 = c as u32;
+        if c32 >= self.count_zeros() {
+            return None;
+        }
+        let cap = super::CAPACITY as u32;
+        let pos = ::prim::search(&(0..cap), |i| {
+            Cast::from::<u32>(i)
+                .and_then(|conv: u16| {
+                              let rank = self.rank0(conv);
+                              Cast::from::<u32>(rank)
+                          })
+                .map_or(false, |rank: u16| rank > c)
+        });
+        if pos < super::CAPACITY as u32 {
+            Some(pos as u16)
+        } else {
+            None
+        }
     }
 }

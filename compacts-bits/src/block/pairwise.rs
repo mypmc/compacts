@@ -32,10 +32,19 @@ impl_op!(SymmetricDifference,
 impl<'a> IntersectionWith<&'a Block> for Block {
     fn intersection_with(&mut self, target: &Block) {
         match (self, target) {
-            (&mut Vec64(ref mut b1), &Vec16(ref b2)) => b1.intersection_with(b2),
-            (&mut Vec64(ref mut b1), &Vec64(ref b2)) => b1.intersection_with(b2),
             (&mut Vec16(ref mut b1), &Vec16(ref b2)) => b1.intersection_with(b2),
             (&mut Vec16(ref mut b1), &Vec64(ref b2)) => b1.intersection_with(b2),
+
+            (&mut Vec64(ref mut b1), &Vec16(ref b2)) => b1.intersection_with(b2),
+            (&mut Vec64(ref mut b1), &Vec64(ref b2)) => b1.intersection_with(b2),
+            (&mut Vec64(ref mut b1), &Rle16(ref b2)) => b1.intersection_with(b2),
+
+            (&mut Rle16(ref mut b1), &Rle16(ref b2)) => b1.intersection_with(b2),
+
+            (this, that) => {
+                this.as_vec64();
+                this.intersection_with(that);
+            }
         }
     }
 }
@@ -45,12 +54,21 @@ macro_rules! impl_mutop {
         impl<'a> $op<&'a Block> for Block {
             fn $fn_with(&mut self, target: &Block) {
                 match (self, target) {
-                    (&mut Vec64(ref mut b1), &Vec64(ref b2)) => b1.$fn_with(b2),
-                    (&mut Vec64(ref mut b1), &Vec16(ref b2)) => b1.$fn_with(b2),
                     (&mut Vec16(ref mut b1), &Vec16(ref b2)) => b1.$fn_with(b2),
                     (this @ &mut Vec16(..), that @ &Vec64(..)) => {
                         this.as_vec64();
                         this.$fn_with(that)
+                    }
+
+                    (&mut Vec64(ref mut b1), &Vec16(ref b2)) => b1.$fn_with(b2),
+                    (&mut Vec64(ref mut b1), &Vec64(ref b2)) => b1.$fn_with(b2),
+                    (&mut Vec64(ref mut b1), &Rle16(ref b2)) => b1.$fn_with(b2),
+
+                    (&mut Rle16(ref mut b1), &Rle16(ref b2)) => b1.$fn_with(b2),
+
+                    (this, that) => {
+                        this.as_vec64();
+                        this.intersection_with(that);
                     }
                 }
             }

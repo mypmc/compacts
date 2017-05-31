@@ -15,7 +15,7 @@ use std::fmt;
 pub enum Block {
     Vec16(inner::Seq16),
     Vec64(inner::Seq64),
-    // Rle16(inner::Rle16),
+    Rle16(inner::Rle16),
 }
 use self::Block::*;
 
@@ -24,14 +24,14 @@ impl fmt::Debug for Block {
         match *self {
             Vec16(ref d) => write!(fmt, "{:?}", d),
             Vec64(ref d) => write!(fmt, "{:?}", d),
-            // Rle16(..) => write!(fmt, "Rle16({:.3})", lf),
+            Rle16(ref d) => write!(fmt, "{:?}", d),
         }
     }
 }
 
 impl Default for Block {
     fn default() -> Self {
-        // default is seq64.
+        // default is Seq64.
         Vec64(inner::Seq64::new())
     }
 }
@@ -53,53 +53,71 @@ impl Block {
     pub fn as_vec16(&mut self) {
         *self = match *self {
             Vec64(ref b) => Vec16(inner::Seq16::from(b)),
-            // Rle16(ref b) => Vec16(inner::Seq16::from(b)),
-            _ => unreachable!(),
+            Rle16(ref b) => Vec16(inner::Seq16::from(b)),
+            _ => unreachable!("already vec16"),
         }
     }
 
     pub fn as_vec64(&mut self) {
         *self = match *self {
             Vec16(ref b) => Vec64(inner::Seq64::from(b)),
-            // Rle16(ref b) => Vec64(inner::Seq64::from(b)),
-            _ => unreachable!(),
+            Rle16(ref b) => Vec64(inner::Seq64::from(b)),
+            _ => unreachable!("already vec64"),
         }
     }
 
-    // pub fn as_rle16(&mut self) {
-    //     *self = match *self {
-    //         Vec16(ref b) => Rle16(inner::Rle16::from(b)),
-    //         Vec64(ref b) => Rle16(inner::Rle16::from(b)),
-    //         _ => { /* ignore */ }
-    //     }
-    // }
+    pub fn as_rle16(&mut self) {
+        *self = match *self {
+            Vec16(ref b) => Rle16(inner::Rle16::from(b)),
+            Vec64(ref b) => Rle16(inner::Rle16::from(b)),
+            _ => unreachable!("already rle16"),
+        }
+    }
 
     /// May convert to more efficient block representaions.
     /// This may consume many time and resource. So, don't call too much.
     pub fn optimize(&mut self) {
-        let ones = self.count_ones();
-        if ones == 0 {
+        if self.count_ones() == 0 {
             self.clear();
+            return;
         }
-        let max = <inner::Seq16>::THRESHOLD as u32;
-        match *self {
-            ref mut this @ Vec16(..) if ones > max => this.as_vec64(),
-            ref mut this @ Vec64(..) if ones <= max => this.as_vec16(),
-            _ => { /* ignore */ }
-        }
+
+        // FIXME
+        let new = match *self {
+            Vec16(ref mut old) => {
+                //
+                Rle16(inner::Rle16::from(&*old))
+            }
+            Vec64(ref mut old) => {
+                //
+                Rle16(inner::Rle16::from(&*old))
+            }
+            Rle16(ref mut old) => {
+                //
+                Vec64(inner::Seq64::from(&*old))
+            }
+        };
+        *self = new;
     }
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 impl Block {
-    pub fn count_ones(&self)  -> u32 {delegate!(ref self, count_ones)}
-    pub fn count_zeros(&self) -> u32 {delegate!(ref self, count_zeros)}
-    pub fn load_factor(&self) -> f64 {delegate!(ref self, load_factor)}
+    pub fn count_ones(&self)  -> u32 { delegate!(ref self, count_ones)  }
+    pub fn count_zeros(&self) -> u32 { delegate!(ref self, count_zeros) }
+    pub fn load_factor(&self) -> f64 { delegate!(ref self, load_factor) }
 
-    pub fn contains(&self, bit: u16) -> bool   {delegate!(ref self, contains, bit)}
-    pub fn insert(&mut self, bit: u16) -> bool {delegate!(ref mut self, insert, bit)}
-    pub fn remove(&mut self, bit: u16) -> bool {delegate!(ref mut self, remove, bit)}
-    pub fn iter(&self) -> inner::Iter          {delegate!(ref self, iter)}
+    pub fn contains(&self, bit: u16)   -> bool { delegate!(ref self, contains, bit)   }
+    pub fn insert(&mut self, bit: u16) -> bool { delegate!(ref mut self, insert, bit) }
+    pub fn remove(&mut self, bit: u16) -> bool { delegate!(ref mut self, remove, bit) }
+
+    pub fn iter(&self) -> inner::Iter {
+        match *self {
+            Vec16(ref data) => data.iter(),
+            Vec64(ref data) => data.iter(),
+            Rle16(ref data) => data.iter(),
+        }
+    }
 }
 
 impl ::std::ops::Index<u16> for Block {
@@ -113,14 +131,11 @@ impl<'a> ::std::iter::IntoIterator for &'a Block {
     type Item = <inner::Iter<'a> as Iterator>::Item;
     type IntoIter = inner::Iter<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        delegate!(ref self, iter)
-    }
-}
-impl ::std::iter::IntoIterator for Block {
-    type Item = <inner::IntoIter as Iterator>::Item;
-    type IntoIter = inner::IntoIter;
-    fn into_iter(self) -> Self::IntoIter {
-        delegate!(self, into_iter)
+        match *self {
+            Vec16(ref data) => data.iter(),
+            Vec64(ref data) => data.iter(),
+            Rle16(ref data) => data.iter(),
+        }
     }
 }
 

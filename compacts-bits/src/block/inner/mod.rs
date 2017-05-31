@@ -3,6 +3,7 @@ mod seq64;
 mod rle16;
 mod iter;
 mod range;
+
 #[cfg(test)]
 mod tests;
 
@@ -37,6 +38,9 @@ impl<T> Seq<T> {
     pub fn len(&self) -> usize {
         self.vector.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.weight == 0 && self.len() == 0
+    }
 
     pub fn count_ones(&self) -> u32 {
         self.weight
@@ -47,6 +51,10 @@ impl<T> Seq<T> {
 
     pub fn load_factor(&self) -> f64 {
         self.count_ones() as f64 / super::Block::CAPACITY as f64
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.vector.shrink_to_fit()
     }
 }
 
@@ -57,6 +65,9 @@ impl<T> Rle<T> {
     pub fn len(&self) -> usize {
         self.ranges.len()
     }
+    pub fn is_empty(&self) -> bool {
+        self.weight == 0 && self.len() == 0
+    }
 
     pub fn count_ones(&self) -> u32 {
         self.weight
@@ -67,6 +78,10 @@ impl<T> Rle<T> {
 
     pub fn load_factor(&self) -> f64 {
         self.count_ones() as f64 / super::Block::CAPACITY as f64
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.ranges.shrink_to_fit()
     }
 }
 

@@ -98,27 +98,13 @@ fn inner_rle16() {
     println!("Rle16 {:?}", rle16_2);
 }
 
-fn set_range(idx: u16, len: u16) -> (u64, u64) {
-    let end = len - 1 + idx;
-    let x = !0 << idx % 64;
-    let y = !0 >> ((-(end as i64)) as u64 % 64);
-    return (x, y);
-}
-
-#[test]
-fn test_set_range() {
-    let (x, y) = set_range(0, 1);
-    println!("{:064b}\n{:064b}\n{:064b}\n", x, y, x & y);
-    let (x, y) = set_range(0, 2);
-    println!("{:064b}\n{:064b}\n{:064b}\n", x, y, x & y);
-    let (x, y) = set_range(2, 10);
-    println!("{:064b}\n{:064b}\n{:064b}\n", x, y, x & y);
-}
-
-// _,_,_,3,4,5,_,_,_,_,10,11,12,13,__,__,__,__,18,19,__,__,...
-// _,_,2,3,_,_,6,7,8,9,__,__,12,13,14,__,__,17,18,19,20,21,...
+/*
+_,_,_,3,4,5,_,_,_,_,10,11,12,13,__,__,__,__,18,19,__,__,...
+_,_,2,3,_,_,6,7,8,9,__,__,12,13,14,__,__,17,18,19,20,21,...
+*/
 static LHS: &[::std::ops::RangeInclusive<u16>] = &[3...5, 10...13, 18...19, 100...120];
 static RHS: &[::std::ops::RangeInclusive<u16>] = &[2...3, 6...9, 12...14, 17...21, 200...1000];
+
 static NULL: &[::std::ops::RangeInclusive<u16>] = &[];
 static ONE1: &[::std::ops::RangeInclusive<u16>] = &[1...(u16::MAX / 2)]; // 1...32767
 static ONE2: &[::std::ops::RangeInclusive<u16>] = &[(u16::MAX / 2)...(u16::MAX - 1)]; // 32767...65534

@@ -17,7 +17,7 @@ const SIZE: u16 = 10000;
 const END: u16 = 30000;
 
 const BIAS1: u16 = 172;
-const BIAS2: u16 = 171;
+const BIAS2: u16 = 141;
 
 macro_rules! random {
     ( $repr:expr, $size:expr, $end:expr, $rng:expr ) => {{
@@ -117,7 +117,7 @@ fn random_rle16_intersection_rle16(bench: &mut Bencher) {
     init_random_seq64!(seq2);
     let rle1 = &Rle16::from(seq1);
     let rle2 = &Rle16::from(seq2);
-    bench.iter(|| rle1.intersection(&rle2))
+    bench.iter(|| rle1.intersection(rle2))
 }
 
 #[bench]
@@ -126,7 +126,7 @@ fn biased_rle16_intersection_rle16(bench: &mut Bencher) {
     init_biased_seq64!(seq2, BIAS2);
     let rle1 = &Rle16::from(seq1);
     let rle2 = &Rle16::from(seq2);
-    bench.iter(|| rle1.intersection(&rle2))
+    bench.iter(|| rle1.intersection(rle2))
 }
 
 #[bench]
@@ -135,7 +135,7 @@ fn biased_rle16_union_rle16(bench: &mut Bencher) {
     init_biased_seq64!(seq2, BIAS2);
     let rle1 = &Rle16::from(seq1);
     let rle2 = &Rle16::from(seq2);
-    bench.iter(|| rle1.union(&rle2))
+    bench.iter(|| rle1.union(rle2))
 }
 
 #[bench]
@@ -144,7 +144,7 @@ fn biased_rle16_difference_rle16(bench: &mut Bencher) {
     init_biased_seq64!(seq2, BIAS2);
     let rle1 = &Rle16::from(seq1);
     let rle2 = &Rle16::from(seq2);
-    bench.iter(|| rle1.difference(&rle2))
+    bench.iter(|| rle1.difference(rle2))
 }
 
 #[bench]
@@ -153,7 +153,7 @@ fn biased_rle16_symmetric_difference_rle16(bench: &mut Bencher) {
     init_biased_seq64!(seq2, BIAS2);
     let rle1 = &Rle16::from(seq1);
     let rle2 = &Rle16::from(seq2);
-    bench.iter(|| rle1.symmetric_difference(&rle2))
+    bench.iter(|| rle1.symmetric_difference(rle2))
 }
 
 macro_rules! rle16_biased_of {

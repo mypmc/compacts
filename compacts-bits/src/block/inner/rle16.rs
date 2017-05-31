@@ -1,11 +1,14 @@
 use std::ops::RangeInclusive;
 use std::mem;
-use super::{range, Seq16, Seq64, Rle16};
-use self::range::Folding;
+
+use ops::*;
+use super::{Seq16, Seq64, Rle16};
+use super::range::{self, Folding};
+use Rank;
 
 #[derive(Debug, Default, Clone)]
 struct Rle16Builder {
-    state: Option<(u16, u16)>, // idx, len
+    state: Option<(u16, u32)>, // idx, len
 
     runlen: usize,
     weight: u32,
@@ -77,8 +80,8 @@ impl Rle16Builder {
         self.state = Some((x, 1));
     }
 
-    fn last_idx(&self, idx: u16, len: u16) -> u16 {
-        len - 1 + idx
+    fn last_idx(&self, idx: u16, len: u32) -> u16 {
+        (len - 1) as u16 + idx
     }
 
     // assume sorted values, ignore leaped or duplicated.
@@ -100,12 +103,12 @@ impl Rle16Builder {
     }
 
     #[inline]
-    fn incr_rle(&mut self, _idx: u16, _len: u16) {
+    fn incr_rle(&mut self, _idx: u16, _len: u32) {
         self.runlen += 1;
     }
 
     #[inline]
-    fn push_rle(&mut self, idx: u16, len: u16) {
+    fn push_rle(&mut self, idx: u16, len: u32) {
         let end = self.last_idx(idx, len);
         self.ranges.push(idx...end);
     }
@@ -148,7 +151,7 @@ impl Rle16 {
         self.mem()
     }
 
-    fn search(&self, x: u16) -> Result<usize, usize> {
+    pub fn search(&self, x: u16) -> Result<usize, usize> {
         use std::cmp::Ordering;
         self.ranges
             .binary_search_by(|range| if range.start <= x && x <= range.end {
@@ -212,7 +215,7 @@ impl Rle16 {
                 self.ranges.insert(pos, x...x);
             }
         }
-        return true;
+        true
     }
 
     pub fn remove(&mut self, x: u16) -> bool {
@@ -243,7 +246,7 @@ impl Rle16 {
             }
             _ => unreachable!(),
         };
-        return true;
+        true
     }
 }
 
@@ -301,42 +304,120 @@ impl<'a> From<&'a [RangeInclusive<u16>]> for Rle16 {
     }
 }
 
-impl<'a, 'b> ::ops::Intersection<&'b Rle16> for &'a Rle16 {
-    type Output = Rle16;
-    fn intersection(self, rle16: &'b Rle16) -> Self::Output {
-        let chunks = Folding::new(&self.ranges, &rle16.ranges).intersection();
-        let (weight, ranges) = range::repair(chunks);
-        Rle16 { weight, ranges }
+macro_rules! impl_op {
+    ( $op:ident, $fn:ident ) => {
+        impl<'a, 'b> $op<&'b Rle16> for &'a Rle16 {
+            type Output = Rle16;
+            fn $fn(self, rle16: &'b Rle16) -> Self::Output {
+                let chunks = Folding::new(&self.ranges, &rle16.ranges).$fn();
+                let (weight, ranges) = range::repair(chunks);
+                Rle16 { weight, ranges }
+            }
+        }
+    }
+}
+impl_op!(Intersection, intersection);
+impl_op!(Union, union);
+impl_op!(Difference, difference);
+impl_op!(SymmetricDifference, symmetric_difference);
+
+macro_rules! impl_withop {
+    ( $op:ident, $fn_with:ident, $fn:ident ) => {
+        impl<'a> $op<&'a Rle16> for Rle16 {
+            fn $fn_with(&mut self, rle16: &'a Rle16) {
+                *self = (&*self).$fn(rle16);
+            }
+        }
+    }
+}
+impl_withop!(IntersectionWith, intersection_with, intersection);
+impl_withop!(UnionWith, union_with, union);
+impl_withop!(DifferenceWith, difference_with, difference);
+impl_withop!(SymmetricDifferenceWith,
+             symmetric_difference_with,
+             symmetric_difference);
+
+impl ::Rank<u16> for Rle16 {
+    type Weight = u32;
+
+    fn size(&self) -> Self::Weight {
+        super::CAPACITY as u32
+    }
+
+    fn rank1(&self, i: u16) -> Self::Weight {
+        if i as usize >= super::CAPACITY {
+            return self.count_ones();
+        }
+        match self.search(i) {
+            Err(n) => {
+                if n >= self.ranges.len() {
+                    self.weight
+                } else {
+                    self.ranges
+                        .iter()
+                        .map(|r| (r.end - r.start) as u32 + 1)
+                        .take(n)
+                        .sum::<u32>()
+                }
+            }
+            Ok(n) => {
+                let r = self.ranges
+                    .iter()
+                    .map(|r| (r.end - r.start) as u32 + 1)
+                    .take(n)
+                    .sum::<u32>();
+                (i as u32 - (self.ranges[n].start as u32)) + r + 1
+            }
+        }
     }
 }
 
-impl<'a, 'b> ::ops::Union<&'b Rle16> for &'a Rle16 {
-    type Output = Rle16;
-    fn union(self, rle16: &'b Rle16) -> Self::Output {
-        let chunks = Folding::new(&self.ranges, &rle16.ranges).union();
-        let (weight, ranges) = range::repair(chunks);
-        Rle16 { weight, ranges }
+impl ::Select1<u16> for Rle16 {
+    fn select1(&self, c: u16) -> Option<u16> {
+        if c as u32 >= self.count_ones() {
+            return None;
+        }
+        let mut curr = 0;
+        for range in &self.ranges {
+            let next = curr + (range.end - range.start + 1);
+            if next > c {
+                return Some(range.start - curr + c);
+            }
+            curr = next;
+        }
+        None
     }
 }
 
-impl<'a, 'b> ::ops::Difference<&'b Rle16> for &'a Rle16 {
-    type Output = Rle16;
-    fn difference(self, rle16: &'b Rle16) -> Self::Output {
-        let chunks = Folding::new(&self.ranges, &rle16.ranges).difference();
-        let (weight, ranges) = range::repair(chunks);
-        Rle16 { weight, ranges }
+impl ::Select0<u16> for Rle16 {
+    fn select0(&self, c: u16) -> Option<u16> {
+        let c32 = c as u32;
+        if c as u32 >= self.count_zeros() {
+            return None;
+        }
+
+        let pos = self.ranges
+            .binary_search_by(|ri| self.rank0(ri.start).cmp(&c32));
+
+        // let idx = match pos {
+        //     Ok(i) => i,
+        //     Err(i) => i - 1,
+        // };
+        // let c0 = self.rank1(self.ranges[idx].end);
+        // Some(c + c0 as u16);
+
+        match pos {
+            Err(pos) => {
+                let c0 = self.rank1(self.ranges[pos - 1].end);
+                Some(c + c0 as u16)
+            }
+            Ok(pos) => {
+                let c0 = self.rank1(self.ranges[pos].end);
+                Some(c + c0 as u16)
+            }
+        }
     }
 }
-
-impl<'a, 'b> ::ops::SymmetricDifference<&'b Rle16> for &'a Rle16 {
-    type Output = Rle16;
-    fn symmetric_difference(self, rle16: &'b Rle16) -> Self::Output {
-        let chunks = Folding::new(&self.ranges, &rle16.ranges).symmetric_difference();
-        let (weight, ranges) = range::repair(chunks);
-        Rle16 { weight, ranges }
-    }
-}
-
 
 #[cfg(test)]
 mod rle16_tests {
@@ -402,9 +483,13 @@ mod rle16_tests {
         assert_eq!(rle.ranges, &[1...10]);
 
         let max = ::std::u16::MAX;
-        rle.insert(max);
+        rle.insert(max - 1);
         assert_eq!(rle.count_ones(), 11);
-        assert_eq!(rle.ranges, &[1...10, max...max]);
+        assert_eq!(rle.ranges, &[1...10, (max - 1)...(max - 1)]);
+
+        rle.insert(max);
+        assert_eq!(rle.count_ones(), 12);
+        assert_eq!(rle.ranges, &[1...10, (max - 1)...max]);
     }
 
     #[test]

@@ -14,9 +14,9 @@ pub enum BelongTo<T: ::UnsignedInt> {
 impl<T: ::UnsignedInt> BelongTo<T> {
     pub fn range(&self) -> Range<T> {
         match *self {
-            BelongTo::None(ref r) => r.start..r.end,
-            BelongTo::Lhs(ref r) => r.start..r.end,
-            BelongTo::Rhs(ref r) => r.start..r.end,
+            BelongTo::None(ref r) |
+            BelongTo::Lhs(ref r) |
+            BelongTo::Rhs(ref r) |
             BelongTo::Both(ref r) => r.start..r.end,
         }
     }
@@ -61,10 +61,7 @@ use self::Boundary::*;
 impl<T: ::UnsignedInt> Boundary<T> {
     fn value(&self) -> T {
         match *self {
-            Lhs(Open(i)) => i,
-            Lhs(Close(i)) => i,
-            Rhs(Open(i)) => i,
-            Rhs(Close(i)) => i,
+            Lhs(Open(i)) | Lhs(Close(i)) | Rhs(Open(i)) | Rhs(Close(i)) => i,
         }
     }
 }
@@ -114,33 +111,32 @@ impl<'r> Folding<'r, u32> {
     }
 
     pub fn intersection(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter(|belong| match belong {
-                        &BelongTo::Both(_) => true,
+        self.filter(|belong| match *belong {
+                        BelongTo::Both(_) => true,
                         _ => false,
                     })
             .map(|b| b.range())
     }
 
     pub fn union(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter(|be| match be {
-                        &BelongTo::None(_) => false,
+        self.filter(|be| match *be {
+                        BelongTo::None(_) => false,
                         _ => true,
                     })
             .map(|be| be.range())
     }
 
     pub fn difference(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter(|be| match be {
-                        &BelongTo::Lhs(_) => true,
+        self.filter(|be| match *be {
+                        BelongTo::Lhs(_) => true,
                         _ => false,
                     })
             .map(|be| be.range())
     }
 
     pub fn symmetric_difference(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter(|be| match be {
-                        &BelongTo::Lhs(_) |
-                        &BelongTo::Rhs(_) => true,
+        self.filter(|be| match *be {
+                        BelongTo::Lhs(_) | BelongTo::Rhs(_) => true,
                         _ => false,
                     })
             .map(|be| be.range())
@@ -162,7 +158,7 @@ pub fn repair<I>(folded: I) -> (u32, Vec<RangeInclusive<u16>>)
         let start = curr.start as u16;
         let end = (curr.end - 1) as u16;
 
-        if vec.len() == 0 {
+        if vec.is_empty() {
             vec.push(start...end);
             continue;
         }
@@ -280,20 +276,20 @@ fn merge<'a, 'b, 'r>(lhs: &'a [RangeInclusive<u16>],
 {
     let lhs_iter = lhs.iter()
         .map(to_halfopen)
-        .flat_map(|range| enqueue(range, Side::Lhs));
+        .flat_map(|range| enqueue(&range, &Side::Lhs));
 
     let rhs_iter = rhs.iter()
         .map(to_halfopen)
-        .flat_map(|range| enqueue(range, Side::Rhs));
+        .flat_map(|range| enqueue(&range, &Side::Rhs));
 
     itertools::merge(lhs_iter, rhs_iter)
 }
 
-fn enqueue<T>(range: Range<T>, side: Side) -> VecDeque<Boundary<T>>
+fn enqueue<T>(range: &Range<T>, side: &Side) -> VecDeque<Boundary<T>>
     where T: ::UnsignedInt
 {
     let mut queue = VecDeque::new();
-    match side {
+    match *side {
         Side::Lhs => {
             queue.push_back(Boundary::Lhs(Open(range.start)));
             queue.push_back(Boundary::Lhs(Close(range.end)));

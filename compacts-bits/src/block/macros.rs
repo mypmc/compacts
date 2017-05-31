@@ -1,20 +1,23 @@
 macro_rules! delegate {
     ( $this: ident, $method: ident $(, $args: expr )* ) => {{
         match $this {
-            Vec16(vec) => vec.$method( $( $args ),* ),
-            Vec64(vec) => vec.$method( $( $args ),* ),
+            Vec16(data) => data.$method( $( $args ),* ),
+            Vec64(data) => data.$method( $( $args ),* ),
+            Rle16(data) => data.$method( $( $args ),* ),
         }
     }};
     ( ref $this: ident, $method: ident $(, $args: expr )* ) => {{
         match *$this {
-            Vec16(ref vec) => vec.$method( $( $args ),* ),
-            Vec64(ref vec) => vec.$method( $( $args ),* ),
+            Vec16(ref data) => data.$method( $( $args ),* ),
+            Vec64(ref data) => data.$method( $( $args ),* ),
+            Rle16(ref data) => data.$method( $( $args ),* ),
         }
     }};
     ( ref mut $this: ident, $method: ident $(, $args: expr )* ) => {{
         match *$this {
-            Vec16(ref mut vec) => vec.$method( $( $args ),* ),
-            Vec64(ref mut vec) => vec.$method( $( $args ),* ),
+            Vec16(ref mut data) => data.$method( $( $args ),* ),
+            Vec64(ref mut data) => data.$method( $( $args ),* ),
+            Rle16(ref mut data) => data.$method( $( $args ),* ),
         }
     }}
 }

@@ -1,11 +1,11 @@
-use prim::UnsignedInt;
+use prim::{UnsignedInt, Zero};
 
 pub trait Rank<T: ::UnsignedInt> {
     // `From<T>` constrain that Weight should be able to construct from T safely,
     // because Weight may hold a value that is greater than or equal to `T::max_value() + 1`.
 
     /// Hamming Weight or Population Count.
-    type Weight: ::UnsignedInt;
+    type Weight: ::UnsignedInt + ::std::fmt::Debug;
 
     fn size(&self) -> Self::Weight
         where Self::Weight: From<T>
@@ -18,8 +18,13 @@ pub trait Rank<T: ::UnsignedInt> {
     fn rank1(&self, i: T) -> Self::Weight
         where Self::Weight: From<T>
     {
-        // i+1 may overflow, so first convert to Self::Weight
-        Self::Weight::from(i).succ() - self.rank0(i)
+        if i == T::zero() {
+            Self::Weight::zero()
+        } else {
+            let rank0 = self.rank0(i);
+            // i+1 may overflow, so first convert to Self::Weight
+            Self::Weight::from(i).succ() - rank0
+        }
     }
 
     /// Returns occurences of zero bit in `0...i`.
@@ -27,7 +32,11 @@ pub trait Rank<T: ::UnsignedInt> {
     fn rank0(&self, i: T) -> Self::Weight
         where Self::Weight: From<T>
     {
-        Self::Weight::from(i).succ() - self.rank1(i)
+        if i == T::zero() {
+            return Self::Weight::zero();
+        }
+        let rank1 = self.rank1(i);
+        Self::Weight::from(i).succ() - rank1
     }
 }
 
