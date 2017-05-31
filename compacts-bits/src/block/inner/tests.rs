@@ -75,6 +75,16 @@ fn inner_rle16() {
     let rle16_1 = Rle16::from(&vec16);
     let rle16_2 = Rle16::from(&vec64);
 
+    assert!(rle16_1.contains(0));
+    assert!(rle16_1.contains(12345));
+    assert!(rle16_1.contains(23456));
+    assert!(rle16_1.contains(u16::MAX));
+
+    assert!(!rle16_1.contains(7000));
+    assert!(!rle16_1.contains(13000));
+    assert!(!rle16_1.contains(23455));
+    assert!(!rle16_1.contains(23457));
+
     assert_eq!(rle16_1.weight, rle16_2.weight);
     assert_eq!(rle16_1.weight, vec16.weight);
     assert_eq!(rle16_1.weight, vec64.weight);

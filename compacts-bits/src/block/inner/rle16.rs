@@ -147,6 +147,104 @@ impl Rle16 {
     pub fn mem_in_rle(&self) -> usize {
         self.mem()
     }
+
+    fn search(&self, x: u16) -> Result<usize, usize> {
+        use std::cmp::Ordering;
+        self.ranges
+            .binary_search_by(|range| if range.start <= x && x <= range.end {
+                                  Ordering::Equal
+                              } else if x < range.start {
+                                  Ordering::Greater
+                              } else if range.end < x {
+                                  Ordering::Less
+                              } else {
+                                  unreachable!()
+                              })
+    }
+
+    fn index_to_insert(&self, x: u16) -> Option<usize> {
+        self.search(x).err()
+    }
+    fn index_to_remove(&self, x: u16) -> Option<usize> {
+        self.search(x).ok()
+    }
+
+    pub fn contains(&self, x: u16) -> bool {
+        self.search(x).is_ok()
+    }
+
+    pub fn insert(&mut self, x: u16) -> bool {
+        let pos = self.index_to_insert(x);
+        if pos.is_none() {
+            return false;
+        }
+        let pos = pos.unwrap();
+        self.weight += 1;
+
+        let lhs = if pos > 0 && pos <= self.ranges.len() {
+            Some(self.ranges[pos - 1].end)
+        } else {
+            None
+        };
+        let rhs = if pos < (::std::u16::MAX as usize) && pos < self.ranges.len() {
+            Some(self.ranges[pos].start)
+        } else {
+            None
+        };
+
+        match (lhs, rhs) {
+            (None, Some(rhs)) if x == rhs - 1 => {
+                self.ranges[pos] = (self.ranges[pos].start - 1)...self.ranges[pos].end;
+            }
+            (Some(lhs), Some(rhs)) if lhs + 1 == x && x == rhs - 1 => {
+                let i = pos - 1;
+                self.ranges[i] = self.ranges[i].start...self.ranges[pos].end;
+                self.ranges.remove(pos);
+            }
+            (Some(lhs), _) if lhs + 1 == x => {
+                let i = pos - 1;
+                self.ranges[i] = self.ranges[i].start...(self.ranges[i].end + 1);
+            }
+            (_, Some(rhs)) if x == rhs - 1 => {
+                self.ranges[pos] = (self.ranges[pos].start - 1)...self.ranges[pos].end;
+            }
+            _ => {
+                self.ranges.insert(pos, x...x);
+            }
+        }
+        return true;
+    }
+
+    pub fn remove(&mut self, x: u16) -> bool {
+        let pos = self.index_to_remove(x);
+        if pos.is_none() {
+            return false;
+        }
+        let pos = pos.unwrap();
+        self.weight -= 1;
+
+        match (self.ranges[pos].start, self.ranges[pos].end) {
+            (i, j) if i == j => {
+                self.ranges.remove(pos);
+            }
+            (i, j) if i < x && x < j => {
+                self.ranges.remove(pos);
+                let idx = pos as u16;
+                self.ranges.insert(pos, i...(idx - 1));
+                self.ranges.insert(pos + 1, (idx + 1)...j);
+            }
+            (i, j) if i == x => {
+                self.ranges[pos] = (i + 1)...j;
+                debug_assert!((i + 1) <= j);
+            }
+            (i, j) if j == x => {
+                self.ranges[pos] = i...(j - 1);
+                debug_assert!(i <= (j - 1));
+            }
+            _ => unreachable!(),
+        };
+        return true;
+    }
 }
 
 impl From<Seq16> for Rle16 {
@@ -188,6 +286,21 @@ impl<'a> ::std::iter::FromIterator<&'a u16> for Rle16 {
     }
 }
 
+impl<'a> From<&'a [RangeInclusive<u16>]> for Rle16 {
+    fn from(slice: &'a [RangeInclusive<u16>]) -> Self {
+        let mut rle16 = Rle16 {
+            weight: 0,
+            ranges: Vec::with_capacity(slice.len()),
+        };
+        for r in slice {
+            let w = (r.end - r.start) + 1;
+            rle16.weight += w as u32;
+            rle16.ranges.push(r.start...r.end);
+        }
+        rle16
+    }
+}
+
 impl<'a, 'b> ::ops::Intersection<&'b Rle16> for &'a Rle16 {
     type Output = Rle16;
     fn intersection(self, rle16: &'b Rle16) -> Self::Output {
@@ -221,5 +334,101 @@ impl<'a, 'b> ::ops::SymmetricDifference<&'b Rle16> for &'a Rle16 {
         let chunks = Folding::new(&self.ranges, &rle16.ranges).symmetric_difference();
         let (weight, ranges) = range::repair(chunks);
         Rle16 { weight, ranges }
+    }
+}
+
+
+#[cfg(test)]
+mod rle16_tests {
+    use super::*;
+
+    static RLE: &[::std::ops::RangeInclusive<u16>] = &[1...1, 3...5, 10...13, 18...19, 100...120];
+
+    #[test]
+    fn index_to_insert() {
+        let rle = Rle16::from(RLE);
+        assert_eq!(rle.index_to_insert(0), Some(0));
+        assert_eq!(rle.index_to_insert(2), Some(1));
+        assert_eq!(rle.index_to_insert(3), None);
+        assert_eq!(rle.index_to_insert(5), None);
+        assert_eq!(rle.index_to_insert(6), Some(2));
+        assert_eq!(rle.index_to_insert(8), Some(2));
+        assert_eq!(rle.index_to_insert(16), Some(3));
+        assert_eq!(rle.index_to_insert(80), Some(4));
+        assert_eq!(rle.index_to_insert(200), Some(5));
+    }
+
+    #[test]
+    fn index_to_remove() {
+        let rle = Rle16::from(RLE);
+        assert_eq!(rle.index_to_remove(0), None);
+        assert_eq!(rle.index_to_remove(2), None);
+        assert_eq!(rle.index_to_remove(3), Some(1));
+        assert_eq!(rle.index_to_remove(5), Some(1));
+        assert_eq!(rle.index_to_remove(6), None);
+        assert_eq!(rle.index_to_remove(8), None);
+        assert_eq!(rle.index_to_remove(18), Some(3));
+        assert_eq!(rle.index_to_remove(110), Some(4));
+        assert_eq!(rle.index_to_remove(200), None);
+    }
+
+    #[test]
+    fn rle16_insert() {
+        let slice = [1...1, 3...5];
+        let mut rle = Rle16::from(&slice[..]);
+
+        rle.insert(2);
+        assert_eq!(rle.count_ones(), 5);
+        assert_eq!(rle.ranges, &[1...5]);
+
+        rle.insert(8);
+        assert_eq!(rle.count_ones(), 6);
+        assert_eq!(rle.ranges, &[1...5, 8...8]);
+
+        rle.insert(10);
+        assert_eq!(rle.count_ones(), 7);
+        assert_eq!(rle.ranges, &[1...5, 8...8, 10...10]);
+
+        rle.insert(7);
+        assert_eq!(rle.count_ones(), 8);
+        assert_eq!(rle.ranges, &[1...5, 7...8, 10...10]);
+
+        rle.insert(9);
+        assert_eq!(rle.count_ones(), 9);
+        assert_eq!(rle.ranges, &[1...5, 7...10]);
+
+        rle.insert(6);
+        assert_eq!(rle.count_ones(), 10);
+        assert_eq!(rle.ranges, &[1...10]);
+
+        let max = ::std::u16::MAX;
+        rle.insert(max);
+        assert_eq!(rle.count_ones(), 11);
+        assert_eq!(rle.ranges, &[1...10, max...max]);
+    }
+
+    #[test]
+    fn rle16_remove() {
+        let slice = [1...1, 3...5];
+        let mut rle = Rle16::from(&slice[..]);
+        assert_eq!(rle.count_ones(), 4);
+        rle.remove(0);
+        assert_eq!(rle.count_ones(), 4);
+        assert_eq!(rle.ranges, &[1...1, 3...5]);
+        rle.remove(1);
+        assert_eq!(rle.count_ones(), 3);
+        assert_eq!(rle.ranges, &[3...5]);
+        rle.remove(2);
+        assert_eq!(rle.count_ones(), 3);
+        assert_eq!(rle.ranges, &[3...5]);
+        rle.remove(5);
+        assert_eq!(rle.count_ones(), 2);
+        assert_eq!(rle.ranges, &[3...4]);
+        rle.remove(3);
+        assert_eq!(rle.count_ones(), 1);
+        assert_eq!(rle.ranges, &[4...4]);
+        rle.remove(4);
+        assert_eq!(rle.count_ones(), 0);
+        assert_eq!(rle.ranges, &[]);
     }
 }
