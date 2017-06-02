@@ -91,9 +91,14 @@ impl RankSelect {
     fn new<R: Rng>(size: usize, rng: &mut R) -> Self {
         let mut block = Block::new();
         for _ in 0..size {
-            block.insert(rng.gen());
+            //block.insert(rng.gen_range(0, ::std::u16::MAX));
+            block.insert(rng.gen_range(0, (size - 1) as u16));
         }
+
+        println!("({:>5?}) before {:?} {:?}", size, block, block.mem());
         block.optimize();
+        println!("({:>5?}) after  {:?} {:?}", size, block, block.mem());
+
         RankSelect { size, block }
     }
 
@@ -175,9 +180,11 @@ fn block_insert_remove() {
         i += 1;
     }
 
+    println!("{:?}", b);
     assert!(b.count_ones() == Block::CAPACITY);
     b.optimize();
     assert!(b.count_ones() == Block::CAPACITY);
+    println!("{:?}", b);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));

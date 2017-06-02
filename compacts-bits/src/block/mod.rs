@@ -36,8 +36,8 @@ impl Default for Block {
     }
 }
 
-// const VEC16_THRESHOLD: usize = 4096; // 4096 * 16 == 65536
-// const VEC64_THRESHOLD: usize = 1024; // 1024 * 64 == 65536
+const VEC16_THRESHOLD: usize = 4096; // 4096 * 16 == 65536
+const VEC64_THRESHOLD: usize = 1024; // 1024 * 64 == 65536
 
 impl Block {
     pub const CAPACITY: u32 = 1 << 16;
@@ -77,32 +77,64 @@ impl Block {
     /// May convert to more efficient block representaions.
     /// This may consume many time and resource. So, don't call too much.
     pub fn optimize(&mut self) {
-        if self.count_ones() == 0 {
-            self.clear();
-            return;
-        }
+        // if self.count_ones() == 0 {
+        //     self.clear();
+        //     return;
+        // }
 
-        // FIXME
-        let new = match *self {
-            Vec16(ref mut old) => {
-                //
-                Rle16(inner::Rle16::from(&*old))
+        let new_block = match *self {
+            Vec16(ref old) => {
+                let mem_in_seq16 = old.mem();
+                let mem_in_seq64 = inner::Seq64::size_in_bytes(VEC64_THRESHOLD);
+                let mem_in_rle16 = inner::Rle16::size_in_bytes(old.count_rle());
+
+                if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
+                    Some(Rle16(inner::Rle16::from(old)))
+                } else if self.count_ones() as usize <= VEC16_THRESHOLD {
+                    None
+                } else {
+                    Some(Vec64(inner::Seq64::from(old)))
+                }
             }
-            Vec64(ref mut old) => {
-                //
-                Rle16(inner::Rle16::from(&*old))
+
+            Vec64(ref old) => {
+                let mem_in_seq16 = inner::Seq16::size_in_bytes(old.count_ones() as usize);
+                let mem_in_seq64 = old.mem();
+                let mem_in_rle16 = inner::Rle16::size_in_bytes(old.count_rle());
+
+                if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
+                    Some(Rle16(inner::Rle16::from(old)))
+                } else if self.count_ones() as usize <= VEC16_THRESHOLD {
+                    Some(Vec16(inner::Seq16::from(old)))
+                } else {
+                    None
+                }
             }
-            Rle16(ref mut old) => {
-                //
-                Vec64(inner::Seq64::from(&*old))
+
+            Rle16(ref old) => {
+                let mem_in_seq16 = inner::Seq16::size_in_bytes(old.count_ones() as usize);
+                let mem_in_seq64 = inner::Seq64::size_in_bytes(VEC64_THRESHOLD);
+                let mem_in_rle16 = old.mem();
+
+                if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
+                    None
+                } else if self.count_ones() as usize <= VEC16_THRESHOLD {
+                    Some(Vec16(inner::Seq16::from(old)))
+                } else {
+                    Some(Vec64(inner::Seq64::from(old)))
+                }
             }
         };
-        *self = new;
+        if let Some(block) = new_block {
+            *self = block;
+        }
     }
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 impl Block {
+    pub fn mem(&self) -> usize { delegate!(ref self, mem)  }
+
     pub fn count_ones(&self)  -> u32 { delegate!(ref self, count_ones)  }
     pub fn count_zeros(&self) -> u32 { delegate!(ref self, count_zeros) }
     pub fn load_factor(&self) -> f64 { delegate!(ref self, load_factor) }

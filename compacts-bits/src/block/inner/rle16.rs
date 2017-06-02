@@ -1,5 +1,4 @@
 use std::ops::RangeInclusive;
-use std::mem;
 
 use ops::*;
 use super::{Seq16, Seq64, Rle16};
@@ -122,10 +121,6 @@ impl Seq16 {
         }
         b.run()
     }
-    pub fn mem_in_rle(&self) -> usize {
-        let run = self.count_rle();
-        run * mem::size_of::<RangeInclusive<u16>>() + mem::size_of::<u32>()
-    }
 }
 
 impl Seq64 {
@@ -137,18 +132,11 @@ impl Seq64 {
         }
         b.run()
     }
-    pub fn mem_in_rle(&self) -> usize {
-        let run = self.count_rle();
-        run * mem::size_of::<RangeInclusive<u16>>() + mem::size_of::<u32>()
-    }
 }
 
 impl Rle16 {
     pub fn count_rle(&self) -> usize {
         self.ranges.len()
-    }
-    pub fn mem_in_rle(&self) -> usize {
-        self.mem()
     }
 
     pub fn search(&self, x: u16) -> Result<usize, usize> {
@@ -408,8 +396,12 @@ impl ::Select0<u16> for Rle16 {
 
         match pos {
             Err(pos) => {
-                let c0 = self.rank1(self.ranges[pos - 1].end);
-                Some(c + c0 as u16)
+                if pos == 0 {
+                    Some(c)
+                } else {
+                    let c0 = self.rank1(self.ranges[pos - 1].end);
+                    Some(c + c0 as u16)
+                }
             }
             Ok(pos) => {
                 let c0 = self.rank1(self.ranges[pos].end);
