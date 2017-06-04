@@ -93,8 +93,6 @@ macro_rules! pairwise_do {
         v1.symmetric_difference_with(v5);
         if $e {v1.intersection_with(bit_vec!());}
 
-        trace!("COUNT_BLOCKS should NOT evaluate thunks");
-        trace!("COUNT_BLOCKS={:?}", v1.count_blocks());
         if !$e {
             trace!("POP_COUNT force evaluation of thunks");
             trace!("POP_COUNT={:?}", v1.count_ones());
