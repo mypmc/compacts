@@ -1,9 +1,8 @@
 mod seq16;
 mod seq64;
 mod rle16;
-mod iter;
 mod range;
-
+mod iter;
 #[cfg(test)]
 mod tests;
 
@@ -96,7 +95,7 @@ impl Seq64 {
         Self::size_in_bytes(UNIT)
     }
 }
-impl<T> Rle<T> {
+impl Rle16 {
     pub fn size_in_bytes(runlen: usize) -> usize {
         runlen * mem::size_of::<RangeInclusive<u16>>() + mem::size_of::<u32>()
     }

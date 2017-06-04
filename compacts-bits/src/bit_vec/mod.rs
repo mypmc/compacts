@@ -44,10 +44,11 @@ impl<'a> BitVec<'a> {
             .sum()
     }
 
-    pub fn count_blocks(&self) -> usize {
+    fn count_blocks(&self) -> usize {
         self.blocks.len()
     }
 
+    /// Optimize innternal data representaions.
     pub fn optimize(&mut self) {
         for b in self.blocks.values_mut() {
             Thunk::force(b);
@@ -115,15 +116,15 @@ impl<'a> BitVec<'a> {
     /// assert_eq!(bits.count_ones(), 1);
     /// ```
     pub fn set(&mut self, x: u32) -> bool {
-        let (key, bit) = x.split();
-        let mut b = self.blocks
-            .entry(key)
-            .or_insert_with(|| eval!(Block::new()));
-        let ok = b.insert(bit);
-        if ok {
-            b.optimize();
+        if self.get(x) {
+            false
+        } else {
+            let (key, bit) = x.split();
+            let mut b = self.blocks
+                .entry(key)
+                .or_insert_with(|| eval!(Block::new()));
+            b.insert(bit)
         }
-        ok
     }
 
     /// Return `true` if the value present and removed from the BitVec.
@@ -142,13 +143,10 @@ impl<'a> BitVec<'a> {
     pub fn remove(&mut self, x: u32) -> bool {
         let (key, bit) = x.split();
         if let Some(b) = self.blocks.get_mut(&key) {
-            let ok = b.remove(bit);
-            if ok {
-                b.optimize();
-            }
-            return ok;
+            b.remove(bit)
+        } else {
+            false
         }
-        false
     }
 }
 
@@ -185,5 +183,45 @@ impl<'a> ::Rank<u32> for BitVec<'a> {
             }
         }
         rank
+    }
+}
+
+impl<'a> ::Select1<u32> for BitVec<'a> {
+    fn select1(&self, c: u32) -> Option<u32> {
+        if self.count_ones() <= c as u64 {
+            return None;
+        }
+        let mut rem = c;
+        for (&key, b) in &self.blocks {
+            let ones = b.count_ones();
+            if rem >= ones {
+                rem -= ones;
+            } else {
+                let s = b.select1(rem as u16).unwrap() as u32;
+                let k = (key as u32) << 16;
+                return Some(k + s);
+            }
+        }
+        None
+    }
+}
+
+impl<'a> ::Select0<u32> for BitVec<'a> {
+    fn select0(&self, c: u32) -> Option<u32> {
+        if self.count_zeros() <= c as u64 {
+            return None;
+        }
+        let mut rem = c;
+        for (&key, b) in &self.blocks {
+            let zeros = b.count_zeros();
+            if rem >= zeros {
+                rem -= zeros;
+            } else {
+                let s = b.select0(rem as u16).unwrap() as u32;
+                let k = if key == 0 { 0 } else { (key as u32) - 1 << 16 };
+                return Some(k + s);
+            }
+        }
+        None
     }
 }

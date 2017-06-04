@@ -84,7 +84,6 @@ impl<'r, 'a, 'b> ::ops::UnionWith<&'r super::BitVec<'b>> for super::BitVec<'a>
             let mut lb = (*self.blocks[&key]).clone();
             let deferred = lazy!({
                                      lb.union_with(&rb);
-                                     lb.optimize();
                                      lb
                                  });
             self.blocks.insert(key, deferred);
@@ -107,7 +106,6 @@ impl<'r, 'a, 'b> ::ops::DifferenceWith<&'r super::BitVec<'b>> for super::BitVec<
                 let rb = (*that.blocks[&key]).clone();
                 let deferred = lazy!({
                                          lb.difference_with(&rb);
-                                         lb.optimize();
                                          lb
                                      });
                 thunks.push((key, deferred));

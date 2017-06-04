@@ -10,6 +10,8 @@ macro_rules! impl_op {
             fn $fn(self, that: &Block) -> Self::Output {
                 match (self, that) {
                     (this @ &Vec16(..), that @ &Vec16(..)) => ::pairwise::$fn(this.iter(), that.iter()).collect(),
+                    (&Rle16(ref this), &Rle16(ref that)) => Rle16(this.intersection(that)),
+
                     (this, that) => {
                         let mut cloned = this.clone();
                         cloned.$fn_with(that);

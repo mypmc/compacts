@@ -1,11 +1,8 @@
 #[macro_use]
 mod macros;
-
-pub mod inner;
-
+mod inner;
 mod rank_select;
 mod pairwise;
-
 #[cfg(test)]
 mod tests;
 
@@ -50,15 +47,15 @@ impl Block {
         *self = Self::default();
     }
 
-    pub fn as_vec16(&mut self) {
-        *self = match *self {
-            Vec64(ref b) => Vec16(inner::Seq16::from(b)),
-            Rle16(ref b) => Vec16(inner::Seq16::from(b)),
-            _ => unreachable!("already vec16"),
-        }
-    }
+    // fn as_vec16(&mut self) {
+    //     *self = match *self {
+    //         Vec64(ref b) => Vec16(inner::Seq16::from(b)),
+    //         Rle16(ref b) => Vec16(inner::Seq16::from(b)),
+    //         _ => unreachable!("already vec16"),
+    //     }
+    // }
 
-    pub fn as_vec64(&mut self) {
+    fn as_vec64(&mut self) {
         *self = match *self {
             Vec16(ref b) => Vec64(inner::Seq64::from(b)),
             Rle16(ref b) => Vec64(inner::Seq64::from(b)),
@@ -66,22 +63,17 @@ impl Block {
         }
     }
 
-    pub fn as_rle16(&mut self) {
-        *self = match *self {
-            Vec16(ref b) => Rle16(inner::Rle16::from(b)),
-            Vec64(ref b) => Rle16(inner::Rle16::from(b)),
-            _ => unreachable!("already rle16"),
-        }
-    }
+    // fn as_rle16(&mut self) {
+    //     *self = match *self {
+    //         Vec16(ref b) => Rle16(inner::Rle16::from(b)),
+    //         Vec64(ref b) => Rle16(inner::Rle16::from(b)),
+    //         _ => unreachable!("already rle16"),
+    //     }
+    // }
 
     /// May convert to more efficient block representaions.
     /// This may consume many time and resource. So, don't call too much.
     pub fn optimize(&mut self) {
-        // if self.count_ones() == 0 {
-        //     self.clear();
-        //     return;
-        // }
-
         let new_block = match *self {
             Vec16(ref old) => {
                 let mem_in_seq16 = old.mem();

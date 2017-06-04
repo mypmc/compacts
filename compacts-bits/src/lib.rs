@@ -3,6 +3,8 @@
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 
+#![deny(warnings)]
+
 #[macro_use]
 extern crate karabiner;
 
@@ -38,10 +40,3 @@ pub static TRUE: &bool = &true;
 pub static FALSE: &bool = &false;
 
 use prim::UnsignedInt;
-
-
-pub mod internal {
-    //! This module is exposed for testing purpose.
-
-    pub use super::block::inner::*;
-}

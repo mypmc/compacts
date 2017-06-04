@@ -5,7 +5,7 @@ pub trait Rank<T: ::UnsignedInt> {
     // because Weight may hold a value that is greater than or equal to `T::max_value() + 1`.
 
     /// Hamming Weight or Population Count.
-    type Weight: ::UnsignedInt + ::std::fmt::Debug;
+    type Weight: ::UnsignedInt;
 
     fn size(&self) -> Self::Weight
         where Self::Weight: From<T>
@@ -33,10 +33,11 @@ pub trait Rank<T: ::UnsignedInt> {
         where Self::Weight: From<T>
     {
         if i == T::zero() {
-            return Self::Weight::zero();
+            Self::Weight::zero()
+        } else {
+            let rank1 = self.rank1(i);
+            Self::Weight::from(i).succ() - rank1
         }
-        let rank1 = self.rank1(i);
-        Self::Weight::from(i).succ() - rank1
     }
 }
 

@@ -116,3 +116,25 @@ fn pairwise_interleave() {
     // RUST_LOG=thunk=trace,cds=trace cargo test
     pairwise_do!(true);
 }
+
+#[test]
+fn rank_select() {
+    use compacts_bits::{Rank, Select1, Select0};
+
+    let _ = env_logger::init();
+    let mut vec = BitVec::new();
+    vec.set(0);
+    vec.set(1000000);
+
+    assert_eq!(vec.select0(0), Some(1));
+    assert_eq!(vec.rank0(1), 1);
+
+    assert_eq!(vec.select1(0), Some(0));
+    assert_eq!(vec.rank1(0), 1);
+
+    assert_eq!(vec.select0(1), Some(2));
+    assert_eq!(vec.rank0(2), 2);
+
+    assert_eq!(vec.select1(1), Some(1000000));
+    assert_eq!(vec.rank1(1000000), 2);
+}
