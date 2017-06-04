@@ -387,27 +387,12 @@ impl ::Select0<u16> for Rle16 {
         let pos = self.ranges
             .binary_search_by(|ri| self.rank0(ri.start).cmp(&c32));
 
-        // let idx = match pos {
-        //     Ok(i) => i,
-        //     Err(i) => i - 1,
-        // };
-        // let c0 = self.rank1(self.ranges[idx].end);
-        // Some(c + c0 as u16);
-
-        match pos {
-            Err(pos) => {
-                if pos == 0 {
-                    Some(c)
-                } else {
-                    let c0 = self.rank1(self.ranges[pos - 1].end);
-                    Some(c + c0 as u16)
-                }
-            }
-            Ok(pos) => {
-                let c0 = self.rank1(self.ranges[pos].end);
-                Some(c + c0 as u16)
-            }
-        }
+        let rank1 = match pos {
+            Err(i) if i == 0 => 0,
+            Err(i) => self.rank1(self.ranges[i - 1].end),
+            Ok(i) => self.rank1(self.ranges[i].end),
+        } as u16;
+        Some(c + rank1)
     }
 }
 
