@@ -2,8 +2,10 @@
 name    = "compacts-prim"
 version = "0.1.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
+license = "MIT/Apache-2.0"
+repository  = "https://github.com/feb29/compacts"
+keywords    = ["primitive"]
+description = "trait for word"
 
 [dependencies]
-
-[dependencies.num]
-version = "0.1"
+num = "0.1"
