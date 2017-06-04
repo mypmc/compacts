@@ -9,15 +9,13 @@ repository  = "https://github.com/feb29/compacts"
 description = "succinct data structures"
 
 [workspace]
-members = ["compacts-prim", "compacts-bits", "compacts-dict"]
+members = [
+  "compacts-prim",
+  "compacts-bits",
+  "compacts-dict"
+]
 
 [dependencies]
 compacts-prim = { path = "./compacts-prim" }
 compacts-bits = { path = "./compacts-bits" }
 compacts-dict = { path = "./compacts-dict" }
-
-[dependencies.karabiner]
-git = "https://github.com/feb29/karabiner"
-
-[dev-dependencies]
-rand = "0.3"

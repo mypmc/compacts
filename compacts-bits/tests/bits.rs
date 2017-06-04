@@ -39,22 +39,21 @@ fn similarity_coefficient() {
     let p = &(bit_vec!(size, range, rng));
     let q = &(bit_vec!(size, range, rng));
 
+    debug!("{:?}", Some(p.clone()).intersection(Some(q.clone())));
+
     let jaccard = {
-        let mut p1 = p.clone();
-        p1.intersection_with(q);
-        p1.count_ones() as f64 / (p.count_ones() + q.count_ones() + p1.count_ones()) as f64
+        let r = p.intersection(q);
+        r.count_ones() as f64 / (p.count_ones() + q.count_ones() - r.count_ones()) as f64
     };
 
     let dice = {
-        let mut p1 = p.clone();
-        p1.intersection_with(q);
-        (2f64 * (p1.count_ones() as f64)) / (p.count_ones() as f64 + q.count_ones() as f64)
+        let r = p.intersection(q);
+        (2.0 * (r.count_ones() as f64)) / (p.count_ones() + q.count_ones()) as f64
     };
 
     let simpson = {
-        let mut p1 = p.clone();
-        p1.intersection_with(q);
-        (p1.count_ones() as f64) / (p.count_ones() as f64).min(q.count_ones() as f64)
+        let r = p.intersection(q);
+        (r.count_ones() as f64) / (p.count_ones() as f64).min(q.count_ones() as f64)
     };
 
     info!("Jaccard = {:.5?}", jaccard);
@@ -116,4 +115,26 @@ fn pairwise_interleave() {
     // To see evaluation progress
     // RUST_LOG=thunk=trace,cds=trace cargo test
     pairwise_do!(true);
+}
+
+#[test]
+fn rank_select() {
+    use compacts_bits::{Rank, Select1, Select0};
+
+    let _ = env_logger::init();
+    let mut vec = BitVec::new();
+    vec.set(0);
+    vec.set(1000000);
+
+    assert_eq!(vec.select0(0), Some(1));
+    assert_eq!(vec.rank0(1), 1);
+
+    assert_eq!(vec.select1(0), Some(0));
+    assert_eq!(vec.rank1(0), 1);
+
+    assert_eq!(vec.select0(1), Some(2));
+    assert_eq!(vec.rank0(2), 2);
+
+    assert_eq!(vec.select1(1), Some(1000000));
+    assert_eq!(vec.rank1(1000000), 2);
 }

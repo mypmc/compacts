@@ -1,14 +1,14 @@
 #![feature(test)]
 
-extern crate compacts;
+extern crate compacts_bits;
 extern crate rand;
 extern crate test;
 
 use test::Bencher;
 use rand::Rng;
 
-use compacts::bits::*;
-use compacts::bits::ops::*;
+use compacts_bits::*;
+use compacts_bits::ops::*;
 
 macro_rules! bit_vec {
     ( 0, 1, $rng:expr ) => {{ BitVec::new() }};
@@ -23,6 +23,7 @@ macro_rules! bit_vec {
                 vec.set(gen);
             }
         }
+        vec.optimize();
         vec
     }};
 }

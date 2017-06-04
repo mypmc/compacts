@@ -15,7 +15,7 @@ pub trait SymmetricDifference<Rhs = Self> {
     fn symmetric_difference(self, that: Rhs) -> Self::Output;
 }
 
-impl<'a, T> Intersection<Option<T>> for Option<T>
+impl<T> Intersection<Option<T>> for Option<T>
     where T: Intersection<T, Output = T>
 {
     type Output = Option<T>;
@@ -31,7 +31,6 @@ impl<T> Union<Option<T>> for Option<T>
     where T: Union<T, Output = T>
 {
     type Output = Option<T>;
-
     fn union(self, that: Option<T>) -> Self::Output {
         match (self, that) {
             (Some(t1), Some(t2)) => Some(t1.union(t2)),
