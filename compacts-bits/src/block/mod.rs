@@ -8,6 +8,8 @@ mod tests;
 
 use std::fmt;
 
+pub use self::inner::Iter as BlockIter;
+
 #[derive(Clone)]
 pub enum Block {
     Vec16(inner::Seq16),

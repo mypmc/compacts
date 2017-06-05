@@ -35,6 +35,13 @@ fn bit_vec_clone(bench: &mut Bencher) {
     bench.iter(|| v1 = v1.clone());
 }
 
+#[bench]
+fn bit_vec_collect(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = bit_vec!(65_000, 2000000, rng);
+    bench.iter(|| test::black_box(v1.iter().collect::<Vec<u32>>()));
+}
+
 const SIZE: usize = 65000;
 const RANGE1: u32 = 1500000;
 const RANGE2: u32 = 100000000;

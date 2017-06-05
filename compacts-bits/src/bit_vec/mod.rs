@@ -1,10 +1,13 @@
+mod stats;
 mod pairwise;
 
 use std::fmt::{self, Debug, Formatter};
 use std::collections::BTreeMap;
-use split_merge::Split;
+use split_merge::{Split, Merge};
 use block::Block;
 use karabiner::thunk::Thunk;
+
+pub use self::stats::{Stats, BlockStats};
 
 #[derive(Default)]
 pub struct BitVec<'a> {
@@ -147,6 +150,18 @@ impl<'a> BitVec<'a> {
         } else {
             false
         }
+    }
+
+    pub fn iter<'r>(&'r self) -> impl Iterator<Item = u32> + 'r
+        where 'a: 'r
+    {
+        self.blocks
+            .iter()
+            .flat_map(|(&key, block)| {
+                          block
+                              .iter()
+                              .map(move |val| <u32 as Merge>::merge((key, val)))
+                      })
     }
 }
 

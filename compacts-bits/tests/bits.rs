@@ -21,6 +21,7 @@ macro_rules! bit_vec {
             let gen = $rng.gen_range($start, $end);
             vec.set(gen);
         }
+        vec.optimize();
         vec
     }};
 }
@@ -33,12 +34,13 @@ fn similarity_coefficient() {
     let _ = env_logger::init();
     let mut rng = rand::thread_rng();
 
-    let size = 1000;
-    let range = 3000;
+    let size = 60000;
+    let range = 70000;
 
     let p = &(bit_vec!(size, range, rng));
     let q = &(bit_vec!(size, range, rng));
 
+    debug!("{:#?}", p.stats());
     debug!("{:?}", Some(p.clone()).intersection(Some(q.clone())));
 
     let jaccard = {
@@ -135,4 +137,27 @@ fn rank_select() {
 
     assert_eq!(vec.select1(1), Some(1000000));
     assert_eq!(vec.rank1(1000000), 2);
+}
+
+#[test]
+fn bit_vec_iterator() {
+    let _ = env_logger::init();
+
+    {
+        let mut vec = BitVec::new();
+        for i in 0..1000000 {
+            vec.set(i);
+        }
+        for (i, bit) in vec.iter().enumerate() {
+            assert_eq!(i as u32, bit);
+        }
+    }
+    {
+        let mut vec = BitVec::new();
+        for i in 65533..65537 {
+            vec.set(i);
+        }
+        let col = vec.iter().collect::<Vec<u32>>();
+        assert_eq!(col, vec![65533, 65534, 65535, 65536]);
+    }
 }
