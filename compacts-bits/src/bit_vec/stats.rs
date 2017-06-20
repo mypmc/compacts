@@ -16,7 +16,7 @@ pub struct BlockStats {
     pub bytes: u64,
 }
 
-impl<'a> BitVec<'a> {
+impl BitVec {
     pub fn stats(&self) -> Stats {
         let mut stats = Stats {
             count: self.count_ones(),

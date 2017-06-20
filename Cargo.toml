@@ -16,6 +16,6 @@ members = [
 ]
 
 [dependencies]
-compacts-prim = { path = "./compacts-prim", version = "0.1.0" }
-compacts-bits = { path = "./compacts-bits", version = "0.1.1" }
-compacts-dict = { path = "./compacts-dict", version = "0.1.0" }
+compacts-prim = { path = "./compacts-prim", version = "0.1" }
+compacts-bits = { path = "./compacts-bits", version = "0.1" }
+compacts-dict = { path = "./compacts-dict", version = "0.1" }

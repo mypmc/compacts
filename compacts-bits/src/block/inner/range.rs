@@ -106,9 +106,11 @@ impl<'r> Folding<'r, u32> {
 
         let lhs = None;
         let rhs = None;
-        let window = Box::new(merge(l, r).tuple_windows().filter(|&(ref i, ref j)| {
-            i.value() != j.value()
-        }));
+        let window = Box::new(
+            merge(l, r)
+                .tuple_windows()
+                .filter(|&(ref i, ref j)| i.value() != j.value()),
+        );
         Folding { lhs, rhs, window }
     }
 
@@ -273,13 +275,13 @@ where
     'a: 'r,
     'b: 'r,
 {
-    let lhs_iter = lhs.iter().map(to_halfopen).flat_map(|range| {
-        enqueue(&range, &Side::Lhs)
-    });
+    let lhs_iter = lhs.iter()
+        .map(to_halfopen)
+        .flat_map(|range| enqueue(&range, &Side::Lhs));
 
-    let rhs_iter = rhs.iter().map(to_halfopen).flat_map(|range| {
-        enqueue(&range, &Side::Rhs)
-    });
+    let rhs_iter = rhs.iter()
+        .map(to_halfopen)
+        .flat_map(|range| enqueue(&range, &Side::Rhs));
 
     itertools::merge(lhs_iter, rhs_iter)
 }

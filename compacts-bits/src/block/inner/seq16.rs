@@ -3,13 +3,19 @@ use super::{Seq16, Seq64, Rle16};
 use prim::Cast;
 use Rank;
 
+impl Default for Seq16 {
+    fn default() -> Self {
+        let weight = 0;
+        let vector = Vec::new();
+        Seq16 { weight, vector }
+    }
+}
+
 impl Seq16 {
     pub const THRESHOLD: usize = 1 << 12; // 16 * (1 << 12) == 65536
 
     pub fn new() -> Self {
-        let weight = 0;
-        let vector = Vec::new();
-        Seq16 { weight, vector }
+        Self::default()
     }
 
     pub fn with_capacity(cap: usize) -> Self {

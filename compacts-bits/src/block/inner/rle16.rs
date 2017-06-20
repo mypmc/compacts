@@ -388,9 +388,8 @@ impl ::Select0<u16> for Rle16 {
             return None;
         }
 
-        let pos = self.ranges.binary_search_by(
-            |ri| self.rank0(ri.start).cmp(&c32),
-        );
+        let pos = self.ranges
+            .binary_search_by(|ri| self.rank0(ri.start).cmp(&c32));
 
         let rank1 = match pos {
             Err(i) if i == 0 => 0,

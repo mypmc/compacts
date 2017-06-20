@@ -149,10 +149,12 @@ macro_rules! define_pair {
     )*);
 }
 
-define_pair!((intersection, IntersectionIter),
-             (union, UnionIter),
-             (difference, DifferenceIter),
-             (symmetric_difference, SymmetricDifferenceIter));
+define_pair!(
+    (intersection, IntersectionIter),
+    (union, UnionIter),
+    (difference, DifferenceIter),
+    (symmetric_difference, SymmetricDifferenceIter)
+);
 
 /// Compare `a` and `b`, but return `s` if a is None and `l` if b is None
 fn comparing<T: Ord>(
@@ -212,15 +214,13 @@ where
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         use self::Ordering::{Less, Equal, Greater};
-        loop {
-            match comparing(self.lhs.peek(), self.rhs.peek(), Greater, Less) {
-                Less => return self.lhs.next(),
-                Equal => {
-                    self.rhs.next();
-                    return self.lhs.next();
-                }
-                Greater => return self.rhs.next(),
+        match comparing(self.lhs.peek(), self.rhs.peek(), Greater, Less) {
+            Less => self.lhs.next(),
+            Equal => {
+                self.rhs.next();
+                self.lhs.next()
             }
+            Greater => self.rhs.next(),
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -262,10 +262,8 @@ where
 
 impl<I1, I2, T> Iterator for SymmetricDifferenceIter<I1, I2, T>
 where
-    I1: Iterator<Item = T>
-        + ExactSizeIterator,
-    I2: Iterator<Item = T>
-        + ExactSizeIterator,
+    I1: Iterator<Item = T> + ExactSizeIterator,
+    I2: Iterator<Item = T> + ExactSizeIterator,
     T: Ord,
 {
     type Item = T;

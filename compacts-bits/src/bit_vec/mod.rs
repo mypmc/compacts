@@ -10,18 +10,18 @@ use karabiner::thunk::Thunk;
 pub use self::stats::{Stats, BlockStats};
 
 #[derive(Default)]
-pub struct BitVec<'a> {
-    blocks: BTreeMap<u16, Thunk<'a, Block>>,
+pub struct BitVec {
+    blocks: BTreeMap<u16, Thunk<'static, Block>>,
 }
 
-impl<'a> Debug for BitVec<'a> {
+impl Debug for BitVec {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let b = self.count_blocks();
         let w = self.count_ones();
         write!(f, "BitVec{{ blocks={:?} weight={:?} }}", b, w)
     }
 }
-impl<'a> Clone for BitVec<'a> {
+impl Clone for BitVec {
     fn clone(&self) -> Self {
         let mut vec = BitVec::new();
         for (&k, t) in &self.blocks {
@@ -32,7 +32,7 @@ impl<'a> Clone for BitVec<'a> {
     }
 }
 
-impl<'a> BitVec<'a> {
+impl BitVec {
     pub fn count_ones(&self) -> u64 {
         self.blocks
             .values()
@@ -60,7 +60,7 @@ impl<'a> BitVec<'a> {
     }
 }
 
-impl<'a> BitVec<'a> {
+impl BitVec {
     pub fn new() -> Self {
         BitVec { blocks: BTreeMap::new() }
     }
@@ -123,9 +123,9 @@ impl<'a> BitVec<'a> {
             false
         } else {
             let (key, bit) = x.split();
-            let mut b = self.blocks.entry(key).or_insert_with(
-                || eval!(Block::new()),
-            );
+            let mut b = self.blocks
+                .entry(key)
+                .or_insert_with(|| eval!(Block::new()));
             b.insert(bit)
         }
     }
@@ -152,19 +152,16 @@ impl<'a> BitVec<'a> {
         }
     }
 
-    pub fn iter<'r>(&'r self) -> impl Iterator<Item = u32> + 'r
-    where
-        'a: 'r,
-    {
+    pub fn iter<'r>(&'r self) -> impl Iterator<Item = u32> + 'r {
         self.blocks.iter().flat_map(|(&key, block)| {
-            block.iter().map(
-                move |val| <u32 as Merge>::merge((key, val)),
-            )
+            block
+                .iter()
+                .map(move |val| <u32 as Merge>::merge((key, val)))
         })
     }
 }
 
-impl<'a> ::std::ops::Index<u32> for BitVec<'a> {
+impl ::std::ops::Index<u32> for BitVec {
     type Output = bool;
     fn index(&self, i: u32) -> &Self::Output {
         if self.get(i) {
@@ -175,7 +172,7 @@ impl<'a> ::std::ops::Index<u32> for BitVec<'a> {
     }
 }
 
-impl<'a> ::Rank<u32> for BitVec<'a> {
+impl ::Rank<u32> for BitVec {
     type Weight = u64;
 
     fn size(&self) -> Self::Weight {
@@ -200,7 +197,7 @@ impl<'a> ::Rank<u32> for BitVec<'a> {
     }
 }
 
-impl<'a> ::Select1<u32> for BitVec<'a> {
+impl ::Select1<u32> for BitVec {
     fn select1(&self, c: u32) -> Option<u32> {
         if self.count_ones() <= c as u64 {
             return None;
@@ -220,7 +217,7 @@ impl<'a> ::Select1<u32> for BitVec<'a> {
     }
 }
 
-impl<'a> ::Select0<u32> for BitVec<'a> {
+impl ::Select0<u32> for BitVec {
     fn select0(&self, c: u32) -> Option<u32> {
         if self.count_zeros() <= c as u64 {
             return None;
@@ -232,7 +229,7 @@ impl<'a> ::Select0<u32> for BitVec<'a> {
                 rem -= zeros;
             } else {
                 let s = b.select0(rem as u16).unwrap() as u32;
-                let k = if key == 0 { 0 } else { (key as u32) - 1 << 16 };
+                let k = if key == 0 { 0 } else { (key as u32 - 1) << 16 };
                 return Some(k + s);
             }
         }

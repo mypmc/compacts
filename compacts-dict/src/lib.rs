@@ -42,9 +42,9 @@ where
                 .map_or(false, |rank: T| rank > c)
         });
         if pos < size {
-            Some(Cast::from::<Self::Rank>(pos).expect(
-                "if pos < size, cast must not failed",
-            ))
+            Some(
+                Cast::from::<Self::Rank>(pos).expect("if pos < size, cast must not failed"),
+            )
         } else {
             None
         }
@@ -59,10 +59,7 @@ pub trait BitDict<T: UnsignedInt>
 impl<T, U> BitDict<T> for U
 where
     T: UnsignedInt,
-    U: Index<T, Output = bool>
-        + bits::Rank<T>
-        + bits::Select0<T>
-        + bits::Select1<T>,
+    U: Index<T, Output = bool> + bits::Rank<T> + bits::Select0<T> + bits::Select1<T>,
 {
 }
 
