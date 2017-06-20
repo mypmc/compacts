@@ -21,10 +21,12 @@ fn inner_rle16() {
     let range1 = 0...6666;
     let range2 = 10000...12345;
     let range3 = (u16::MAX - 3734)...u16::MAX;
-    let result = vec![range1.clone(),
-                      range2.clone(),
-                      23456...23456,
-                      range3.clone()];
+    let result = vec![
+        range1.clone(),
+        range2.clone(),
+        23456...23456,
+        range3.clone(),
+    ];
 
     {
         for i in range1 {
@@ -107,27 +109,31 @@ static RHS: &[::std::ops::RangeInclusive<u16>] = &[2...3, 6...9, 12...14, 17...2
 
 static NULL: &[::std::ops::RangeInclusive<u16>] = &[];
 static ONE1: &[::std::ops::RangeInclusive<u16>] = &[1...(u16::MAX / 2)]; // 1...32767
-static ONE2: &[::std::ops::RangeInclusive<u16>] = &[(u16::MAX / 2)...(u16::MAX - 1)]; // 32767...65534
+// 32767...65534
+static ONE2: &[::std::ops::RangeInclusive<u16>] = &[(u16::MAX / 2)...(u16::MAX - 1)];
+
 static FULL: &[::std::ops::RangeInclusive<u16>] = &[0...u16::MAX]; // 0...65536
 
 #[test]
 fn inner_range_folding() {
     // note: result are exclusive
-    let want = vec![range::BelongTo::Rhs(2..3),
-                    range::BelongTo::Both(3..4),
-                    range::BelongTo::Lhs(4..6),
-                    range::BelongTo::Rhs(6..10),
-                    range::BelongTo::Lhs(10..12),
-                    range::BelongTo::Both(12..14),
-                    range::BelongTo::Rhs(14..15),
-                    range::BelongTo::None(15..17),
-                    range::BelongTo::Rhs(17..18),
-                    range::BelongTo::Both(18..20),
-                    range::BelongTo::Rhs(20..22),
-                    range::BelongTo::None(22..100),
-                    range::BelongTo::Lhs(100..121),
-                    range::BelongTo::None(121..200),
-                    range::BelongTo::Rhs(200..1001)];
+    let want = vec![
+        range::BelongTo::Rhs(2..3),
+        range::BelongTo::Both(3..4),
+        range::BelongTo::Lhs(4..6),
+        range::BelongTo::Rhs(6..10),
+        range::BelongTo::Lhs(10..12),
+        range::BelongTo::Both(12..14),
+        range::BelongTo::Rhs(14..15),
+        range::BelongTo::None(15..17),
+        range::BelongTo::Rhs(17..18),
+        range::BelongTo::Both(18..20),
+        range::BelongTo::Rhs(20..22),
+        range::BelongTo::None(22..100),
+        range::BelongTo::Lhs(100..121),
+        range::BelongTo::None(121..200),
+        range::BelongTo::Rhs(200..1001),
+    ];
 
     for (g, w) in range::Folding::new(LHS, RHS).zip(want) {
         assert_eq!(g, w);

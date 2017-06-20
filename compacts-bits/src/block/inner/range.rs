@@ -94,58 +94,57 @@ impl<'r, T: ::UnsignedInt> Folding<'r, T> {
 
 impl<'r> Folding<'r, u32> {
     // assume that each elements (range) has no overlap
-    pub fn new<'a, 'b>(l: &'a [RangeInclusive<u16>],
-                       r: &'b [RangeInclusive<u16>])
-                       -> Folding<'r, u32>
-        where 'a: 'r,
-              'b: 'r
+    pub fn new<'a, 'b>(
+        l: &'a [RangeInclusive<u16>],
+        r: &'b [RangeInclusive<u16>],
+    ) -> Folding<'r, u32>
+    where
+        'a: 'r,
+        'b: 'r,
     {
         use itertools::Itertools;
 
         let lhs = None;
         let rhs = None;
-        let window = Box::new(merge(l, r)
-                                  .tuple_windows()
-                                  .filter(|&(ref i, ref j)| i.value() != j.value()));
+        let window = Box::new(merge(l, r).tuple_windows().filter(|&(ref i, ref j)| {
+            i.value() != j.value()
+        }));
         Folding { lhs, rhs, window }
     }
 
     pub fn intersection(self) -> impl Iterator<Item = Range<u32>> + 'r {
         self.filter(|belong| match *belong {
-                        BelongTo::Both(_) => true,
-                        _ => false,
-                    })
-            .map(|b| b.range())
+            BelongTo::Both(_) => true,
+            _ => false,
+        }).map(|b| b.range())
     }
 
     pub fn union(self) -> impl Iterator<Item = Range<u32>> + 'r {
         self.filter(|be| match *be {
-                        BelongTo::None(_) => false,
-                        _ => true,
-                    })
-            .map(|be| be.range())
+            BelongTo::None(_) => false,
+            _ => true,
+        }).map(|be| be.range())
     }
 
     pub fn difference(self) -> impl Iterator<Item = Range<u32>> + 'r {
         self.filter(|be| match *be {
-                        BelongTo::Lhs(_) => true,
-                        _ => false,
-                    })
-            .map(|be| be.range())
+            BelongTo::Lhs(_) => true,
+            _ => false,
+        }).map(|be| be.range())
     }
 
     pub fn symmetric_difference(self) -> impl Iterator<Item = Range<u32>> + 'r {
         self.filter(|be| match *be {
-                        BelongTo::Lhs(_) | BelongTo::Rhs(_) => true,
-                        _ => false,
-                    })
-            .map(|be| be.range())
+            BelongTo::Lhs(_) | BelongTo::Rhs(_) => true,
+            _ => false,
+        }).map(|be| be.range())
     }
 }
 
 /// Repair broken ranges, and accumulate weight.
 pub fn repair<I>(folded: I) -> (u32, Vec<RangeInclusive<u16>>)
-    where I: IntoIterator<Item = Range<u32>>
+where
+    I: IntoIterator<Item = Range<u32>>,
 {
     let mut vec = Vec::new();
     let mut w = 0;
@@ -182,111 +181,112 @@ pub fn repair<I>(folded: I) -> (u32, Vec<RangeInclusive<u16>>)
 impl<'r> Iterator for Folding<'r, u32> {
     type Item = BelongTo<u32>;
     fn next(&mut self) -> Option<BelongTo<u32>> {
-        self.window
-            .next()
-            .map(|next| match next {
-                     (Lhs(Open(i)), Lhs(Close(j))) => {
-                         let belong_to = if self.rhs_is_open() {
-                             BelongTo::Both(i..j)
-                         } else {
-                             BelongTo::Lhs(i..j)
-                         };
-                         self.lhs_swap(Close(i));
-                         belong_to
-                     }
-                     (Lhs(Open(i)), Rhs(Open(j))) => {
-                         self.lhs_swap(Open(i));
-                         self.rhs_swap(Open(j));
-                         BelongTo::Lhs(i..j)
-                     }
-                     (Lhs(Open(i)), Rhs(Close(j))) => {
-                         self.lhs_swap(Open(i));
-                         self.rhs_swap(Close(j));
-                         BelongTo::Both(i..j)
-                     }
-                     (Lhs(Close(i)), Lhs(Open(j))) => {
-                         let belong_to = if self.rhs_is_open() {
-                             BelongTo::Rhs(i..j)
-                         } else {
-                             BelongTo::None(i..j)
-                         };
-                         self.lhs_swap(Close(i));
-                         self.rhs_swap(Open(j));
-                         belong_to
-                     }
-                     (Lhs(Close(i)), Rhs(Open(j))) => {
-                         self.lhs_swap(Close(i));
-                         self.rhs_swap(Open(j));
-                         BelongTo::None(i..j)
-                     }
-                     (Lhs(Close(i)), Rhs(Close(j))) => {
-                         self.lhs_swap(Close(i));
-                         self.rhs_swap(Close(j));
-                         BelongTo::Rhs(i..j)
-                     }
-                     (Rhs(Open(i)), Lhs(Open(j))) => {
-                         self.lhs_swap(Open(j));
-                         self.rhs_swap(Open(i));
-                         BelongTo::Rhs(i..j)
-                     }
-                     (Rhs(Open(i)), Lhs(Close(j))) => {
-                         self.lhs_swap(Close(j));
-                         self.rhs_swap(Open(i));
-                         BelongTo::Both(i..j)
-                     }
-                     (Rhs(Open(i)), Rhs(Close(j))) => {
-                         let belong_to = if self.lhs_is_open() {
-                             BelongTo::Both(i..j)
-                         } else {
-                             BelongTo::Rhs(i..j)
-                         };
-                         self.rhs_swap(Close(j));
-                         belong_to
-                     }
-                     (Rhs(Close(i)), Lhs(Open(j))) => {
-                         self.lhs_swap(Open(j));
-                         self.rhs_swap(Close(i));
-                         BelongTo::None(i..j)
-                     }
-                     (Rhs(Close(i)), Lhs(Close(j))) => {
-                         self.lhs_swap(Close(j));
-                         self.rhs_swap(Close(i));
-                         BelongTo::Lhs(i..j)
-                     }
-                     (Rhs(Close(i)), Rhs(Open(j))) => {
-                         let belong_to = if self.lhs_is_open() {
-                             BelongTo::Lhs(i..j)
-                         } else {
-                             BelongTo::None(i..j)
-                         };
-                         self.rhs_swap(Open(j));
-                         belong_to
-                     }
-                     _ => unreachable!(),
-                 })
+        self.window.next().map(|next| match next {
+            (Lhs(Open(i)), Lhs(Close(j))) => {
+                let belong_to = if self.rhs_is_open() {
+                    BelongTo::Both(i..j)
+                } else {
+                    BelongTo::Lhs(i..j)
+                };
+                self.lhs_swap(Close(i));
+                belong_to
+            }
+            (Lhs(Open(i)), Rhs(Open(j))) => {
+                self.lhs_swap(Open(i));
+                self.rhs_swap(Open(j));
+                BelongTo::Lhs(i..j)
+            }
+            (Lhs(Open(i)), Rhs(Close(j))) => {
+                self.lhs_swap(Open(i));
+                self.rhs_swap(Close(j));
+                BelongTo::Both(i..j)
+            }
+            (Lhs(Close(i)), Lhs(Open(j))) => {
+                let belong_to = if self.rhs_is_open() {
+                    BelongTo::Rhs(i..j)
+                } else {
+                    BelongTo::None(i..j)
+                };
+                self.lhs_swap(Close(i));
+                self.rhs_swap(Open(j));
+                belong_to
+            }
+            (Lhs(Close(i)), Rhs(Open(j))) => {
+                self.lhs_swap(Close(i));
+                self.rhs_swap(Open(j));
+                BelongTo::None(i..j)
+            }
+            (Lhs(Close(i)), Rhs(Close(j))) => {
+                self.lhs_swap(Close(i));
+                self.rhs_swap(Close(j));
+                BelongTo::Rhs(i..j)
+            }
+            (Rhs(Open(i)), Lhs(Open(j))) => {
+                self.lhs_swap(Open(j));
+                self.rhs_swap(Open(i));
+                BelongTo::Rhs(i..j)
+            }
+            (Rhs(Open(i)), Lhs(Close(j))) => {
+                self.lhs_swap(Close(j));
+                self.rhs_swap(Open(i));
+                BelongTo::Both(i..j)
+            }
+            (Rhs(Open(i)), Rhs(Close(j))) => {
+                let belong_to = if self.lhs_is_open() {
+                    BelongTo::Both(i..j)
+                } else {
+                    BelongTo::Rhs(i..j)
+                };
+                self.rhs_swap(Close(j));
+                belong_to
+            }
+            (Rhs(Close(i)), Lhs(Open(j))) => {
+                self.lhs_swap(Open(j));
+                self.rhs_swap(Close(i));
+                BelongTo::None(i..j)
+            }
+            (Rhs(Close(i)), Lhs(Close(j))) => {
+                self.lhs_swap(Close(j));
+                self.rhs_swap(Close(i));
+                BelongTo::Lhs(i..j)
+            }
+            (Rhs(Close(i)), Rhs(Open(j))) => {
+                let belong_to = if self.lhs_is_open() {
+                    BelongTo::Lhs(i..j)
+                } else {
+                    BelongTo::None(i..j)
+                };
+                self.rhs_swap(Open(j));
+                belong_to
+            }
+            _ => unreachable!(),
+        })
     }
 }
 
 // assume that each elements (range) has no overlap
-fn merge<'a, 'b, 'r>(lhs: &'a [RangeInclusive<u16>],
-                     rhs: &'b [RangeInclusive<u16>])
-                     -> impl Iterator<Item = Boundary<u32>> + 'r
-    where 'a: 'r,
-          'b: 'r
+fn merge<'a, 'b, 'r>(
+    lhs: &'a [RangeInclusive<u16>],
+    rhs: &'b [RangeInclusive<u16>],
+) -> impl Iterator<Item = Boundary<u32>> + 'r
+where
+    'a: 'r,
+    'b: 'r,
 {
-    let lhs_iter = lhs.iter()
-        .map(to_halfopen)
-        .flat_map(|range| enqueue(&range, &Side::Lhs));
+    let lhs_iter = lhs.iter().map(to_halfopen).flat_map(|range| {
+        enqueue(&range, &Side::Lhs)
+    });
 
-    let rhs_iter = rhs.iter()
-        .map(to_halfopen)
-        .flat_map(|range| enqueue(&range, &Side::Rhs));
+    let rhs_iter = rhs.iter().map(to_halfopen).flat_map(|range| {
+        enqueue(&range, &Side::Rhs)
+    });
 
     itertools::merge(lhs_iter, rhs_iter)
 }
 
 fn enqueue<T>(range: &Range<T>, side: &Side) -> VecDeque<Boundary<T>>
-    where T: ::UnsignedInt
+where
+    T: ::UnsignedInt,
 {
     let mut queue = VecDeque::new();
     match *side {

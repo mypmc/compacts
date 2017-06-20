@@ -65,9 +65,9 @@ fn bit_vec_union(bench: &mut Bencher) {
     let v2 = &(bit_vec!(SIZE, RANGE2, rng));
     let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
-                   v1.union_with(v2);
-                   v1.intersection_with(bv);
-               });
+        v1.union_with(v2);
+        v1.intersection_with(bv);
+    });
 }
 
 #[bench]
@@ -77,9 +77,9 @@ fn bit_vec_difference(bench: &mut Bencher) {
     let v2 = &(bit_vec!(SIZE, RANGE2, rng));
     let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
-                   v1.union_with(v2);
-                   v1.intersection_with(bv);
-               });
+        v1.union_with(v2);
+        v1.intersection_with(bv);
+    });
 }
 
 #[bench]
@@ -89,9 +89,9 @@ fn bit_vec_symmetric_difference(bench: &mut Bencher) {
     let v2 = &(bit_vec!(SIZE, RANGE2, rng));
     let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
-                   v1.symmetric_difference_with(v2);
-                   v1.intersection_with(bv);
-               });
+        v1.symmetric_difference_with(v2);
+        v1.intersection_with(bv);
+    });
 }
 
 #[bench]

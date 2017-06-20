@@ -44,9 +44,9 @@ impl Seq64 {
 impl Rle16 {
     pub fn iter(&self) -> Iter {
         let len = self.weight as usize;
-        let boxed = Box::new(self.ranges
-                                 .iter()
-                                 .flat_map(|range| (range.start...range.end).into_iter()));
+        let boxed = Box::new(self.ranges.iter().flat_map(|range| {
+            (range.start...range.end).into_iter()
+        }));
         Iter::Run(RunIter { len, boxed })
     }
 }

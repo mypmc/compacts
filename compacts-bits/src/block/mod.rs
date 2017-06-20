@@ -167,7 +167,8 @@ impl<'a> ::std::iter::IntoIterator for &'a Block {
 
 impl ::std::iter::Extend<u16> for Block {
     fn extend<I>(&mut self, iterable: I)
-        where I: ::std::iter::IntoIterator<Item = u16>
+    where
+        I: ::std::iter::IntoIterator<Item = u16>,
     {
         extend_by_u16!(self, iterable);
     }
@@ -175,7 +176,8 @@ impl ::std::iter::Extend<u16> for Block {
 
 impl ::std::iter::FromIterator<u16> for Block {
     fn from_iter<I>(iterable: I) -> Self
-        where I: ::std::iter::IntoIterator<Item = u16>
+    where
+        I: ::std::iter::IntoIterator<Item = u16>,
     {
         let iter = iterable.into_iter();
         let mut block = Block::new();
@@ -186,7 +188,8 @@ impl ::std::iter::FromIterator<u16> for Block {
 }
 impl<'a> ::std::iter::FromIterator<&'a u16> for Block {
     fn from_iter<I>(iterable: I) -> Self
-        where I: ::std::iter::IntoIterator<Item = &'a u16>
+    where
+        I: ::std::iter::IntoIterator<Item = &'a u16>,
     {
         let iter = iterable.into_iter();
         iter.cloned().collect::<Self>()
@@ -195,7 +198,8 @@ impl<'a> ::std::iter::FromIterator<&'a u16> for Block {
 
 impl ::std::iter::FromIterator<bool> for Block {
     fn from_iter<I>(iterable: I) -> Self
-        where I: ::std::iter::IntoIterator<Item = bool>
+    where
+        I: ::std::iter::IntoIterator<Item = bool>,
     {
         let iter = iterable.into_iter();
         iter.take(Self::CAPACITY as usize)
@@ -206,7 +210,8 @@ impl ::std::iter::FromIterator<bool> for Block {
 }
 impl<'a> ::std::iter::FromIterator<&'a bool> for Block {
     fn from_iter<I>(iterable: I) -> Self
-        where I: ::std::iter::IntoIterator<Item = &'a bool>
+    where
+        I: ::std::iter::IntoIterator<Item = &'a bool>,
     {
         let iter = iterable.into_iter();
         iter.cloned().collect::<Self>()

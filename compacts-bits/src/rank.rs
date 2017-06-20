@@ -8,7 +8,8 @@ pub trait Rank<T: ::UnsignedInt> {
     type Weight: ::UnsignedInt;
 
     fn size(&self) -> Self::Weight
-        where Self::Weight: From<T>
+    where
+        Self::Weight: From<T>,
     {
         self.rank1(T::max_bound()) + self.rank0(T::max_bound())
     }
@@ -16,7 +17,8 @@ pub trait Rank<T: ::UnsignedInt> {
     /// Returns occurences of non-zero bit in `0...i`.
     /// It's equivalent to `i+1 - self.rank0(i)`.
     fn rank1(&self, i: T) -> Self::Weight
-        where Self::Weight: From<T>
+    where
+        Self::Weight: From<T>,
     {
         if i == T::zero() {
             Self::Weight::zero()
@@ -30,7 +32,8 @@ pub trait Rank<T: ::UnsignedInt> {
     /// Returns occurences of zero bit in `0...i`.
     /// It's equivalent to `i+1 - self.rank1(i)`.
     fn rank0(&self, i: T) -> Self::Weight
-        where Self::Weight: From<T>
+    where
+        Self::Weight: From<T>,
     {
         if i == T::zero() {
             Self::Weight::zero()

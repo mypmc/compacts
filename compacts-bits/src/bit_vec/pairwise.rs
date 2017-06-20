@@ -37,13 +37,16 @@ macro_rules! impl_op {
 impl_op!(Intersection, intersection, intersection_with);
 impl_op!(Union, union, union_with);
 impl_op!(Difference, difference, difference_with);
-impl_op!(SymmetricDifference,
-         symmetric_difference,
-         symmetric_difference_with);
+impl_op!(
+    SymmetricDifference,
+    symmetric_difference,
+    symmetric_difference_with
+);
 
 impl<'r, 'a, 'b> ::ops::IntersectionWith<&'r super::BitVec<'b>> for super::BitVec<'a>
-    where 'a: 'r,
-          'b: 'r
+where
+    'a: 'r,
+    'b: 'r,
 {
     fn intersection_with(&mut self, that: &'r super::BitVec<'b>) {
         let keys = {
@@ -71,8 +74,9 @@ impl<'r, 'a, 'b> ::ops::IntersectionWith<&'r super::BitVec<'b>> for super::BitVe
 }
 
 impl<'r, 'a, 'b> ::ops::UnionWith<&'r super::BitVec<'b>> for super::BitVec<'a>
-    where 'a: 'r,
-          'b: 'r
+where
+    'a: 'r,
+    'b: 'r,
 {
     fn union_with(&mut self, that: &'r super::BitVec<'b>) {
         for (&key, thunk) in &that.blocks {
@@ -83,17 +87,18 @@ impl<'r, 'a, 'b> ::ops::UnionWith<&'r super::BitVec<'b>> for super::BitVec<'a>
             }
             let mut lb = (*self.blocks[&key]).clone();
             let deferred = lazy!({
-                                     lb.union_with(&rb);
-                                     lb
-                                 });
+                lb.union_with(&rb);
+                lb
+            });
             self.blocks.insert(key, deferred);
         }
     }
 }
 
 impl<'r, 'a, 'b> ::ops::DifferenceWith<&'r super::BitVec<'b>> for super::BitVec<'a>
-    where 'a: 'r,
-          'b: 'r
+where
+    'a: 'r,
+    'b: 'r,
 {
     fn difference_with(&mut self, that: &'r super::BitVec<'b>) {
         let diff = {
@@ -105,9 +110,9 @@ impl<'r, 'a, 'b> ::ops::DifferenceWith<&'r super::BitVec<'b>> for super::BitVec<
                 let mut lb = (**thunk).clone();
                 let rb = (*that.blocks[&key]).clone();
                 let deferred = lazy!({
-                                         lb.difference_with(&rb);
-                                         lb
-                                     });
+                    lb.difference_with(&rb);
+                    lb
+                });
                 thunks.push((key, deferred));
             }
             thunks
@@ -119,8 +124,9 @@ impl<'r, 'a, 'b> ::ops::DifferenceWith<&'r super::BitVec<'b>> for super::BitVec<
 }
 
 impl<'r, 'a, 'b> ::ops::SymmetricDifferenceWith<&'r super::BitVec<'b>> for super::BitVec<'a>
-    where 'a: 'r,
-          'b: 'r
+where
+    'a: 'r,
+    'b: 'r,
 {
     fn symmetric_difference_with(&mut self, that: &'r super::BitVec<'b>) {
         for (&key, thunk) in &that.blocks {
@@ -132,10 +138,10 @@ impl<'r, 'a, 'b> ::ops::SymmetricDifferenceWith<&'r super::BitVec<'b>> for super
 
             let mut lb = (*self.blocks[&key]).clone();
             let deferred = lazy!({
-                                     lb.symmetric_difference_with(&rb);
-                                     lb.optimize();
-                                     lb
-                                 });
+                lb.symmetric_difference_with(&rb);
+                lb.optimize();
+                lb
+            });
             self.blocks.insert(key, deferred);
         }
     }

@@ -61,8 +61,9 @@ impl_UnsignedInt!((usize, 64));
 /// Find the smallest index i in range at which f(i) is true, assuming that
 /// f(i) == true implies f(i+1) == true.
 pub fn search<T, F>(range: &::std::ops::Range<T>, f: F) -> T
-    where T: UnsignedInt,
-          F: Fn(T) -> bool
+where
+    T: UnsignedInt,
+    F: Fn(T) -> bool,
 {
     let two = T::from(2).unwrap();
     let mut i = range.start;

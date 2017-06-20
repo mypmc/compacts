@@ -16,7 +16,8 @@ pub trait SymmetricDifference<Rhs = Self> {
 }
 
 impl<T> Intersection<Option<T>> for Option<T>
-    where T: Intersection<T, Output = T>
+where
+    T: Intersection<T, Output = T>,
 {
     type Output = Option<T>;
     fn intersection(self, that: Option<T>) -> Self::Output {
@@ -28,7 +29,8 @@ impl<T> Intersection<Option<T>> for Option<T>
 }
 
 impl<T> Union<Option<T>> for Option<T>
-    where T: Union<T, Output = T>
+where
+    T: Union<T, Output = T>,
 {
     type Output = Option<T>;
     fn union(self, that: Option<T>) -> Self::Output {
@@ -42,7 +44,8 @@ impl<T> Union<Option<T>> for Option<T>
 }
 
 impl<'a, T> Difference<Option<T>> for Option<T>
-    where T: Difference<T, Output = T>
+where
+    T: Difference<T, Output = T>,
 {
     type Output = Option<T>;
     fn difference(self, that: Option<T>) -> Self::Output {
@@ -55,7 +58,8 @@ impl<'a, T> Difference<Option<T>> for Option<T>
 }
 
 impl<'a, T> SymmetricDifference<Option<T>> for Option<T>
-    where T: SymmetricDifference<T, Output = T>
+where
+    T: SymmetricDifference<T, Output = T>,
 {
     type Output = Option<T>;
     fn symmetric_difference(self, that: Option<T>) -> Self::Output {
@@ -151,11 +155,12 @@ define_pair!((intersection, IntersectionIter),
              (symmetric_difference, SymmetricDifferenceIter));
 
 /// Compare `a` and `b`, but return `s` if a is None and `l` if b is None
-fn comparing<T: Ord>(a: Option<T>,
-                     b: Option<T>,
-                     x: cmp::Ordering,
-                     y: cmp::Ordering)
-                     -> cmp::Ordering {
+fn comparing<T: Ord>(
+    a: Option<T>,
+    b: Option<T>,
+    x: cmp::Ordering,
+    y: cmp::Ordering,
+) -> cmp::Ordering {
     match (a, b) {
         (None, _) => x,
         (_, None) => y,
@@ -164,9 +169,10 @@ fn comparing<T: Ord>(a: Option<T>,
 }
 
 impl<I1, I2, T> Iterator for IntersectionIter<I1, I2, T>
-    where I1: Iterator<Item = T> + ExactSizeIterator,
-          I2: Iterator<Item = T> + ExactSizeIterator,
-          T: Ord
+where
+    I1: Iterator<Item = T> + ExactSizeIterator,
+    I2: Iterator<Item = T> + ExactSizeIterator,
+    T: Ord,
 {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
@@ -198,9 +204,10 @@ impl<I1, I2, T> Iterator for IntersectionIter<I1, I2, T>
 }
 
 impl<I1, I2, T> Iterator for UnionIter<I1, I2, T>
-    where I1: Iterator<Item = T> + ExactSizeIterator,
-          I2: Iterator<Item = T> + ExactSizeIterator,
-          T: Ord
+where
+    I1: Iterator<Item = T> + ExactSizeIterator,
+    I2: Iterator<Item = T> + ExactSizeIterator,
+    T: Ord,
 {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
@@ -224,9 +231,10 @@ impl<I1, I2, T> Iterator for UnionIter<I1, I2, T>
 }
 
 impl<I1, I2, T> Iterator for DifferenceIter<I1, I2, T>
-    where I1: Iterator<Item = T> + ExactSizeIterator,
-          I2: Iterator<Item = T> + ExactSizeIterator,
-          T: Ord
+where
+    I1: Iterator<Item = T> + ExactSizeIterator,
+    I2: Iterator<Item = T> + ExactSizeIterator,
+    T: Ord,
 {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
@@ -253,9 +261,12 @@ impl<I1, I2, T> Iterator for DifferenceIter<I1, I2, T>
 }
 
 impl<I1, I2, T> Iterator for SymmetricDifferenceIter<I1, I2, T>
-    where I1: Iterator<Item = T> + ExactSizeIterator,
-          I2: Iterator<Item = T> + ExactSizeIterator,
-          T: Ord
+where
+    I1: Iterator<Item = T>
+        + ExactSizeIterator,
+    I2: Iterator<Item = T>
+        + ExactSizeIterator,
+    T: Ord,
 {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {

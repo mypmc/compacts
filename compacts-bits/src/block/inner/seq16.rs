@@ -103,7 +103,8 @@ impl From<Vec<u16>> for Seq16 {
 
 impl FromIterator<u16> for Seq16 {
     fn from_iter<I>(i: I) -> Self
-        where I: IntoIterator<Item = u16>
+    where
+        I: IntoIterator<Item = u16>,
     {
         let iter = i.into_iter();
         Seq16::from(iter.collect::<Vec<u16>>())
@@ -111,7 +112,8 @@ impl FromIterator<u16> for Seq16 {
 }
 impl<'a> FromIterator<&'a u16> for Seq16 {
     fn from_iter<I>(i: I) -> Self
-        where I: IntoIterator<Item = &'a u16>
+    where
+        I: IntoIterator<Item = &'a u16>,
     {
         let iter = i.into_iter();
         Seq16::from_iter(iter.cloned())
@@ -203,9 +205,9 @@ impl ::Select0<u16> for Seq16 {
         let pos = ::prim::search(&(0..cap), |i| {
             Cast::from::<u32>(i)
                 .and_then(|conv: u16| {
-                              let rank = self.rank0(conv);
-                              Cast::from::<u32>(rank)
-                          })
+                    let rank = self.rank0(conv);
+                    Cast::from::<u32>(rank)
+                })
                 .map_or(false, |rank: u16| rank > c)
         });
         if pos < super::CAPACITY as u32 {

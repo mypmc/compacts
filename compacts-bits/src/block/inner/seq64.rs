@@ -108,7 +108,8 @@ impl<'r> From<&'r Rle16> for Seq64 {
 
 impl<'a> FromIterator<&'a u16> for Seq64 {
     fn from_iter<I>(i: I) -> Self
-        where I: IntoIterator<Item = &'a u16>
+    where
+        I: IntoIterator<Item = &'a u16>,
     {
         let iter = i.into_iter();
         Seq64::from_iter(iter.cloned())
@@ -116,7 +117,8 @@ impl<'a> FromIterator<&'a u16> for Seq64 {
 }
 impl FromIterator<u16> for Seq64 {
     fn from_iter<I>(i: I) -> Self
-        where I: IntoIterator<Item = u16>
+    where
+        I: IntoIterator<Item = u16>,
     {
         let iter = i.into_iter();
         let mut vec64 = Seq64::new();
@@ -274,7 +276,7 @@ impl ::Rank<u16> for Seq64 {
         let r = i as u32 % <u64 as ::UnsignedInt>::WIDTH as u32;
         let vec = &self.vector;
         vec.iter().take(q).fold(0, |acc, w| acc + w.count_ones()) +
-        vec.get(q).map_or(0, |w| w.rank1(r))
+            vec.get(q).map_or(0, |w| w.rank1(r))
     }
 }
 

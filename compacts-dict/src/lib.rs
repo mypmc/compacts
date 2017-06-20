@@ -5,7 +5,8 @@ use std::ops::Index;
 use prim::{UnsignedInt, Zero, Cast};
 
 pub trait Dict<T: UnsignedInt>: Index<T>
-    where <Self as Index<T>>::Output: PartialEq<Self::Item>
+where
+    <Self as Index<T>>::Output: PartialEq<Self::Item>,
 {
     /// Associated items to this dictionary.
     type Item;
@@ -35,13 +36,15 @@ pub trait Dict<T: UnsignedInt>: Index<T>
         let pos = prim::search(&(zero..size), |i| {
             Cast::from::<Self::Rank>(i)
                 .and_then(|conv: T| {
-                              let rank = self.rank(item, conv);
-                              Cast::from::<Self::Rank>(rank)
-                          })
+                    let rank = self.rank(item, conv);
+                    Cast::from::<Self::Rank>(rank)
+                })
                 .map_or(false, |rank: T| rank > c)
         });
         if pos < size {
-            Some(Cast::from::<Self::Rank>(pos).expect("if pos < size, cast must not failed"))
+            Some(Cast::from::<Self::Rank>(pos).expect(
+                "if pos < size, cast must not failed",
+            ))
         } else {
             None
         }
@@ -54,15 +57,20 @@ pub trait BitDict<T: UnsignedInt>
 }
 
 impl<T, U> BitDict<T> for U
-    where T: UnsignedInt,
-          U: Index<T, Output = bool> + bits::Rank<T> + bits::Select0<T> + bits::Select1<T>
+where
+    T: UnsignedInt,
+    U: Index<T, Output = bool>
+        + bits::Rank<T>
+        + bits::Select0<T>
+        + bits::Select1<T>,
 {
 }
 
 impl<T, U> Dict<T> for U
-    where T: UnsignedInt,
-          U: BitDict<T>,
-          U::Weight: From<T>
+where
+    T: UnsignedInt,
+    U: BitDict<T>,
+    U::Weight: From<T>,
 {
     type Item = bool;
     type Rank = U::Weight;

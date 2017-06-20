@@ -123,9 +123,9 @@ impl<'a> BitVec<'a> {
             false
         } else {
             let (key, bit) = x.split();
-            let mut b = self.blocks
-                .entry(key)
-                .or_insert_with(|| eval!(Block::new()));
+            let mut b = self.blocks.entry(key).or_insert_with(
+                || eval!(Block::new()),
+            );
             b.insert(bit)
         }
     }
@@ -153,15 +153,14 @@ impl<'a> BitVec<'a> {
     }
 
     pub fn iter<'r>(&'r self) -> impl Iterator<Item = u32> + 'r
-        where 'a: 'r
+    where
+        'a: 'r,
     {
-        self.blocks
-            .iter()
-            .flat_map(|(&key, block)| {
-                          block
-                              .iter()
-                              .map(move |val| <u32 as Merge>::merge((key, val)))
-                      })
+        self.blocks.iter().flat_map(|(&key, block)| {
+            block.iter().map(
+                move |val| <u32 as Merge>::merge((key, val)),
+            )
+        })
     }
 }
 

@@ -9,7 +9,9 @@ macro_rules! impl_op {
             type Output = Block;
             fn $fn(self, that: &Block) -> Self::Output {
                 match (self, that) {
-                    (this @ &Vec16(..), that @ &Vec16(..)) => ::pairwise::$fn(this.iter(), that.iter()).collect(),
+                    (this @ &Vec16(..), that @ &Vec16(..)) => {
+                        ::pairwise::$fn(this.iter(), that.iter()).collect()
+                    }
                     (&Rle16(ref this), &Rle16(ref that)) => Rle16(this.intersection(that)),
 
                     (this, that) => {
@@ -27,9 +29,11 @@ macro_rules! impl_op {
 impl_op!(Intersection, intersection, intersection_with);
 impl_op!(Union, union, union_with);
 impl_op!(Difference, difference, difference_with);
-impl_op!(SymmetricDifference,
-         symmetric_difference,
-         symmetric_difference_with);
+impl_op!(
+    SymmetricDifference,
+    symmetric_difference,
+    symmetric_difference_with
+);
 
 impl<'a> IntersectionWith<&'a Block> for Block {
     fn intersection_with(&mut self, target: &Block) {

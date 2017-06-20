@@ -147,13 +147,15 @@ impl RankSelect {
 fn random_rank_select() {
     use self::inner::*;
     let mut rng = rand::thread_rng();
-    let lenghs = vec![0,
-                      Seq16::THRESHOLD as u64,
-                      Seq16::THRESHOLD as u64 * 2,
-                      Block::CAPACITY as u64 / 2,
-                      Block::CAPACITY as u64,
-                      rng.gen_range(10, Seq16::THRESHOLD as u64),
-                      rng.gen_range(Seq16::THRESHOLD as u64 + 1, Block::CAPACITY as u64 - 1)];
+    let lenghs = vec![
+        0,
+        Seq16::THRESHOLD as u64,
+        Seq16::THRESHOLD as u64 * 2,
+        Block::CAPACITY as u64 / 2,
+        Block::CAPACITY as u64,
+        rng.gen_range(10, Seq16::THRESHOLD as u64),
+        rng.gen_range(Seq16::THRESHOLD as u64 + 1, Block::CAPACITY as u64 - 1),
+    ];
     for &size in lenghs.iter() {
         RankSelect::run(size as usize, &mut rng);
     }

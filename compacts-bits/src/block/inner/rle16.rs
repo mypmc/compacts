@@ -141,16 +141,17 @@ impl Rle16 {
 
     pub fn search(&self, x: u16) -> Result<usize, usize> {
         use std::cmp::Ordering;
-        self.ranges
-            .binary_search_by(|range| if range.start <= x && x <= range.end {
-                                  Ordering::Equal
-                              } else if x < range.start {
-                                  Ordering::Greater
-                              } else if range.end < x {
-                                  Ordering::Less
-                              } else {
-                                  unreachable!()
-                              })
+        self.ranges.binary_search_by(
+            |range| if range.start <= x && x <= range.end {
+                Ordering::Equal
+            } else if x < range.start {
+                Ordering::Greater
+            } else if range.end < x {
+                Ordering::Less
+            } else {
+                unreachable!()
+            },
+        )
     }
 
     fn index_to_insert(&self, x: u16) -> Option<usize> {
@@ -267,7 +268,8 @@ impl<'a> From<&'a Seq64> for Rle16 {
 
 impl<'a> ::std::iter::FromIterator<&'a u16> for Rle16 {
     fn from_iter<I>(iterable: I) -> Self
-        where I: IntoIterator<Item = &'a u16>
+    where
+        I: IntoIterator<Item = &'a u16>,
     {
         let mut b = Rle16Builder::new();
         for &bit in iterable {
@@ -321,9 +323,11 @@ macro_rules! impl_withop {
 impl_withop!(IntersectionWith, intersection_with, intersection);
 impl_withop!(UnionWith, union_with, union);
 impl_withop!(DifferenceWith, difference_with, difference);
-impl_withop!(SymmetricDifferenceWith,
-             symmetric_difference_with,
-             symmetric_difference);
+impl_withop!(
+    SymmetricDifferenceWith,
+    symmetric_difference_with,
+    symmetric_difference
+);
 
 impl ::Rank<u16> for Rle16 {
     type Weight = u32;
@@ -384,8 +388,9 @@ impl ::Select0<u16> for Rle16 {
             return None;
         }
 
-        let pos = self.ranges
-            .binary_search_by(|ri| self.rank0(ri.start).cmp(&c32));
+        let pos = self.ranges.binary_search_by(
+            |ri| self.rank0(ri.start).cmp(&c32),
+        );
 
         let rank1 = match pos {
             Err(i) if i == 0 => 0,
