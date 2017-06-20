@@ -1,58 +1,34 @@
-macro_rules! delegate {
-    ( $this: ident, $method: ident $(, $args: expr )* ) => {{
-        match $this {
-            Vec16(data) => data.$method( $( $args ),* ),
-            Vec64(data) => data.$method( $( $args ),* ),
-            Rle16(data) => data.$method( $( $args ),* ),
-        }
-    }};
-    ( ref $this: ident, $method: ident $(, $args: expr )* ) => {{
-        match *$this {
-            Vec16(ref data) => data.$method( $( $args ),* ),
-            Vec64(ref data) => data.$method( $( $args ),* ),
-            Rle16(ref data) => data.$method( $( $args ),* ),
-        }
-    }};
-    ( ref mut $this: ident, $method: ident $(, $args: expr )* ) => {{
-        match *$this {
-            Vec16(ref mut data) => data.$method( $( $args ),* ),
-            Vec64(ref mut data) => data.$method( $( $args ),* ),
-            Rle16(ref mut data) => data.$method( $( $args ),* ),
-        }
-    }}
-}
-
 #[cfg(test)]
 macro_rules! block {
     ( MIN_VEC; $rng: expr ) => {{
         let size = 0;
         let b = bucket!(u16; size as usize, $rng);
-        Vec16(b)
+        Seq16(b)
     }};
     ( MAX_VEC; $rng: expr ) => {{
         let size = inner::Seq16::THRESHOLD;
         let b = bucket!(u16; size as usize, $rng);
-        Vec16(b)
+        Seq16(b)
     }};
     ( MIN_MAP; $rng: expr ) => {{
         let size = inner::Seq16::THRESHOLD + 1;
         let b = bucket!(u64; size as usize, $rng);
-        Vec64(b)
+        Seq64(b)
     }};
     ( MAX_MAP; $rng: expr ) => {{
         let size = Block::CAPACITY - 1;
         let b = bucket!(u64; size as usize, $rng);
-        Vec64(b)
+        Seq64(b)
     }};
     ( VEC; $rng: expr ) => {{
         let size = $rng.gen_range(0, inner::Seq16::THRESHOLD);
         let b = bucket!(u16; size as usize, $rng);
-        Vec16(b)
+        Seq16(b)
     }};
     ( MAP; $rng: expr ) => {{
         let size = $rng.gen_range(inner::Seq16::THRESHOLD, Block::CAPACITY as usize);
         let b = bucket!(u64; size as usize, $rng);
-        Vec64(b)
+        Seq64(b)
     }};
 }
 

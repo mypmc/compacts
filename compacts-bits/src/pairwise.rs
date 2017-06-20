@@ -130,7 +130,7 @@ use std::cmp::{self, Ordering};
 macro_rules! define_pair {
     ( $( ( $fn:ident, $op:ident ) ),* ) => ($(
         /// Struct for a slow but generic pairwise operations.
-        pub struct $op<I1, I2, T>
+        pub(crate) struct $op<I1, I2, T>
             where I1: Iterator<Item = T>,
                   I2: Iterator<Item = T>
         {
@@ -139,7 +139,7 @@ macro_rules! define_pair {
         }
 
         /// Assume that I1 and I2 are sorted.
-        pub fn $fn<I1, I2, T>(x: I1, y: I2) -> $op<I1, I2, T>
+        pub(crate) fn $fn<I1, I2, T>(x: I1, y: I2) -> $op<I1, I2, T>
             where I1: Iterator<Item = T> + ExactSizeIterator,
                   I2: Iterator<Item = T> + ExactSizeIterator,
                   T: Ord

@@ -39,4 +39,4 @@ pub mod ops {
 pub static TRUE: &bool = &true;
 pub static FALSE: &bool = &false;
 
-use prim::UnsignedInt;
+pub(crate) use prim::UnsignedInt;

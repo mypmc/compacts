@@ -1,11 +1,11 @@
 use UnsignedInt;
 
-pub trait Split {
+pub(crate) trait Split {
     type Parts;
     fn split(&self) -> Self::Parts;
 }
 
-pub trait Merge {
+pub(crate) trait Merge {
     type Parts;
     fn merge(Self::Parts) -> Self;
 }

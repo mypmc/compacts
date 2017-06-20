@@ -10,6 +10,9 @@ use pairwise::*;
 use rank::*;
 use select::*;
 
+#[macro_use]
+mod macros;
+
 #[test]
 fn block_intersection() {
     bitops_test!(VEC & VEC);
@@ -277,11 +280,11 @@ macro_rules! test_select {
 
 #[test]
 fn block_rank_select() {
-    test_rank!(Vec16, Seq16);
-    test_rank!(Vec64, Seq64);
+    test_rank!(Seq16, Seq16);
+    test_rank!(Seq64, Seq64);
     test_rank!(Rle16, Rle16);
 
-    test_select!(Vec16, Seq16);
-    test_select!(Vec64, Seq64);
+    test_select!(Seq16, Seq16);
+    test_select!(Seq64, Seq64);
     test_select!(Rle16, Rle16);
 }

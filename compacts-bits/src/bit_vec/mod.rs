@@ -9,9 +9,11 @@ use karabiner::thunk::Thunk;
 
 pub use self::stats::{Stats, BlockStats};
 
+type Lazy<T> = Thunk<'static, T>;
+
 #[derive(Default)]
 pub struct BitVec {
-    blocks: BTreeMap<u16, Thunk<'static, Block>>,
+    blocks: BTreeMap<u16, Lazy<Block>>,
 }
 
 impl Debug for BitVec {

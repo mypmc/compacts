@@ -27,11 +27,11 @@ impl BitVec {
         };
         for block in self.blocks.values() {
             match **block {
-                super::Block::Vec16(ref b) => {
+                super::Block::Seq16(ref b) => {
                     stats.of_vec16.count += b.count_ones() as u64;
                     stats.of_vec16.bytes += b.mem() as u64;
                 }
-                super::Block::Vec64(ref b) => {
+                super::Block::Seq64(ref b) => {
                     stats.of_vec64.count += b.count_ones() as u64;
                     stats.of_vec64.bytes += b.mem() as u64;
                 }

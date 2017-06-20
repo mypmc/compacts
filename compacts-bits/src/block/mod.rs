@@ -1,19 +1,20 @@
 #[macro_use]
-mod macros;
+mod delegate;
 mod inner;
 mod rank_select;
 mod pairwise;
+
 #[cfg(test)]
 mod tests;
 
 use std::fmt;
 
-pub use self::inner::Iter as BlockIter;
+// pub(crate) use self::inner::Iter as BlockIter;
 
 #[derive(Clone)]
-pub enum Block {
-    Vec16(inner::Seq16),
-    Vec64(inner::Seq64),
+pub(crate) enum Block {
+    Seq16(inner::Seq16),
+    Seq64(inner::Seq64),
     Rle16(inner::Rle16),
 }
 use self::Block::*;
@@ -21,8 +22,8 @@ use self::Block::*;
 impl fmt::Debug for Block {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Vec16(ref d) => write!(fmt, "{:?}", d),
-            Vec64(ref d) => write!(fmt, "{:?}", d),
+            Seq16(ref d) => write!(fmt, "{:?}", d),
+            Seq64(ref d) => write!(fmt, "{:?}", d),
             Rle16(ref d) => write!(fmt, "{:?}", d),
         }
     }
@@ -31,7 +32,7 @@ impl fmt::Debug for Block {
 impl Default for Block {
     fn default() -> Self {
         // default is Seq64.
-        Vec64(inner::Seq64::new())
+        Seq64(inner::Seq64::new())
     }
 }
 
@@ -51,24 +52,24 @@ impl Block {
 
     // fn as_vec16(&mut self) {
     //     *self = match *self {
-    //         Vec64(ref b) => Vec16(inner::Seq16::from(b)),
-    //         Rle16(ref b) => Vec16(inner::Seq16::from(b)),
+    //         Seq64(ref b) => Seq16(inner::Seq16::from(b)),
+    //         Rle16(ref b) => Seq16(inner::Seq16::from(b)),
     //         _ => unreachable!("already vec16"),
     //     }
     // }
 
     fn as_vec64(&mut self) {
         *self = match *self {
-            Vec16(ref b) => Vec64(inner::Seq64::from(b)),
-            Rle16(ref b) => Vec64(inner::Seq64::from(b)),
+            Seq16(ref b) => Seq64(inner::Seq64::from(b)),
+            Rle16(ref b) => Seq64(inner::Seq64::from(b)),
             _ => unreachable!("already vec64"),
         }
     }
 
     // fn as_rle16(&mut self) {
     //     *self = match *self {
-    //         Vec16(ref b) => Rle16(inner::Rle16::from(b)),
-    //         Vec64(ref b) => Rle16(inner::Rle16::from(b)),
+    //         Seq16(ref b) => Rle16(inner::Rle16::from(b)),
+    //         Seq64(ref b) => Rle16(inner::Rle16::from(b)),
     //         _ => unreachable!("already rle16"),
     //     }
     // }
@@ -77,7 +78,7 @@ impl Block {
     /// This may consume many time and resource. So, don't call too much.
     pub fn optimize(&mut self) {
         let new_block = match *self {
-            Vec16(ref old) => {
+            Seq16(ref old) => {
                 let mem_in_seq16 = old.mem();
                 let mem_in_seq64 = inner::Seq64::size_in_bytes(VEC64_THRESHOLD);
                 let mem_in_rle16 = inner::Rle16::size_in_bytes(old.count_rle());
@@ -87,11 +88,11 @@ impl Block {
                 } else if self.count_ones() as usize <= VEC16_THRESHOLD {
                     None
                 } else {
-                    Some(Vec64(inner::Seq64::from(old)))
+                    Some(Seq64(inner::Seq64::from(old)))
                 }
             }
 
-            Vec64(ref old) => {
+            Seq64(ref old) => {
                 let mem_in_seq16 = inner::Seq16::size_in_bytes(old.count_ones() as usize);
                 let mem_in_seq64 = old.mem();
                 let mem_in_rle16 = inner::Rle16::size_in_bytes(old.count_rle());
@@ -99,7 +100,7 @@ impl Block {
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
                     Some(Rle16(inner::Rle16::from(old)))
                 } else if self.count_ones() as usize <= VEC16_THRESHOLD {
-                    Some(Vec16(inner::Seq16::from(old)))
+                    Some(Seq16(inner::Seq16::from(old)))
                 } else {
                     None
                 }
@@ -113,9 +114,9 @@ impl Block {
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
                     None
                 } else if self.count_ones() as usize <= VEC16_THRESHOLD {
-                    Some(Vec16(inner::Seq16::from(old)))
+                    Some(Seq16(inner::Seq16::from(old)))
                 } else {
-                    Some(Vec64(inner::Seq64::from(old)))
+                    Some(Seq64(inner::Seq64::from(old)))
                 }
             }
         };
@@ -139,8 +140,8 @@ impl Block {
 
     pub fn iter(&self) -> inner::Iter {
         match *self {
-            Vec16(ref data) => data.iter(),
-            Vec64(ref data) => data.iter(),
+            Seq16(ref data) => data.iter(),
+            Seq64(ref data) => data.iter(),
             Rle16(ref data) => data.iter(),
         }
     }
@@ -158,8 +159,8 @@ impl<'a> ::std::iter::IntoIterator for &'a Block {
     type IntoIter = inner::Iter<'a>;
     fn into_iter(self) -> Self::IntoIter {
         match *self {
-            Vec16(ref data) => data.iter(),
-            Vec64(ref data) => data.iter(),
+            Seq16(ref data) => data.iter(),
+            Seq64(ref data) => data.iter(),
             Rle16(ref data) => data.iter(),
         }
     }

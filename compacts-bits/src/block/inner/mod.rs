@@ -12,23 +12,23 @@ use std::ops::RangeInclusive;
 use std::mem;
 use std::fmt;
 
-pub const CAPACITY: usize = 1 << 16;
+pub(crate) const CAPACITY: usize = 1 << 16;
 
 #[derive(Clone, PartialEq)]
-pub struct Seq<T> {
-    pub weight: u32,
-    pub vector: Vec<T>,
+pub(crate) struct Seq<T> {
+    pub(crate) weight: u32,
+    pub(crate) vector: Vec<T>,
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Rle<T> {
-    pub weight: u32,
-    pub ranges: Vec<RangeInclusive<T>>,
+pub(crate) struct Rle<T> {
+    pub(crate) weight: u32,
+    pub(crate) ranges: Vec<RangeInclusive<T>>,
 }
 
-pub type Seq16 = Seq<u16>;
-pub type Seq64 = Seq<u64>;
-pub type Rle16 = Rle<u16>;
+pub(crate) type Seq16 = Seq<u16>;
+pub(crate) type Seq64 = Seq<u64>;
+pub(crate) type Rle16 = Rle<u16>;
 
 impl<T> Seq<T> {
     pub fn len(&self) -> usize {

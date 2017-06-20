@@ -9,7 +9,7 @@ macro_rules! impl_op {
             type Output = Block;
             fn $fn(self, that: &Block) -> Self::Output {
                 match (self, that) {
-                    (this @ &Vec16(..), that @ &Vec16(..)) => {
+                    (this @ &Seq16(..), that @ &Seq16(..)) => {
                         ::pairwise::$fn(this.iter(), that.iter()).collect()
                     }
                     (&Rle16(ref this), &Rle16(ref that)) => Rle16(this.intersection(that)),
@@ -38,12 +38,12 @@ impl_op!(
 impl<'a> IntersectionWith<&'a Block> for Block {
     fn intersection_with(&mut self, target: &Block) {
         match (self, target) {
-            (&mut Vec16(ref mut b1), &Vec16(ref b2)) => b1.intersection_with(b2),
-            (&mut Vec16(ref mut b1), &Vec64(ref b2)) => b1.intersection_with(b2),
+            (&mut Seq16(ref mut b1), &Seq16(ref b2)) => b1.intersection_with(b2),
+            (&mut Seq16(ref mut b1), &Seq64(ref b2)) => b1.intersection_with(b2),
 
-            (&mut Vec64(ref mut b1), &Vec16(ref b2)) => b1.intersection_with(b2),
-            (&mut Vec64(ref mut b1), &Vec64(ref b2)) => b1.intersection_with(b2),
-            (&mut Vec64(ref mut b1), &Rle16(ref b2)) => b1.intersection_with(b2),
+            (&mut Seq64(ref mut b1), &Seq16(ref b2)) => b1.intersection_with(b2),
+            (&mut Seq64(ref mut b1), &Seq64(ref b2)) => b1.intersection_with(b2),
+            (&mut Seq64(ref mut b1), &Rle16(ref b2)) => b1.intersection_with(b2),
 
             (&mut Rle16(ref mut b1), &Rle16(ref b2)) => b1.intersection_with(b2),
 
@@ -60,15 +60,15 @@ macro_rules! impl_mutop {
         impl<'a> $op<&'a Block> for Block {
             fn $fn_with(&mut self, target: &Block) {
                 match (self, target) {
-                    (&mut Vec16(ref mut b1), &Vec16(ref b2)) => b1.$fn_with(b2),
-                    (this @ &mut Vec16(..), that @ &Vec64(..)) => {
+                    (&mut Seq16(ref mut b1), &Seq16(ref b2)) => b1.$fn_with(b2),
+                    (this @ &mut Seq16(..), that @ &Seq64(..)) => {
                         this.as_vec64();
                         this.$fn_with(that)
                     }
 
-                    (&mut Vec64(ref mut b1), &Vec16(ref b2)) => b1.$fn_with(b2),
-                    (&mut Vec64(ref mut b1), &Vec64(ref b2)) => b1.$fn_with(b2),
-                    (&mut Vec64(ref mut b1), &Rle16(ref b2)) => b1.$fn_with(b2),
+                    (&mut Seq64(ref mut b1), &Seq16(ref b2)) => b1.$fn_with(b2),
+                    (&mut Seq64(ref mut b1), &Seq64(ref b2)) => b1.$fn_with(b2),
+                    (&mut Seq64(ref mut b1), &Rle16(ref b2)) => b1.$fn_with(b2),
 
                     (&mut Rle16(ref mut b1), &Rle16(ref b2)) => b1.$fn_with(b2),
 

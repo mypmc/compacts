@@ -5,9 +5,9 @@ use super::*;
 #[test]
 fn inner_size_of_repr() {
     let size = mem::size_of::<Seq16>();
-    println!("Vec16 {:?}", size);
+    println!("Seq16 {:?}", size);
     let size = mem::size_of::<Seq64>();
-    println!("Vec64 {:?}", size);
+    println!("Seq64 {:?}", size);
     let size = mem::size_of::<Rle16>();
     println!("Rle16 {:?}", size);
 }
