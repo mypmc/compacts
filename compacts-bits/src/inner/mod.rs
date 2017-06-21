@@ -13,6 +13,7 @@ use std::mem;
 use std::fmt;
 
 pub(crate) const CAPACITY: usize = 1 << 16;
+const CAP32: u32 = CAPACITY as u32;
 
 #[derive(Clone, PartialEq)]
 pub(crate) struct Seq<T> {
@@ -42,11 +43,11 @@ impl<T> Seq<T> {
         self.weight
     }
     pub fn count_zeros(&self) -> u32 {
-        super::Block::CAPACITY - self.count_ones()
+        CAP32 - self.count_ones()
     }
 
     pub fn load_factor(&self) -> f64 {
-        self.count_ones() as f64 / super::Block::CAPACITY as f64
+        self.count_ones() as f64 / CAP32 as f64
     }
 
     pub fn shrink_to_fit(&mut self) {
@@ -66,11 +67,11 @@ impl<T> Rle<T> {
         self.weight
     }
     pub fn count_zeros(&self) -> u32 {
-        super::Block::CAPACITY - self.count_ones()
+        CAP32 - self.count_ones()
     }
 
     pub fn load_factor(&self) -> f64 {
-        self.count_ones() as f64 / super::Block::CAPACITY as f64
+        self.count_ones() as f64 / CAP32 as f64
     }
 
     pub fn shrink_to_fit(&mut self) {

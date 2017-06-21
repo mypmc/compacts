@@ -20,6 +20,7 @@ extern crate compacts_prim as prim;
 mod macros;
 mod bit_vec;
 mod block;
+mod inner;
 mod rank;
 mod select;
 mod split_merge;

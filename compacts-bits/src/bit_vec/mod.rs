@@ -75,7 +75,7 @@ impl BitVec {
     /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// bits.set(0);
+    /// bits.insert(0);
     /// assert!(bits.count_ones() == 1);
     /// bits.clear();
     /// assert!(bits.count_ones() == 0);
@@ -92,13 +92,13 @@ impl BitVec {
     /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// bits.set(1);
-    /// assert!(!bits.get(0));
-    /// assert!(bits.get(1));
-    /// assert!(!bits.get(2));
+    /// bits.insert(1);
+    /// assert!(!bits.contains(0));
+    /// assert!(bits.contains(1));
+    /// assert!(!bits.contains(2));
     /// assert_eq!(bits.count_ones(), 1);
     /// ```
-    pub fn get(&self, x: u32) -> bool {
+    pub fn contains(&self, x: u32) -> bool {
         let (key, bit) = x.split();
         if let Some(b) = self.blocks.get(&key) {
             b.contains(bit)
@@ -115,13 +115,13 @@ impl BitVec {
     /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// assert!(bits.set(3));
-    /// assert!(!bits.set(3));
-    /// assert!(bits.get(3));
+    /// assert!(bits.insert(3));
+    /// assert!(!bits.insert(3));
+    /// assert!(bits.contains(3));
     /// assert_eq!(bits.count_ones(), 1);
     /// ```
-    pub fn set(&mut self, x: u32) -> bool {
-        if self.get(x) {
+    pub fn insert(&mut self, x: u32) -> bool {
+        if self.contains(x) {
             false
         } else {
             let (key, bit) = x.split();
@@ -140,9 +140,9 @@ impl BitVec {
     /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
-    /// assert!(bits.set(3));
+    /// assert!(bits.insert(3));
     /// assert!(bits.remove(3));
-    /// assert!(!bits.get(3));
+    /// assert!(!bits.contains(3));
     /// assert_eq!(bits.count_ones(), 0);
     /// ```
     pub fn remove(&mut self, x: u32) -> bool {
@@ -166,7 +166,7 @@ impl BitVec {
 impl ::std::ops::Index<u32> for BitVec {
     type Output = bool;
     fn index(&self, i: u32) -> &Self::Output {
-        if self.get(i) {
+        if self.contains(i) {
             super::TRUE
         } else {
             super::FALSE

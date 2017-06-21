@@ -5,7 +5,7 @@ use std::u16;
 use itertools;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BelongTo<T: ::UnsignedInt> {
+pub(crate) enum BelongTo<T: ::UnsignedInt> {
     None(Range<T>),
     Lhs(Range<T>),
     Rhs(Range<T>),
@@ -22,7 +22,7 @@ impl<T: ::UnsignedInt> BelongTo<T> {
     }
 }
 
-pub struct Folding<'r, T: ::UnsignedInt> {
+pub(crate) struct Folding<'r, T: ::UnsignedInt> {
     lhs: Option<State<T>>,
     rhs: Option<State<T>>,
     window: Box<Iterator<Item = (Boundary<T>, Boundary<T>)> + 'r>,

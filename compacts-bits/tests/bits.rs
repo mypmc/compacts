@@ -19,7 +19,7 @@ macro_rules! bit_vec {
         let mut vec = BitVec::new();
         for _ in 0..$size {
             let gen = $rng.gen_range($start, $end);
-            vec.set(gen);
+            vec.insert(gen);
         }
         vec.optimize();
         vec
@@ -123,8 +123,8 @@ fn rank_select() {
 
     let _ = env_logger::init();
     let mut vec = BitVec::new();
-    vec.set(0);
-    vec.set(1000000);
+    vec.insert(0);
+    vec.insert(1000000);
 
     assert_eq!(vec.select0(0), Some(1));
     assert_eq!(vec.rank0(1), 1);
@@ -146,7 +146,7 @@ fn bit_vec_iterator() {
     {
         let mut vec = BitVec::new();
         for i in 0..1000000 {
-            vec.set(i);
+            vec.insert(i);
         }
         for (i, bit) in vec.iter().enumerate() {
             assert_eq!(i as u32, bit);
@@ -155,7 +155,7 @@ fn bit_vec_iterator() {
     {
         let mut vec = BitVec::new();
         for i in 65533..65537 {
-            vec.set(i);
+            vec.insert(i);
         }
         let col = vec.iter().collect::<Vec<u32>>();
         assert_eq!(col, vec![65533, 65534, 65535, 65536]);

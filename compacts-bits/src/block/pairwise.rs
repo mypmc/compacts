@@ -48,7 +48,7 @@ impl<'a> IntersectionWith<&'a Block> for Block {
             (&mut Rle16(ref mut b1), &Rle16(ref b2)) => b1.intersection_with(b2),
 
             (this, that) => {
-                this.as_vec64();
+                this.as_seq64();
                 this.intersection_with(that);
             }
         }
@@ -62,7 +62,7 @@ macro_rules! impl_mutop {
                 match (self, target) {
                     (&mut Seq16(ref mut b1), &Seq16(ref b2)) => b1.$fn_with(b2),
                     (this @ &mut Seq16(..), that @ &Seq64(..)) => {
-                        this.as_vec64();
+                        this.as_seq64();
                         this.$fn_with(that)
                     }
 
@@ -73,7 +73,7 @@ macro_rules! impl_mutop {
                     (&mut Rle16(ref mut b1), &Rle16(ref b2)) => b1.$fn_with(b2),
 
                     (this, that) => {
-                        this.as_vec64();
+                        this.as_seq64();
                         this.intersection_with(that);
                     }
                 }

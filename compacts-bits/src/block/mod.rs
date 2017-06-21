@@ -1,6 +1,5 @@
 #[macro_use]
 mod delegate;
-mod inner;
 mod rank_select;
 mod pairwise;
 
@@ -8,6 +7,7 @@ mod pairwise;
 mod tests;
 
 use std::fmt;
+use inner;
 
 // pub(crate) use self::inner::Iter as BlockIter;
 
@@ -36,11 +36,11 @@ impl Default for Block {
     }
 }
 
-const VEC16_THRESHOLD: usize = 4096; // 4096 * 16 == 65536
-const VEC64_THRESHOLD: usize = 1024; // 1024 * 64 == 65536
+const SEQ16_THRESHOLD: usize = 4096; // 4096 * 16 == 65536
+const SEQ64_THRESHOLD: usize = 1024; // 1024 * 64 == 65536
 
 impl Block {
-    pub const CAPACITY: u32 = 1 << 16;
+    pub const CAPACITY: u32 = inner::CAPACITY as u32;
 
     pub fn new() -> Self {
         Block::default()
@@ -58,7 +58,7 @@ impl Block {
     //     }
     // }
 
-    fn as_vec64(&mut self) {
+    fn as_seq64(&mut self) {
         *self = match *self {
             Seq16(ref b) => Seq64(inner::Seq64::from(b)),
             Rle16(ref b) => Seq64(inner::Seq64::from(b)),
@@ -80,12 +80,12 @@ impl Block {
         let new_block = match *self {
             Seq16(ref old) => {
                 let mem_in_seq16 = old.mem();
-                let mem_in_seq64 = inner::Seq64::size_in_bytes(VEC64_THRESHOLD);
+                let mem_in_seq64 = inner::Seq64::size_in_bytes(SEQ64_THRESHOLD);
                 let mem_in_rle16 = inner::Rle16::size_in_bytes(old.count_rle());
 
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
                     Some(Rle16(inner::Rle16::from(old)))
-                } else if self.count_ones() as usize <= VEC16_THRESHOLD {
+                } else if self.count_ones() as usize <= SEQ16_THRESHOLD {
                     None
                 } else {
                     Some(Seq64(inner::Seq64::from(old)))
@@ -99,7 +99,7 @@ impl Block {
 
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
                     Some(Rle16(inner::Rle16::from(old)))
-                } else if self.count_ones() as usize <= VEC16_THRESHOLD {
+                } else if self.count_ones() as usize <= SEQ16_THRESHOLD {
                     Some(Seq16(inner::Seq16::from(old)))
                 } else {
                     None
@@ -108,12 +108,12 @@ impl Block {
 
             Rle16(ref old) => {
                 let mem_in_seq16 = inner::Seq16::size_in_bytes(old.count_ones() as usize);
-                let mem_in_seq64 = inner::Seq64::size_in_bytes(VEC64_THRESHOLD);
+                let mem_in_seq64 = inner::Seq64::size_in_bytes(SEQ64_THRESHOLD);
                 let mem_in_rle16 = old.mem();
 
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
                     None
-                } else if self.count_ones() as usize <= VEC16_THRESHOLD {
+                } else if self.count_ones() as usize <= SEQ16_THRESHOLD {
                     Some(Seq16(inner::Seq16::from(old)))
                 } else {
                     Some(Seq64(inner::Seq64::from(old)))

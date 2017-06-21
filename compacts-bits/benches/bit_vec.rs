@@ -20,7 +20,7 @@ macro_rules! bit_vec {
         if $size > 1 {
             for _ in 0..$size {
                 let gen = $rng.gen_range($start, $end);
-                vec.set(gen);
+                vec.insert(gen);
             }
         }
         vec.optimize();
