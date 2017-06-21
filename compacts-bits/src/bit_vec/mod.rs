@@ -43,10 +43,7 @@ impl BitVec {
     }
 
     pub fn count_zeros(&self) -> u64 {
-        self.blocks
-            .values()
-            .map(|b| u64::from(b.count_zeros()))
-            .sum()
+        (1 << 32) - self.count_ones()
     }
 
     fn count_blocks(&self) -> usize {
@@ -92,6 +89,7 @@ impl BitVec {
     /// use compacts_bits::BitVec;
     ///
     /// let mut bits = BitVec::new();
+    /// assert_eq!(bits.count_zeros(), 1 << 32);
     /// bits.insert(1);
     /// assert!(!bits.contains(0));
     /// assert!(bits.contains(1));
