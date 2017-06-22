@@ -1,4 +1,4 @@
-use super::BitVec;
+use BitVec;
 
 #[derive(Clone, Debug)]
 pub struct Stats {

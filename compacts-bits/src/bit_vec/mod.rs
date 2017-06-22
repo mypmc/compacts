@@ -3,9 +3,8 @@ mod pairwise;
 
 use std::fmt::{self, Debug, Formatter};
 use std::collections::BTreeMap;
-use split_merge::{Split, Merge};
-use block::Block;
 use karabiner::thunk::Thunk;
+use {Block, Split, Merge};
 
 pub use self::stats::{Stats, BlockStats};
 
@@ -46,6 +45,14 @@ impl BitVec {
         (1 << 32) - self.count_ones()
     }
 
+    pub fn mem_size(&self) -> u64 {
+        let mut sum = 0;
+        for size in self.blocks.values().map(|b| b.mem_size() as u64) {
+            sum += size;
+        }
+        sum
+    }
+
     fn count_blocks(&self) -> usize {
         self.blocks.len()
     }
@@ -81,7 +88,7 @@ impl BitVec {
         self.blocks.clear();
     }
 
-    /// Return `true` if the specified bit set in BitVec.
+    /// Return `true` if the value exists.
     ///
     /// # Examples
     ///
@@ -98,20 +105,15 @@ impl BitVec {
     /// ```
     pub fn contains(&self, x: u32) -> bool {
         let (key, bit) = x.split();
-        if let Some(b) = self.blocks.get(&key) {
-            b.contains(bit)
-        } else {
-            false
-        }
+        self.blocks.get(&key).map_or(false, |b| b.contains(bit))
     }
 
-    /// Return `true` if the value doesn't exists in the BitVec.
+    /// Return `true` if the value doesn't exists and inserted successfuly.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use compacts_bits::BitVec;
-    ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
     /// assert!(!bits.insert(3));
@@ -119,24 +121,19 @@ impl BitVec {
     /// assert_eq!(bits.count_ones(), 1);
     /// ```
     pub fn insert(&mut self, x: u32) -> bool {
-        if self.contains(x) {
-            false
-        } else {
-            let (key, bit) = x.split();
-            let mut b = self.blocks
-                .entry(key)
-                .or_insert_with(|| eval!(Block::new()));
-            b.insert(bit)
-        }
+        let (key, bit) = x.split();
+        let mut b = self.blocks
+            .entry(key)
+            .or_insert_with(|| eval!(Block::new()));
+        b.insert(bit)
     }
 
-    /// Return `true` if the value present and removed from the BitVec.
+    /// Return `true` if the value exists and removed successfuly.
     ///
     /// # Examples
     ///
     /// ```rust
     /// use compacts_bits::BitVec;
-    ///
     /// let mut bits = BitVec::new();
     /// assert!(bits.insert(3));
     /// assert!(bits.remove(3));

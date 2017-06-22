@@ -1,11 +1,11 @@
-use prim::{UnsignedInt, Zero};
+use {UnsignedInt, Zero};
 
-pub trait Rank<T: ::UnsignedInt> {
+pub trait Rank<T: UnsignedInt> {
     // `From<T>` constrain that Weight should be able to construct from T safely,
     // because Weight may hold a value that is greater than or equal to `T::max_value() + 1`.
 
     /// Hamming Weight or Population Count.
-    type Weight: ::UnsignedInt;
+    type Weight: UnsignedInt;
 
     fn size(&self) -> Self::Weight
     where

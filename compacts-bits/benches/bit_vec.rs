@@ -29,6 +29,27 @@ macro_rules! bit_vec {
 }
 
 #[bench]
+fn contains(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = bit_vec!(65_000, 2000000, rng);
+    bench.iter(|| v1.contains(rng.gen()));
+}
+
+#[bench]
+fn insert(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let mut v1 = bit_vec!(65_000, 2000000, rng);
+    bench.iter(|| v1.insert(rng.gen()));
+}
+
+#[bench]
+fn remove(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let mut v1 = bit_vec!(65_000, 2000000, rng);
+    bench.iter(|| v1.remove(rng.gen()));
+}
+
+#[bench]
 fn clone(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(65_000, 2000000, rng);

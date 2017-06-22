@@ -1,4 +1,4 @@
-use super::Block::*;
+use Block::*;
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 impl ::Rank<u16> for super::Block {

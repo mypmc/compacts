@@ -1,7 +1,7 @@
 use ops::*;
 
-use super::Block;
-use super::Block::*;
+use Block;
+use self::Block::*;
 
 macro_rules! impl_op {
     ( $op:ident, $fn:ident, $fn_with:ident ) => {
