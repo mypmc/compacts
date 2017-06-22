@@ -29,29 +29,25 @@ macro_rules! bit_vec {
 }
 
 #[bench]
-fn bit_vec_clone(bench: &mut Bencher) {
+fn clone(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(65_000, 2000000, rng);
     bench.iter(|| v1 = v1.clone());
 }
 
 #[bench]
-fn bit_vec_collect(bench: &mut Bencher) {
+fn collect(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let v1 = bit_vec!(65_000, 2000000, rng);
     bench.iter(|| test::black_box(v1.iter().collect::<Vec<u32>>()));
 }
 
 const SIZE: usize = 65000;
-const RANGE1: u32 = 1500000;
+const RANGE1: u32 = 1000000;
 const RANGE2: u32 = 100000000;
 
-// Commenting out `intersection_with(bv)` line causes evaluation of thunked computations.
-// But in testing (`../tests`), this doesn't happen.
-// My guess: because of `cargo bench`? I have no confidence.
-
 #[bench]
-fn bit_vec_intersection(bench: &mut Bencher) {
+fn intersection(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
     let v2 = &(bit_vec!(SIZE, RANGE2, rng));
@@ -59,50 +55,76 @@ fn bit_vec_intersection(bench: &mut Bencher) {
 }
 
 #[bench]
-fn bit_vec_union(bench: &mut Bencher) {
+fn union(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
     let v2 = &(bit_vec!(SIZE, RANGE2, rng));
+    bench.iter(|| v1.union_with(v2));
+}
+
+#[bench]
+fn union_lazy(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = bit_vec!(SIZE, RANGE1, rng);
+    let v2 = &(bit_vec!(SIZE, RANGE2, rng));
     let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
-        v1.union_with(v2);
-        v1.intersection_with(bv);
+        let mut v = v1.clone();
+        v.union_with(v2);
+        v.intersection_with(bv);
     });
 }
 
 #[bench]
-fn bit_vec_difference(bench: &mut Bencher) {
+fn difference(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
     let v2 = &(bit_vec!(SIZE, RANGE2, rng));
+    bench.iter(|| v1.difference_with(v2));
+}
+
+#[bench]
+fn difference_lazy(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = bit_vec!(SIZE, RANGE1, rng);
+    let v2 = &(bit_vec!(SIZE, RANGE2, rng));
     let bv = &(bit_vec!(0, 1, rng));
     bench.iter(|| {
-        v1.union_with(v2);
-        v1.intersection_with(bv);
+        let mut v = v1.clone();
+        v.difference_with(v2);
+        v.intersection_with(bv);
     });
 }
 
 #[bench]
-fn bit_vec_symmetric_difference(bench: &mut Bencher) {
+fn symmetric_difference(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = bit_vec!(SIZE, RANGE1, rng);
     let v2 = &(bit_vec!(SIZE, RANGE2, rng));
-    let bv = &(bit_vec!(0, 1, rng));
-    bench.iter(|| {
-        v1.symmetric_difference_with(v2);
-        v1.intersection_with(bv);
-    });
+    bench.iter(|| v1.symmetric_difference_with(v2));
 }
 
 #[bench]
-fn small_bit_vec_rank(bench: &mut Bencher) {
+fn symmetric_difference_lazy(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = bit_vec!(SIZE, RANGE1, rng);
+    let v2 = &(bit_vec!(SIZE, RANGE2, rng));
+    let bv = &(bit_vec!(0, 1, rng));
+    bench.iter(|| {
+        let mut v = v1.clone();
+        v.symmetric_difference_with(v2);
+        v.intersection_with(bv);
+    });
+}
+#[bench]
+fn small_rank(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let v1 = bit_vec!(SIZE, RANGE1, rng);
     let i = rng.gen();
     bench.iter(|| v1.rank1(i));
 }
 #[bench]
-fn large_bit_vec_rank(bench: &mut Bencher) {
+fn large_rank(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let v1 = bit_vec!(SIZE, RANGE2, rng);
     let i = rng.gen();

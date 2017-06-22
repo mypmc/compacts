@@ -14,7 +14,7 @@ use select::*;
 mod macros;
 
 #[test]
-fn block_intersection() {
+fn intersection() {
     bitops_test!(VEC & VEC);
     bitops_test!(VEC & MAP);
     bitops_test!(MAP & VEC);
@@ -30,7 +30,7 @@ fn block_intersection() {
 }
 
 #[test]
-fn block_union() {
+fn union() {
     bitops_test!(VEC | VEC);
     bitops_test!(VEC | MAP);
     bitops_test!(MAP | VEC);
@@ -46,7 +46,7 @@ fn block_union() {
 }
 
 #[test]
-fn block_symmetric_difference() {
+fn symmetric_difference() {
     bitops_test!(VEC ^ VEC);
     bitops_test!(VEC ^ MAP);
     bitops_test!(MAP ^ VEC);
@@ -62,7 +62,7 @@ fn block_symmetric_difference() {
 }
 
 #[test]
-fn block_difference() {
+fn difference() {
     bitops_test!(VEC - VEC);
     bitops_test!(VEC - MAP);
     bitops_test!(MAP - VEC);
@@ -98,9 +98,9 @@ impl RankSelect {
             block.insert(rng.gen_range(0, (size - 1) as u16));
         }
 
-        println!("({:>5?}) before {:?} {:?}", size, block, block.mem());
+        println!("({:>5?}) before {:?} {:?}", size, block, block.mem_size());
         block.optimize();
-        println!("({:>5?}) after  {:?} {:?}", size, block, block.mem());
+        println!("({:>5?}) after  {:?} {:?}", size, block, block.mem_size());
 
         RankSelect { size, block }
     }
@@ -165,7 +165,7 @@ fn random_rank_select() {
 }
 
 #[test]
-fn block_insert_remove() {
+fn insert_remove() {
     let mut b = Block::new();
     let mut i = 0u16;
     while (i as usize) < inner::Seq16::THRESHOLD {
@@ -205,7 +205,7 @@ fn block_insert_remove() {
 }
 
 #[test]
-fn block_clone() {
+fn clone() {
     let b1 = inner::Seq64::new();
     let mut b2 = b1.clone();
     b2.insert(0);
@@ -279,7 +279,7 @@ macro_rules! test_select {
 }
 
 #[test]
-fn block_rank_select() {
+fn rank_select() {
     test_rank!(Seq16, Seq16);
     test_rank!(Seq64, Seq64);
     test_rank!(Rle16, Rle16);

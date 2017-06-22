@@ -1,5 +1,4 @@
 use ops::*;
-use super::Block;
 
 macro_rules! impl_op {
     ( $op:ident, $fn_name:ident, $fn:ident ) => {
@@ -40,94 +39,85 @@ impl_op!(
     symmetric_difference_with
 );
 
-fn union_with(mut lhs: Block, rhs: &Block) -> Block {
+fn block_or(mut lhs: super::Block, rhs: &super::Block) -> super::Block {
     lhs.union_with(rhs);
     lhs
 }
 
-fn difference_with(mut lhs: Block, rhs: &Block) -> Block {
+fn block_andnot(mut lhs: super::Block, rhs: &super::Block) -> super::Block {
     lhs.difference_with(rhs);
     lhs
 }
 
-fn symmetric_difference_with(mut lhs: Block, rhs: &Block) -> Block {
+fn block_xor(mut lhs: super::Block, rhs: &super::Block) -> super::Block {
     lhs.symmetric_difference_with(rhs);
     lhs
 }
 
 impl<'r> ::ops::IntersectionWith<&'r super::BitVec> for super::BitVec {
     fn intersection_with(&mut self, that: &'r super::BitVec) {
-        let keys = {
-            let mut remove = Vec::with_capacity(self.blocks.len());
+        let rms = {
+            let mut rms = Vec::with_capacity(self.blocks.len());
             for (key, b) in &mut self.blocks {
                 if that.blocks.contains_key(key) {
                     b.intersection_with(&that.blocks[key]);
-                    let ones = b.count_ones();
-                    if ones == 0 {
-                        remove.push(*key);
-                        continue;
+                    if b.count_ones() != 0 {
+                        b.optimize();
+                    } else {
+                        rms.push(*key);
                     }
-                    b.optimize();
                 } else {
-                    remove.push(*key);
+                    rms.push(*key);
                 }
             }
-            remove
+            rms
         };
-        for key in keys {
-            let removed = self.blocks.remove(&key);
-            assert!(removed.is_some());
+        for rm in &rms {
+            let removed = self.blocks.remove(rm);
+            debug_assert!(removed.is_some());
         }
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(map_entry))]
 impl<'r> ::ops::UnionWith<&'r super::BitVec> for super::BitVec {
     fn union_with(&mut self, that: &'r super::BitVec) {
-        for (&key, thunk) in &that.blocks {
-            let rb = (**thunk).clone();
+        for (&key, b) in &that.blocks {
+            let rb = (**b).clone();
             if !self.blocks.contains_key(&key) {
                 self.blocks.insert(key, eval!(rb));
                 continue;
             }
             let lb = (*self.blocks[&key]).clone();
-            let deferred = lazy!(union_with(lb, &rb));
-            self.blocks.insert(key, deferred);
+            self.blocks.insert(key, lazy!(block_or(lb, &rb)));
         }
     }
 }
 
 impl<'r> ::ops::DifferenceWith<&'r super::BitVec> for super::BitVec {
     fn difference_with(&mut self, that: &'r super::BitVec) {
-        let diff = {
-            let mut thunks = Vec::with_capacity(64);
-            for (&key, thunk) in &self.blocks {
-                if !that.blocks.contains_key(&key) {
-                    continue;
-                }
-                let lb = (**thunk).clone();
-                let rb = (*that.blocks[&key]).clone();
-                let deferred = lazy!(difference_with(lb, &rb));
-                thunks.push((key, deferred));
+        for (&key, b) in &mut self.blocks {
+            if !that.blocks.contains_key(&key) {
+                continue;
             }
-            thunks
-        };
-        for (k, t) in diff {
-            self.blocks.insert(k, t);
+            let lb = (**b).clone();
+            let rb = (*that.blocks[&key]).clone();
+            *b = lazy!(block_andnot(lb, &rb));
         }
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(map_entry))]
 impl<'r> ::ops::SymmetricDifferenceWith<&'r super::BitVec> for super::BitVec {
     fn symmetric_difference_with(&mut self, that: &'r super::BitVec) {
-        for (&key, thunk) in &that.blocks {
-            let rb = (**thunk).clone();
+        for (&key, b) in &that.blocks {
+            let rb = (**b).clone();
             if !self.blocks.contains_key(&key) {
                 self.blocks.insert(key, eval!(rb));
                 continue;
             }
             let lb = (*self.blocks[&key]).clone();
-            let deferred = lazy!(symmetric_difference_with(lb, &rb));
-            self.blocks.insert(key, deferred);
+            self.blocks.insert(key, lazy!(block_xor(lb, &rb)));
         }
     }
 }

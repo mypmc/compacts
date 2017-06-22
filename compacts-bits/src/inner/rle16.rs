@@ -401,7 +401,7 @@ impl ::Select0<u16> for Rle16 {
 }
 
 #[cfg(test)]
-mod rle16_tests {
+mod tests {
     use super::*;
 
     static RLE: &[::std::ops::RangeInclusive<u16>] = &[1...1, 3...5, 10...13, 18...19, 100...120];
@@ -435,7 +435,7 @@ mod rle16_tests {
     }
 
     #[test]
-    fn rle16_insert() {
+    fn insert() {
         let slice = [1...1, 3...5];
         let mut rle = Rle16::from(&slice[..]);
 
@@ -474,7 +474,7 @@ mod rle16_tests {
     }
 
     #[test]
-    fn rle16_remove() {
+    fn remove() {
         let slice = [1...1, 3...5];
         let mut rle = Rle16::from(&slice[..]);
         assert_eq!(rle.count_ones(), 4);

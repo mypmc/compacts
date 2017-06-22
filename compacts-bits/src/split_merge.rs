@@ -36,8 +36,14 @@ impl_SplitMerge!{(usize, u16)}
 #[cfg(target_pointer_width = "64")]
 impl_SplitMerge!{(usize, u32)}
 
-#[test]
-fn split_merge() {
-    let w = 0b_1100_u64;
-    assert!(w == <u64 as Merge>::merge(w.split()));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn identity() {
+        let w = 0b_11000010_11001000_u64;
+        assert!(w == <u64 as Merge>::merge(w.split()));
+        let w = 0b_10001011_10100100_u64;
+        assert!(w == <u64 as Merge>::merge(w.split()));
+    }
 }

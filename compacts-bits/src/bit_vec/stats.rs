@@ -29,15 +29,15 @@ impl BitVec {
             match **block {
                 super::Block::Seq16(ref b) => {
                     stats.of_vec16.count += b.count_ones() as u64;
-                    stats.of_vec16.bytes += b.mem() as u64;
+                    stats.of_vec16.bytes += b.mem_size() as u64;
                 }
                 super::Block::Seq64(ref b) => {
                     stats.of_vec64.count += b.count_ones() as u64;
-                    stats.of_vec64.bytes += b.mem() as u64;
+                    stats.of_vec64.bytes += b.mem_size() as u64;
                 }
                 super::Block::Rle16(ref b) => {
                     stats.of_rle16.count += b.count_ones() as u64;
-                    stats.of_rle16.bytes += b.mem() as u64;
+                    stats.of_rle16.bytes += b.mem_size() as u64;
                 }
             }
         }

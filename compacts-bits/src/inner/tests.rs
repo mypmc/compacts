@@ -3,7 +3,7 @@ use std::u16;
 use super::*;
 
 #[test]
-fn inner_size_of_repr() {
+fn size_of_repr() {
     let size = mem::size_of::<Seq16>();
     println!("Seq16 {:?}", size);
     let size = mem::size_of::<Seq64>();
@@ -13,7 +13,7 @@ fn inner_size_of_repr() {
 }
 
 #[test]
-fn inner_rle16() {
+fn rle16_insert_remove() {
     use std::u16;
     let mut vec16 = Seq16::new();
     let mut vec64 = Seq64::new();
@@ -115,7 +115,7 @@ static ONE2: &[::std::ops::RangeInclusive<u16>] = &[(u16::MAX / 2)...(u16::MAX -
 static FULL: &[::std::ops::RangeInclusive<u16>] = &[0...u16::MAX]; // 0...65536
 
 #[test]
-fn inner_range_folding() {
+fn iterate_folding() {
     // note: result are exclusive
     let want = vec![
         range::BelongTo::Rhs(2..3),
@@ -143,7 +143,7 @@ fn inner_range_folding() {
 
 #[test]
 #[allow(unused_variables)]
-fn inner_rle16_intersection() {
+fn rle16_intersection() {
     use self::range::*;
 
     let (w, vec) = range::repair(Folding::new(LHS, RHS).intersection());
@@ -169,7 +169,7 @@ fn inner_rle16_intersection() {
 
 #[test]
 #[allow(unused_variables)]
-fn inner_rle16_union() {
+fn rle16_union() {
     use self::range::*;
 
     let (w, vec) = range::repair(Folding::new(LHS, RHS).union());
@@ -197,7 +197,7 @@ fn inner_rle16_union() {
 
 #[test]
 #[allow(unused_variables)]
-fn inner_rle16_difference() {
+fn rle16_difference() {
     use self::range::*;
 
     let (w, vec) = range::repair(Folding::new(LHS, RHS).difference());
@@ -225,7 +225,7 @@ fn inner_rle16_difference() {
 
 #[test]
 #[allow(unused_variables)]
-fn inner_rle16_symmetric_difference() {
+fn rle16_symmetric_difference() {
     use self::range::*;
 
     let (w, vec) = range::repair(Folding::new(LHS, RHS).symmetric_difference());

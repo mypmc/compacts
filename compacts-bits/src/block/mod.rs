@@ -79,7 +79,7 @@ impl Block {
     pub fn optimize(&mut self) {
         let new_block = match *self {
             Seq16(ref old) => {
-                let mem_in_seq16 = old.mem();
+                let mem_in_seq16 = old.mem_size();
                 let mem_in_seq64 = inner::Seq64::size_in_bytes(SEQ64_THRESHOLD);
                 let mem_in_rle16 = inner::Rle16::size_in_bytes(old.count_rle());
 
@@ -94,7 +94,7 @@ impl Block {
 
             Seq64(ref old) => {
                 let mem_in_seq16 = inner::Seq16::size_in_bytes(old.count_ones() as usize);
-                let mem_in_seq64 = old.mem();
+                let mem_in_seq64 = old.mem_size();
                 let mem_in_rle16 = inner::Rle16::size_in_bytes(old.count_rle());
 
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
@@ -109,7 +109,7 @@ impl Block {
             Rle16(ref old) => {
                 let mem_in_seq16 = inner::Seq16::size_in_bytes(old.count_ones() as usize);
                 let mem_in_seq64 = inner::Seq64::size_in_bytes(SEQ64_THRESHOLD);
-                let mem_in_rle16 = old.mem();
+                let mem_in_rle16 = old.mem_size();
 
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
                     None
@@ -128,7 +128,7 @@ impl Block {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 impl Block {
-    pub fn mem(&self) -> usize { delegate!(ref self, mem)  }
+    pub fn mem_size(&self) -> usize { delegate!(ref self, mem_size)  }
 
     pub fn count_ones(&self)  -> u32 { delegate!(ref self, count_ones)  }
     pub fn count_zeros(&self) -> u32 { delegate!(ref self, count_zeros) }
