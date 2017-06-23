@@ -11,12 +11,12 @@ use compacts_bits::*;
 use compacts_bits::ops::*;
 
 macro_rules! bit_vec {
-    ( 0, 1, $rng:expr ) => {{ BitVec::new() }};
+    ( 0, 1, $rng:expr ) => {{ Vec32::new() }};
     ( $size:expr, $end:expr, $rng:expr ) => {{
         bit_vec!($size, 0, $end, $rng)
     }};
     ( $size:expr, $start:expr, $end:expr, $rng:expr ) => {{
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         if $size > 1 {
             for _ in 0..$size {
                 let gen = $rng.gen_range($start, $end);

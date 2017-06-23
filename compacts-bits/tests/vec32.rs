@@ -6,17 +6,17 @@ extern crate compacts_bits;
 
 use self::rand::Rng;
 
-use compacts_bits::BitVec;
+use compacts_bits::*;
 use compacts_bits::ops::*;
 
 macro_rules! bit_vec {
-    ( ) => {&BitVec::new()};
+    ( ) => {&Vec32::new()};
 
     ( $size:expr, $end:expr, $rng:expr ) => {{
         bit_vec!($size, 0, $end, $rng)
     }};
     ( $size:expr, $start:expr, $end:expr, $rng:expr ) => {{
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         for _ in 0..$size {
             let gen = $rng.gen_range($start, $end);
             vec.insert(gen);
@@ -27,18 +27,18 @@ macro_rules! bit_vec {
 }
 
 #[test]
+#[ignore]
 fn similarity() {
     let _ = env_logger::init();
     let mut rng = rand::thread_rng();
 
-    let size = 200000;
-    let range = 1000000;
+    let size = (1 << 15) * 7;
+    let maxn = (1 << 16) * 2;
 
-    let p = &(bit_vec!(size, range, rng));
-    let q = &(bit_vec!(size, range, rng));
+    let p = &(bit_vec!(size, maxn, rng));
+    let q = &(bit_vec!(size, maxn, rng));
 
-    debug!("{:#?}", p.stats());
-    debug!("{:?}", Some(p.clone()).intersection(Some(q.clone())));
+    debug!("{:#?}", p.stats().sum::<vec32::Summary>());
 
     let jaccard = {
         let r = p.intersection(q);
@@ -66,7 +66,7 @@ fn rank_select() {
     use compacts_bits::{Rank, Select1, Select0};
 
     let _ = env_logger::init();
-    let mut vec = BitVec::new();
+    let mut vec = Vec32::new();
     vec.insert(0);
     vec.insert(1000000);
 
@@ -88,7 +88,7 @@ fn iterator() {
     let _ = env_logger::init();
 
     {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         for i in 0..1000000 {
             vec.insert(i);
         }
@@ -97,7 +97,7 @@ fn iterator() {
         }
     }
     {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         for i in 65533..65537 {
             vec.insert(i);
         }

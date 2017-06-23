@@ -1,13 +1,13 @@
 use ops::*;
 
-use Block;
-use self::Block::*;
+use Vec16;
+use self::Vec16::*;
 
 macro_rules! impl_op {
     ( $op:ident, $fn:ident, $fn_with:ident ) => {
-        impl<'a, 'b> $op<&'b Block> for &'a Block {
-            type Output = Block;
-            fn $fn(self, that: &Block) -> Self::Output {
+        impl<'a, 'b> $op<&'b Vec16> for &'a Vec16 {
+            type Output = Vec16;
+            fn $fn(self, that: &Vec16) -> Self::Output {
                 match (self, that) {
                     (this @ &Seq16(..), that @ &Seq16(..)) => {
                         ::pairwise::$fn(this.iter(), that.iter()).collect()
@@ -35,8 +35,8 @@ impl_op!(
     symmetric_difference_with
 );
 
-impl<'a> IntersectionWith<&'a Block> for Block {
-    fn intersection_with(&mut self, target: &Block) {
+impl<'a> IntersectionWith<&'a Vec16> for Vec16 {
+    fn intersection_with(&mut self, target: &Vec16) {
         match (self, target) {
             (&mut Seq16(ref mut b1), &Seq16(ref b2)) => b1.intersection_with(b2),
             (&mut Seq16(ref mut b1), &Seq64(ref b2)) => b1.intersection_with(b2),
@@ -57,8 +57,8 @@ impl<'a> IntersectionWith<&'a Block> for Block {
 
 macro_rules! impl_mutop {
     ( $op:ident, $fn_with:ident ) => {
-        impl<'a> $op<&'a Block> for Block {
-            fn $fn_with(&mut self, target: &Block) {
+        impl<'a> $op<&'a Vec16> for Vec16 {
+            fn $fn_with(&mut self, target: &Vec16) {
                 match (self, target) {
                     (&mut Seq16(ref mut b1), &Seq16(ref b2)) => b1.$fn_with(b2),
                     (this @ &mut Seq16(..), that @ &Seq64(..)) => {

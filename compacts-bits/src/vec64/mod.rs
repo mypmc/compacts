@@ -1,31 +1,31 @@
 use std::collections::BTreeMap;
-use {BitVec, Split, Merge};
+use {Vec32, Split, Merge};
 
-/// Map of BitVec.
+/// Map of Vec32.
 #[derive(Clone, Debug)]
-pub struct BitMap {
-    bits: BTreeMap<u32, BitVec>,
+pub struct Vec64 {
+    vec32s: BTreeMap<u32, Vec32>,
 }
 
-impl Default for BitMap {
+impl Default for Vec64 {
     fn default() -> Self {
-        let bits = BTreeMap::new();
-        BitMap { bits }
+        let vec32s = BTreeMap::new();
+        Vec64 { vec32s }
     }
 }
 
-impl BitMap {
+impl Vec64 {
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn clear(&mut self) {
-        self.bits.clear()
+        self.vec32s.clear()
     }
 
     pub fn count_ones(&self) -> u128 {
         let mut r = 0;
-        for w in self.bits.iter().map(|(_, vec)| vec.count_ones() as u128) {
+        for w in self.vec32s.iter().map(|(_, vec)| vec.count_ones() as u128) {
             r += w;
         }
         r
@@ -35,18 +35,18 @@ impl BitMap {
         (1 << 64) - self.count_ones()
     }
 
-    pub fn optimize(&mut self) {
-        for vec in self.bits.values_mut() {
-            vec.optimize();
-        }
-    }
-
     pub fn mem_size(&self) -> u128 {
         let mut sum = 0;
-        for mem in self.bits.values().map(|vec| vec.mem_size() as u128) {
+        for mem in self.vec32s.values().map(|vec| vec.mem_size() as u128) {
             sum += mem;
         }
         sum
+    }
+
+    pub fn optimize(&mut self) {
+        for vec in self.vec32s.values_mut() {
+            vec.optimize();
+        }
     }
 
     /// Return `true` if the value exists.
@@ -54,8 +54,8 @@ impl BitMap {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts_bits::BitMap;
-    /// let mut bits = BitMap::new();
+    /// use compacts_bits::Vec64;
+    /// let mut bits = Vec64::new();
     /// assert!(!bits.contains(1 << 50));
     /// bits.insert(1 << 50);
     /// assert!(bits.contains(1 << 50));
@@ -63,7 +63,7 @@ impl BitMap {
     /// ```
     pub fn contains(&self, x: u64) -> bool {
         let (key, bit) = x.split();
-        self.bits.get(&key).map_or(false, |b| b.contains(bit))
+        self.vec32s.get(&key).map_or(false, |b| b.contains(bit))
     }
 
     /// Return `true` if the value doesn't exists and inserted successfuly.
@@ -71,15 +71,15 @@ impl BitMap {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts_bits::BitMap;
-    /// let mut bits = BitMap::new();
+    /// use compacts_bits::Vec64;
+    /// let mut bits = Vec64::new();
     /// assert!(bits.insert(1 << 50));
     /// assert!(!bits.insert(1 << 50));
     /// assert_eq!(1, bits.count_ones());
     /// ```
     pub fn insert(&mut self, x: u64) -> bool {
         let (key, bit) = x.split();
-        let mut bv = self.bits.entry(key).or_insert_with(|| BitVec::new());
+        let mut bv = self.vec32s.entry(key).or_insert_with(|| Vec32::new());
         bv.insert(bit)
     }
 
@@ -88,25 +88,25 @@ impl BitMap {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts_bits::BitMap;
-    /// let mut bits = BitMap::new();
+    /// use compacts_bits::Vec64;
+    /// let mut bits = Vec64::new();
     /// assert!(bits.insert(1 << 60));
     /// assert!(bits.remove(1 << 60));
     /// assert_eq!(0, bits.count_ones());
     /// ```
     pub fn remove(&mut self, x: u64) -> bool {
         let (key, bit) = x.split();
-        self.bits.get_mut(&key).map_or(false, |b| b.remove(bit))
+        self.vec32s.get_mut(&key).map_or(false, |b| b.remove(bit))
     }
 
     pub fn iter<'r>(&'r self) -> impl Iterator<Item = u64> + 'r {
-        self.bits.iter().flat_map(|(&key, vec)| {
+        self.vec32s.iter().flat_map(|(&key, vec)| {
             vec.iter().map(move |val| <u64 as Merge>::merge((key, val)))
         })
     }
 }
 
-impl ::std::ops::Index<u64> for BitMap {
+impl ::std::ops::Index<u64> for Vec64 {
     type Output = bool;
     fn index(&self, i: u64) -> &Self::Output {
         if self.contains(i) {

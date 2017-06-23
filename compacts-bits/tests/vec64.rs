@@ -6,10 +6,10 @@ extern crate compacts_bits;
 
 use self::rand::Rng;
 
-use compacts_bits::BitMap;
+use compacts_bits::Vec64;
 
-fn random_insert<R>(map: &mut BitMap, rng: &mut R, size: u64, max: u64)
-    where
+fn random_insert<R>(map: &mut Vec64, rng: &mut R, size: u64, max: u64)
+where
     R: Rng,
 {
     for _ in 0..rng.gen_range(0, size) {
@@ -22,7 +22,7 @@ fn iterator() {
     let _ = env_logger::init();
 
     {
-        let mut bm = BitMap::new();
+        let mut bm = Vec64::new();
         for i in 0..1000000 {
             bm.insert(i);
         }
@@ -31,14 +31,13 @@ fn iterator() {
         }
     }
     {
-        let b = 1 << 50;
-        let mut bm = BitMap::new();
+        let b = ::std::u64::MAX - 5;
+        let mut bm = Vec64::new();
         for i in b..(b + 3) {
             bm.insert(i);
-            debug!("{:#?}", i);
         }
         let col = bm.iter().collect::<Vec<u64>>();
-        assert_eq!(col, vec![b, b+1, b+2]);
+        assert_eq!(col, vec![b, b + 1, b + 2]);
         debug!("{:#?}", bm);
     }
 
@@ -48,7 +47,7 @@ fn iterator() {
 fn mem_size() {
     let _ = env_logger::init();
     let mut rng = rand::thread_rng();
-    let mut map = BitMap::new();
+    let mut map = Vec64::new();
     random_insert(&mut map, &mut rng, 1 << 16, 1 << 40);
     map.optimize();
     info!("mem={:#?}", map.mem_size());

@@ -1,52 +1,52 @@
 #[cfg(test)]
-macro_rules! block {
+macro_rules! make_block {
     ( MIN_VEC; $rng: expr ) => {{
         let size = 0;
-        let b = bucket!(u16; size as usize, $rng);
+        let b = random_block!(u16; size as usize, $rng);
         Seq16(b)
     }};
     ( MAX_VEC; $rng: expr ) => {{
-        let size = inner::Seq16::THRESHOLD;
-        let b = bucket!(u16; size as usize, $rng);
+        let size = block::Seq16::THRESHOLD;
+        let b = random_block!(u16; size as usize, $rng);
         Seq16(b)
     }};
     ( MIN_MAP; $rng: expr ) => {{
-        let size = inner::Seq16::THRESHOLD + 1;
-        let b = bucket!(u64; size as usize, $rng);
+        let size = block::Seq16::THRESHOLD + 1;
+        let b = random_block!(u64; size as usize, $rng);
         Seq64(b)
     }};
     ( MAX_MAP; $rng: expr ) => {{
-        let size = Block::CAPACITY - 1;
-        let b = bucket!(u64; size as usize, $rng);
+        let size = Vec16::CAPACITY - 1;
+        let b = random_block!(u64; size as usize, $rng);
         Seq64(b)
     }};
     ( VEC; $rng: expr ) => {{
-        let size = $rng.gen_range(0, inner::Seq16::THRESHOLD);
-        let b = bucket!(u16; size as usize, $rng);
+        let size = $rng.gen_range(0, block::Seq16::THRESHOLD);
+        let b = random_block!(u16; size as usize, $rng);
         Seq16(b)
     }};
     ( MAP; $rng: expr ) => {{
-        let size = $rng.gen_range(inner::Seq16::THRESHOLD, Block::CAPACITY as usize);
-        let b = bucket!(u64; size as usize, $rng);
+        let size = $rng.gen_range(block::Seq16::THRESHOLD, Vec16::CAPACITY as usize);
+        let b = random_block!(u64; size as usize, $rng);
         Seq64(b)
     }};
 }
 
 #[cfg(test)]
-macro_rules! bucket {
+macro_rules! random_block {
     ( u16; $size: expr, $rng: expr ) => {{
-        let mut bucket = inner::Seq16::with_capacity($size);
+        let mut block = block::Seq16::with_capacity($size);
         for _ in 0..$size {
-            bucket.insert($rng.gen());
+            block.insert($rng.gen());
         }
-        bucket
+        block
     }};
     ( u64; $size: expr, $rng: expr ) => {{
-        let mut bucket = inner::Seq64::new();
+        let mut block = block::Seq64::new();
         for _ in 0..$size {
-            bucket.insert($rng.gen());
+            block.insert($rng.gen());
         }
-        bucket
+        block
     }};
 }
 
@@ -54,8 +54,8 @@ macro_rules! bucket {
 macro_rules! setup_pair {
     ( $this:ident, $that:ident ) => {{
         let mut rng = rand::thread_rng();
-        let lhs = block!($this; rng);
-        let rhs = block!($that; rng);
+        let lhs = make_block!($this; rng);
+        let rhs = make_block!($that; rng);
         (lhs, rhs)
     }};
 }
@@ -85,7 +85,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::intersection;
             let pair = intersection(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count_ones()
+            pair.collect::<Vec16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} AND {rhs:?}: got={got:?} want={want:?} ",
@@ -102,7 +102,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::union;
             let pair = union(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count_ones()
+            pair.collect::<Vec16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} OR {rhs:?}: got={got:?} want={want:?}",
@@ -120,7 +120,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::difference;
             let pair = difference(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count_ones()
+            pair.collect::<Vec16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} - {rhs:?}: got={got:?} want={want:?}",
@@ -138,7 +138,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::symmetric_difference;
             let pair = symmetric_difference(lhs.iter(), rhs.iter());
-            pair.collect::<Block>().count_ones()
+            pair.collect::<Vec16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} XOR {rhs:?}: got={got:?} want={want:?}",

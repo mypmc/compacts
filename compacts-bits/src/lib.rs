@@ -19,20 +19,15 @@ extern crate compacts_prim as prim;
 
 #[macro_use]
 mod macros;
-mod block;
-mod inner;
 mod split_merge;
-
 mod pairwise;
 mod rank;
 mod select;
-mod bit_vec;
-mod bit_map;
 
-pub use bit_vec::BitVec;
-pub use bit_map::BitMap;
-pub use rank::Rank;
-pub use select::{Select0, Select1};
+mod block; // internal representaions of vec16::Vec16
+mod vec16; // bit vector of u16
+pub mod vec32; // bit vector of u32
+pub mod vec64; // bit vector of u64
 
 pub mod ops {
     pub use pairwise::{Intersection, IntersectionWith};
@@ -44,7 +39,10 @@ pub mod ops {
 pub static TRUE: &bool = &true;
 pub static FALSE: &bool = &false;
 
-pub(crate) use block::Block;
-pub(crate) use split_merge::{Split, Merge};
 pub(crate) use prim::{UnsignedInt, Zero};
-// pub(crate) use inner::{Seq16, Seq64, Rle16};
+pub(crate) use split_merge::{Split, Merge};
+pub(crate) use vec16::Vec16;
+pub use vec32::Vec32;
+pub use vec64::Vec64;
+pub use rank::Rank;
+pub use select::{Select0, Select1};

@@ -3,7 +3,7 @@ extern crate log;
 extern crate env_logger;
 extern crate compacts_bits;
 
-use compacts_bits::BitVec;
+use compacts_bits::Vec32;
 use compacts_bits::ops::*;
 
 #[test]
@@ -11,13 +11,13 @@ fn intersection() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 16);
         vec.insert(1 << 20);
         vec
     };
     let b2 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);
@@ -34,14 +34,14 @@ fn union() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 16);
         vec.insert(1 << 20);
         vec
     };
 
     let b2 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);
@@ -58,7 +58,7 @@ fn difference() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 12);
@@ -67,7 +67,7 @@ fn difference() {
         vec
     };
     let b2 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);
@@ -84,7 +84,7 @@ fn symmetric_difference() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 12);
@@ -93,7 +93,7 @@ fn symmetric_difference() {
         vec
     };
     let b2 = {
-        let mut vec = BitVec::new();
+        let mut vec = Vec32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);
