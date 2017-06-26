@@ -1,18 +1,11 @@
 #![feature(associated_consts)]
 #![feature(i128_type)]
 
-extern crate num;
-
-pub use num::{Unsigned, PrimInt as Int, Bounded, One, Zero, NumCast as Cast};
-
 pub trait UnsignedInt: PartialEq + PartialOrd + Eq + Ord + Copy {
     const WIDTH: usize;
 
     const MIN_BOUND: Self;
     const MAX_BOUND: Self;
-
-    // fn min_bound() -> Self;
-    // fn max_bound() -> Self;
 
     fn count_ones(self) -> u32;
     fn count_zeros(self) -> u32;
@@ -28,9 +21,6 @@ macro_rules! impl_UnsignedInt {
 
             const MIN_BOUND: Self = 0;
             const MAX_BOUND: Self = !(0 as Self);
-
-            // #[inline(always)] fn min_bound() -> Self {  0 }
-            // #[inline(always)] fn max_bound() -> Self { !0 }
 
             #[inline(always)] fn count_ones(self)  -> u32 {self.count_ones()}
             #[inline(always)] fn count_zeros(self) -> u32 {self.count_zeros()}
