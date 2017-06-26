@@ -58,8 +58,15 @@ impl Vec32 {
 
     /// Optimize innternal data representaions.
     pub fn optimize(&mut self) {
-        for b in self.vec16s.values_mut() {
+        let mut rs = Vec::new();
+        for (k, b) in self.vec16s.iter_mut() {
             b.optimize();
+            if b.count_ones() == 0 {
+                rs.push(*k)
+            }
+        }
+        for k in rs {
+            self.vec16s.remove(&k);
         }
     }
 }
@@ -234,9 +241,9 @@ impl ::Select0<u32> for Vec32 {
 
 #[derive(Clone, Debug)]
 enum BlockKind {
-    BlockSeq16,
-    BlockSeq64,
-    BlockRle16,
+    Seq16,
+    Seq64,
+    Rle16,
 }
 
 #[derive(Clone, Debug)]
@@ -265,17 +272,17 @@ impl Vec32 {
     pub fn stats<'a>(&'a self) -> impl Iterator<Item = Stats> + 'a {
         self.vec16s.values().map(|v16| match **v16 {
             super::Vec16::Seq16(ref b) => Stats {
-                kind: BlockKind::BlockSeq16,
+                kind: BlockKind::Seq16,
                 ones: b.count_ones() as u64,
                 size: b.mem_size() as u64,
             },
             super::Vec16::Seq64(ref b) => Stats {
-                kind: BlockKind::BlockSeq64,
+                kind: BlockKind::Seq64,
                 ones: b.count_ones() as u64,
                 size: b.mem_size() as u64,
             },
             super::Vec16::Rle16(ref b) => Stats {
-                kind: BlockKind::BlockRle16,
+                kind: BlockKind::Rle16,
                 ones: b.count_ones() as u64,
                 size: b.mem_size() as u64,
             },
@@ -303,17 +310,17 @@ impl ::std::iter::Sum<Stats> for Summary {
         };
         for stat in iter {
             match stat.kind {
-                BlockKind::BlockSeq16 => {
+                BlockKind::Seq16 => {
                     sum.seq16_count += 1;
                     sum.seq16_ones += stat.ones;
                     sum.seq16_size += stat.size;
                 }
-                BlockKind::BlockSeq64 => {
+                BlockKind::Seq64 => {
                     sum.seq64_count += 1;
                     sum.seq64_ones += stat.ones;
                     sum.seq64_size += stat.size;
                 }
-                BlockKind::BlockRle16 => {
+                BlockKind::Rle16 => {
                     sum.rle16_count += 1;
                     sum.rle16_ones += stat.ones;
                     sum.rle16_size += stat.size;

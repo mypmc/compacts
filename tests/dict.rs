@@ -23,7 +23,11 @@ impl Select0<u32> for Bits {
 impl ::std::ops::Index<u32> for Bits {
     type Output = bool;
     fn index(&self, c: u32) -> &Self::Output {
-        if self.0 & (1 << c) != 0 { TRUE } else { FALSE }
+        if self.0 & (1 << c) != 0 {
+            TRUE
+        } else {
+            FALSE
+        }
     }
 }
 

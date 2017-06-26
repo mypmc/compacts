@@ -77,7 +77,11 @@ where
     }
 
     fn rank(&self, item: &Self::Item, i: T) -> Self::Rank {
-        if *item { self.rank1(i) } else { self.rank0(i) }
+        if *item {
+            self.rank1(i)
+        } else {
+            self.rank0(i)
+        }
     }
 
     // to test default select implementation.

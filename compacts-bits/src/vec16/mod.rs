@@ -146,7 +146,11 @@ impl Vec16 {
 impl ::std::ops::Index<u16> for Vec16 {
     type Output = bool;
     fn index(&self, i: u16) -> &Self::Output {
-        if self.contains(i) { ::TRUE } else { ::FALSE }
+        if self.contains(i) {
+            ::TRUE
+        } else {
+            ::FALSE
+        }
     }
 }
 

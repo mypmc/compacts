@@ -1,3 +1,5 @@
+mod pairwise;
+
 use std::collections::BTreeMap;
 use {Vec32, Split, Merge};
 
@@ -44,8 +46,15 @@ impl Vec64 {
     }
 
     pub fn optimize(&mut self) {
-        for vec in self.vec32s.values_mut() {
+        let mut rs = Vec::new();
+        for (k, vec) in self.vec32s.iter_mut() {
             vec.optimize();
+            if vec.count_ones() == 0 {
+                rs.push(*k);
+            }
+        }
+        for k in rs {
+            self.vec32s.remove(&k);
         }
     }
 
@@ -79,7 +88,7 @@ impl Vec64 {
     /// ```
     pub fn insert(&mut self, x: u64) -> bool {
         let (key, bit) = x.split();
-        let mut bv = self.vec32s.entry(key).or_insert_with(|| Vec32::new());
+        let mut bv = self.vec32s.entry(key).or_insert_with(Vec32::new);
         bv.insert(bit)
     }
 
@@ -114,5 +123,24 @@ impl ::std::ops::Index<u64> for Vec64 {
         } else {
             super::FALSE
         }
+    }
+}
+
+impl<'a> ::std::iter::FromIterator<&'a u64> for Vec64 {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = &'a u64>,
+    {
+        let mut vec = Vec64::new();
+        for b in iter {
+            vec.insert(*b);
+        }
+        vec
+    }
+}
+
+impl<T: AsRef<[u64]>> From<T> for Vec64 {
+    fn from(v: T) -> Self {
+        v.as_ref().iter().collect()
     }
 }
