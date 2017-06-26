@@ -1,7 +1,7 @@
 mod pairwise;
 
 use std::collections::BTreeMap;
-use {Vec32, Split, Merge};
+use {Vec32, Split, Merge, Rank, Select1, Select0};
 
 /// Map of Vec32.
 #[derive(Clone, Debug)]
@@ -142,5 +142,70 @@ impl<'a> ::std::iter::FromIterator<&'a u64> for Vec64 {
 impl<T: AsRef<[u64]>> From<T> for Vec64 {
     fn from(v: T) -> Self {
         v.as_ref().iter().collect()
+    }
+}
+
+impl Vec64 {
+    pub fn size(&self) -> u128 {
+        1 << 64
+    }
+
+    /// Returns occurences of non-zero bit in `[0,i]`.
+    pub fn rank1(&self, i: u64) -> u128 {
+        let (hi, lo) = i.split();
+        let mut rank = 0;
+        for (&key, vec) in &self.vec32s {
+            if key > hi {
+                break;
+            } else if key == hi {
+                rank += u128::from(vec.rank1(lo));
+                break;
+            } else {
+                rank += u128::from(vec.count_ones());
+            }
+        }
+        rank
+    }
+
+    /// Returns occurences of zero bit in `[0,i]`.
+    pub fn rank0(&self, i: u64) -> u128 {
+        if i == 0 {
+            0
+        } else {
+            let rank1 = self.rank1(i);
+            i as u128 + 1 - rank1
+        }
+    }
+
+    /// Returns the position of 'c+1'th appearance of non-zero bit.
+    pub fn select1(&self, c: u64) -> Option<u64> {
+        let mut rem = c;
+        for (&key, b) in &self.vec32s {
+            let w = b.count_ones();
+            if rem >= w {
+                rem -= w;
+            } else {
+                let s = b.select1(rem as u32).unwrap() as u64;
+                let k = (key as u64) << 32;
+                return Some(k + s);
+            }
+        }
+        None
+    }
+
+    /// Returns the position of 'c+1'th appearance of zero bit.
+    pub fn select0(&self, c: u64) -> Option<u64> {
+        let mut rem = c;
+        for (&key, b) in &self.vec32s {
+            let w = b.count_zeros();
+            if rem >= w {
+                rem -= w;
+            } else {
+                let s = b.select0(rem as u32).unwrap() as u64;
+                let k = if key == 0 { 0 } else { (key as u64 - 1) << 32 };
+                return Some(k + s);
+            }
+        }
+        None
     }
 }

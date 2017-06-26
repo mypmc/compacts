@@ -104,3 +104,73 @@ fn difference() {
     map.optimize();
     debug!("{:#?}", map);
 }
+
+#[test]
+fn rank() {
+    let _ = env_logger::init();
+    let vec = Vec64::from(vec![
+        0,
+        1 << 4,
+        1 << 16,
+        1 << 32,
+        1 << 50,
+        1 << 60,
+        ::std::u64::MAX,
+    ]);
+
+    assert_eq!(vec.rank0(0), 0);
+    assert_eq!(vec.rank1(0), 1);
+    assert_eq!(vec.rank0(1), 1);
+    assert_eq!(vec.rank1(1), 1);
+    assert_eq!(vec.rank0(2), 2);
+    assert_eq!(vec.rank1(2), 1);
+    assert_eq!(vec.rank0(1 << 4), 15);
+    assert_eq!(vec.rank1(1 << 4), 2);
+    assert_eq!(vec.rank0(1 << 32), (1 << 32) + 1 - 4);
+    assert_eq!(vec.rank1(1 << 32), 4);
+    assert_eq!(vec.rank0(1 << 50), (1 << 50) + 1 - 5);
+    assert_eq!(vec.rank1(1 << 50), 5);
+    assert_eq!(vec.rank0(1 << 60), (1 << 60) + 1 - 6);
+    assert_eq!(vec.rank1(1 << 60), 6);
+}
+
+#[test]
+fn select() {
+    let _ = env_logger::init();
+    let vec = Vec64::from(vec![
+        0,
+        1 << 2, // 4
+        1 << 4, // 16
+        1 << 16,
+        1 << 32,
+        1 << 50,
+        1 << 60,
+        ::std::u64::MAX,
+    ]);
+
+    assert_eq!(vec.select0(0), Some(1));
+    assert_eq!(vec.select1(0), Some(0));
+    assert_eq!(vec.select0(1), Some(2));
+    assert_eq!(vec.select1(1), Some(1 << 2));
+    assert_eq!(vec.select0(2), Some(3));
+    assert_eq!(vec.select1(2), Some(1 << 4));
+    assert_eq!(vec.select0(3), Some(5));
+    assert_eq!(vec.select1(3), Some(1 << 16));
+    assert_eq!(vec.select0(4), Some(6));
+    assert_eq!(vec.select1(4), Some(1 << 32));
+    assert_eq!(vec.select0(5), Some(7));
+    assert_eq!(vec.select1(5), Some(1 << 50));
+    assert_eq!(vec.select0(6), Some(8));
+    assert_eq!(vec.select1(6), Some(1 << 60));
+    assert_eq!(vec.select0(7), Some(9));
+    assert_eq!(vec.select1(7), Some(::std::u64::MAX));
+
+    for i in 1..vec.count_ones() {
+        let r = vec.rank1(vec.select1(i as u64).unwrap_or(0));
+        if r == 0 {
+            assert_eq!(i, 0);
+        } else {
+            assert_eq!(i, r - 1);
+        }
+    }
+}

@@ -121,3 +121,17 @@ fn symmetric_difference(bench: &mut Bencher) {
     let vec2 = genvec!(vec, rng);
     bench.iter(|| vec1.symmetric_difference_with(&vec2));
 }
+
+#[bench]
+fn rank(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let vec = genvec!(vec, rng);
+    bench.iter(|| vec.rank1(rng.gen()));
+}
+
+#[bench]
+fn select(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let vec = genvec!(vec, rng);
+    bench.iter(|| vec.select1(rng.gen()));
+}
