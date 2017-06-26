@@ -332,9 +332,7 @@ impl_withop!(
 impl ::Rank<u16> for Rle16 {
     type Weight = u32;
 
-    fn size(&self) -> Self::Weight {
-        super::CAPACITY as u32
-    }
+    const SIZE: Self::Weight = super::CAPACITY as u32;
 
     fn rank1(&self, i: u16) -> Self::Weight {
         if i as usize >= super::CAPACITY {
@@ -361,6 +359,10 @@ impl ::Rank<u16> for Rle16 {
                 (i as u32 - (self.ranges[n].start as u32)) + r + 1
             }
         }
+    }
+
+    fn rank0(&self, i: u16) -> Self::Weight {
+        i as Self::Weight + 1 - self.rank1(i)
     }
 }
 

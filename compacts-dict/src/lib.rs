@@ -2,9 +2,9 @@ extern crate compacts_prim as prim;
 extern crate compacts_bits as bits;
 
 use std::ops::Index;
-use prim::{UnsignedInt, Zero, Cast};
+use prim::UnsignedInt;
 
-pub trait Dict<T: UnsignedInt>: Index<T>
+pub trait Dict<T>: Index<T>
 where
     <Self as Index<T>>::Output: PartialEq<Self::Item>,
 {
@@ -12,43 +12,15 @@ where
     type Item;
 
     /// Result type of `rank`.
-    type Rank: UnsignedInt + From<T>;
+    type Rank: From<T>;
 
     fn size(&self) -> Self::Rank;
 
     /// Returns count of `Item` in `0...i`.
-    fn rank(&self, item: &Self::Item, i: T) -> Self::Rank {
-        let mut r = <Self::Rank as Zero>::zero();
-        let mut j = <T as Zero>::zero();
-        while j <= i {
-            if &self[j] == item {
-                r.incr();
-            }
-            j.incr();
-        }
-        r
-    }
+    fn rank(&self, item: &Self::Item, i: T) -> Self::Rank;
 
-    /// Returns the position of the `c+1`-th appearance of `Item`, by binary search.
-    fn select(&self, item: &Self::Item, c: T) -> Option<T> {
-        let zero = <Self::Rank as Zero>::zero();
-        let size = self.size();
-        let pos = prim::search(&(zero..size), |i| {
-            Cast::from::<Self::Rank>(i)
-                .and_then(|conv: T| {
-                    let rank = self.rank(item, conv);
-                    Cast::from::<Self::Rank>(rank)
-                })
-                .map_or(false, |rank: T| rank > c)
-        });
-        if pos < size {
-            Some(
-                Cast::from::<Self::Rank>(pos).expect("if pos < size, cast must not failed"),
-            )
-        } else {
-            None
-        }
-    }
+    /// Returns the position of the `c+1`-th appearance of `Item`.
+    fn select(&self, item: &Self::Item, c: T) -> Option<T>;
 }
 
 pub trait BitDict<T: UnsignedInt>
@@ -73,7 +45,7 @@ where
     type Rank = U::Weight;
 
     fn size(&self) -> Self::Rank {
-        <Self as bits::Rank<T>>::size(self)
+        <Self as bits::Rank<T>>::SIZE
     }
 
     fn rank(&self, item: &Self::Item, i: T) -> Self::Rank {
@@ -84,8 +56,6 @@ where
         }
     }
 
-    // to test default select implementation.
-    #[cfg(not(test))]
     fn select(&self, item: &Self::Item, c: T) -> Option<T> {
         if *item {
             self.select1(c)

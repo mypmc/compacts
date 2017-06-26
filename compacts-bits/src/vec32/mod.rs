@@ -177,10 +177,7 @@ impl ::std::ops::Index<u32> for Vec32 {
 impl ::Rank<u32> for Vec32 {
     type Weight = u64;
 
-    fn size(&self) -> Self::Weight {
-        const CAPACITY: u64 = 1 << 32;
-        CAPACITY
-    }
+    const SIZE: Self::Weight = 1 << 32;
 
     fn rank1(&self, i: u32) -> Self::Weight {
         let (hi, lo) = i.split();
@@ -196,6 +193,10 @@ impl ::Rank<u32> for Vec32 {
             }
         }
         rank
+    }
+
+    fn rank0(&self, i: u32) -> Self::Weight {
+        i as Self::Weight + 1 - self.rank1(i)
     }
 }
 

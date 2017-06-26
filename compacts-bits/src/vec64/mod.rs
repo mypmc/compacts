@@ -1,7 +1,7 @@
 mod pairwise;
 
 use std::collections::BTreeMap;
-use {Vec32, Split, Merge, Rank, Select1, Select0};
+use {Vec32, Split, Merge};
 
 /// Map of Vec32.
 #[derive(Clone, Debug)]
@@ -145,13 +145,13 @@ impl<T: AsRef<[u64]>> From<T> for Vec64 {
     }
 }
 
-impl Vec64 {
-    pub fn size(&self) -> u128 {
-        1 << 64
-    }
+impl ::Rank<u64> for Vec64 {
+    type Weight = u128;
+
+    const SIZE: u128 = 1 << 64;
 
     /// Returns occurences of non-zero bit in `[0,i]`.
-    pub fn rank1(&self, i: u64) -> u128 {
+    fn rank1(&self, i: u64) -> Self::Weight {
         let (hi, lo) = i.split();
         let mut rank = 0;
         for (&key, vec) in &self.vec32s {
@@ -168,7 +168,7 @@ impl Vec64 {
     }
 
     /// Returns occurences of zero bit in `[0,i]`.
-    pub fn rank0(&self, i: u64) -> u128 {
+    fn rank0(&self, i: u64) -> Self::Weight {
         if i == 0 {
             0
         } else {
@@ -176,9 +176,11 @@ impl Vec64 {
             i as u128 + 1 - rank1
         }
     }
+}
 
+impl ::Select1<u64> for Vec64 {
     /// Returns the position of 'c+1'th appearance of non-zero bit.
-    pub fn select1(&self, c: u64) -> Option<u64> {
+    fn select1(&self, c: u64) -> Option<u64> {
         let mut rem = c;
         for (&key, b) in &self.vec32s {
             let w = b.count_ones();
@@ -192,9 +194,11 @@ impl Vec64 {
         }
         None
     }
+}
 
+impl ::Select0<u64> for Vec64 {
     /// Returns the position of 'c+1'th appearance of zero bit.
-    pub fn select0(&self, c: u64) -> Option<u64> {
+    fn select0(&self, c: u64) -> Option<u64> {
         let mut rem = c;
         for (&key, b) in &self.vec32s {
             let w = b.count_zeros();

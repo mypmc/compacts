@@ -270,9 +270,7 @@ impl<'a> ::ops::SymmetricDifferenceWith<&'a Rle16> for Seq64 {
 impl ::Rank<u16> for Seq64 {
     type Weight = u32;
 
-    fn size(&self) -> Self::Weight {
-        super::CAPACITY as u32
-    }
+    const SIZE: Self::Weight = super::CAPACITY as u32;
 
     fn rank1(&self, i: u16) -> Self::Weight {
         if i as usize >= super::CAPACITY {
@@ -283,6 +281,10 @@ impl ::Rank<u16> for Seq64 {
         let vec = &self.vector;
         vec.iter().take(q).fold(0, |acc, w| acc + w.count_ones()) +
             vec.get(q).map_or(0, |w| w.rank1(r))
+    }
+
+    fn rank0(&self, i: u16) -> Self::Weight {
+        i as Self::Weight + 1 - self.rank1(i)
     }
 }
 

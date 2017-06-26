@@ -7,6 +7,7 @@ extern crate compacts_bits;
 use self::rand::Rng;
 
 use compacts_bits::Vec64;
+use compacts_bits::{Rank, Select0, Select1};
 use compacts_bits::ops::*;
 
 fn random_insert<R>(map: &mut Vec64, rng: &mut R, size: u64, max: u64)

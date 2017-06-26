@@ -1,6 +1,5 @@
 use std::iter::FromIterator;
 use super::{Seq16, Seq64, Rle16};
-use prim::Cast;
 use Rank;
 
 impl Default for Seq16 {
@@ -174,21 +173,24 @@ impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq16> for Seq16 {
 impl ::Rank<u16> for Seq16 {
     type Weight = u32;
 
-    fn size(&self) -> Self::Weight {
-        super::CAPACITY as u32
-    }
+    const SIZE: Self::Weight = super::CAPACITY as u32;
 
     fn rank1(&self, i: u16) -> Self::Weight {
         if i as usize >= super::CAPACITY {
             return self.count_ones();
         }
         let vec = &self.vector;
-        let k = ::prim::search(&(0..vec.len()), |j| vec.get(j).map_or(false, |&v| v >= i));
+        let fun = |j| vec.get(j).map_or(false, |&v| v >= i);
+        let k = search!(0, vec.len(), fun);
         (if k < vec.len() && vec[k] == i {
              k + 1 // found
          } else {
              k // not found
          }) as Self::Weight
+    }
+
+    fn rank0(&self, i: u16) -> Self::Weight {
+        i as Self::Weight + 1 - self.rank1(i)
     }
 }
 
@@ -208,14 +210,12 @@ impl ::Select0<u16> for Seq16 {
             return None;
         }
         let cap = super::CAPACITY as u32;
-        let pos = ::prim::search(&(0..cap), |i| {
-            Cast::from::<u32>(i)
-                .and_then(|conv: u16| {
-                    let rank = self.rank0(conv);
-                    Cast::from::<u32>(rank)
-                })
-                .map_or(false, |rank: u16| rank > c)
-        });
+        let fun = |i| {
+            let i = i as u16;
+            let rank = self.rank0(i);
+            rank > c as u32
+        };
+        let pos = search!(0, cap, fun);
         if pos < super::CAPACITY as u32 {
             Some(pos as u16)
         } else {

@@ -8,13 +8,12 @@
 
 #[macro_use]
 extern crate karabiner;
-
+#[macro_use]
+extern crate compacts_prim as prim;
 extern crate itertools;
 
-extern crate compacts_prim as prim;
-
 // Broadword implementation of rank/select queries
-// (http://sux.di.unimi.it/paper.pdf);
+// ( http://sux.di.unimi.it/paper.pdf );
 // Springer Berlin Heidelberg, 2008. 154-168.
 
 #[macro_use]
@@ -39,7 +38,7 @@ pub mod ops {
 pub static TRUE: &bool = &true;
 pub static FALSE: &bool = &false;
 
-pub(crate) use prim::{UnsignedInt, Zero};
+pub(crate) use prim::UnsignedInt;
 pub(crate) use split_merge::{Split, Merge};
 pub(crate) use vec16::Vec16;
 pub use vec32::Vec32;
