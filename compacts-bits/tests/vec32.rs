@@ -7,7 +7,6 @@ extern crate compacts_bits;
 use self::rand::Rng;
 
 use compacts_bits::*;
-use compacts_bits::ops::*;
 
 macro_rules! bit_vec {
     ( ) => {&Vec32::new()};
@@ -38,7 +37,7 @@ fn similarity() {
     let p = &(bit_vec!(size, maxn, rng));
     let q = &(bit_vec!(size, maxn, rng));
 
-    debug!("{:#?}", p.stats().sum::<vec32::Summary>());
+    debug!("{:#?}", p.stats().sum::<Summary>());
 
     let jaccard = {
         let r = p.intersection(q);

@@ -1,8 +1,12 @@
+#![feature(associated_consts)]
+
 extern crate compacts_prim as prim;
 extern crate compacts_bits as bits;
 
 use std::ops::Index;
 use prim::UnsignedInt;
+
+pub use bits::{Rank, Select0, Select1};
 
 pub trait Dict<T>: Index<T>
 where
@@ -24,15 +28,32 @@ where
 }
 
 pub trait BitDict<T: UnsignedInt>
-    : Index<T, Output = bool> + bits::Rank<T> + bits::Select0<T> + bits::Select1<T>
-    {
+    : Index<T, Output = bool> + Rank<T> + Select0<T> + Select1<T> {
+    fn rank0(&self, T) -> Self::Weight;
+    fn rank1(&self, T) -> Self::Weight;
+
+    fn select0(&self, T) -> Option<T>;
+    fn select1(&self, T) -> Option<T>;
 }
 
 impl<T, U> BitDict<T> for U
 where
     T: UnsignedInt,
-    U: Index<T, Output = bool> + bits::Rank<T> + bits::Select0<T> + bits::Select1<T>,
+    U: Index<T, Output = bool> + Rank<T> + Select0<T> + Select1<T>,
 {
+    fn rank0(&self, i: T) -> Self::Weight {
+        <Self as Rank<T>>::rank0(self, i)
+    }
+    fn rank1(&self, i: T) -> Self::Weight {
+        <Self as Rank<T>>::rank1(self, i)
+    }
+
+    fn select0(&self, c: T) -> Option<T> {
+        <Self as Select0<T>>::select0(self, c)
+    }
+    fn select1(&self, c: T) -> Option<T> {
+        <Self as Select1<T>>::select1(self, c)
+    }
 }
 
 impl<T, U> Dict<T> for U
@@ -45,22 +66,22 @@ where
     type Rank = U::Weight;
 
     fn size(&self) -> Self::Rank {
-        <Self as bits::Rank<T>>::SIZE
+        <Self as Rank<T>>::SIZE
     }
 
     fn rank(&self, item: &Self::Item, i: T) -> Self::Rank {
         if *item {
-            self.rank1(i)
+            BitDict::rank1(self, i)
         } else {
-            self.rank0(i)
+            BitDict::rank0(self, i)
         }
     }
 
     fn select(&self, item: &Self::Item, c: T) -> Option<T> {
         if *item {
-            self.select1(c)
+            BitDict::select1(self, c)
         } else {
-            self.select0(c)
+            BitDict::select0(self, c)
         }
     }
 }

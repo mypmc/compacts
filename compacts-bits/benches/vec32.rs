@@ -8,7 +8,6 @@ use test::Bencher;
 use rand::Rng;
 
 use compacts_bits::*;
-use compacts_bits::ops::*;
 
 macro_rules! bit_vec {
     ( 0, 1, $rng:expr ) => {{ Vec32::new() }};

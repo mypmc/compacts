@@ -6,9 +6,7 @@ extern crate compacts_bits;
 
 use self::rand::Rng;
 
-use compacts_bits::Vec64;
-use compacts_bits::{Rank, Select0, Select1};
-use compacts_bits::ops::*;
+use compacts_bits::*;
 
 fn random_insert<R>(map: &mut Vec64, rng: &mut R, size: u64, max: u64)
 where
@@ -138,7 +136,7 @@ fn rank() {
 #[test]
 fn select() {
     let _ = env_logger::init();
-    let vec = Vec64::from(vec![
+    let mut vec = Vec64::from(vec![
         0,
         1 << 2, // 4
         1 << 4, // 16
@@ -149,20 +147,32 @@ fn select() {
         ::std::u64::MAX,
     ]);
 
+    let bit = 1 << 40;
+    assert!(vec.insert(bit));
+    assert!(vec.remove(bit));
+    assert!(!vec.contains(bit));
+
     assert_eq!(vec.select0(0), Some(1));
     assert_eq!(vec.select1(0), Some(0));
+
     assert_eq!(vec.select0(1), Some(2));
     assert_eq!(vec.select1(1), Some(1 << 2));
+
     assert_eq!(vec.select0(2), Some(3));
     assert_eq!(vec.select1(2), Some(1 << 4));
+
     assert_eq!(vec.select0(3), Some(5));
     assert_eq!(vec.select1(3), Some(1 << 16));
+
     assert_eq!(vec.select0(4), Some(6));
     assert_eq!(vec.select1(4), Some(1 << 32));
+
     assert_eq!(vec.select0(5), Some(7));
     assert_eq!(vec.select1(5), Some(1 << 50));
+
     assert_eq!(vec.select0(6), Some(8));
     assert_eq!(vec.select1(6), Some(1 << 60));
+
     assert_eq!(vec.select0(7), Some(9));
     assert_eq!(vec.select1(7), Some(::std::u64::MAX));
 

@@ -18,7 +18,8 @@ impl Debug for Vec32 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let b = self.count_vec16s();
         let w = self.count_ones();
-        write!(f, "Vec32{{ vec16s={:?} weight={:?} }}", b, w)
+        let m = self.mem_size();
+        write!(f, "{{ blocks:{:?} weight:{:?} bytes:{:?} }}", b, w, m)
     }
 }
 impl Clone for Vec32 {
@@ -196,7 +197,8 @@ impl ::Rank<u32> for Vec32 {
     }
 
     fn rank0(&self, i: u32) -> Self::Weight {
-        i as Self::Weight + 1 - self.rank1(i)
+        let rank1 = self.rank1(i);
+        i as Self::Weight + 1 - rank1
     }
 }
 
@@ -207,9 +209,9 @@ impl ::Select1<u32> for Vec32 {
         }
         let mut rem = c;
         for (&key, b) in &self.vec16s {
-            let ones = b.count_ones();
-            if rem >= ones {
-                rem -= ones;
+            let w = b.count_ones();
+            if rem >= w {
+                rem -= w;
             } else {
                 let s = b.select1(rem as u16).unwrap() as u32;
                 let k = (key as u32) << 16;
@@ -222,51 +224,39 @@ impl ::Select1<u32> for Vec32 {
 
 impl ::Select0<u32> for Vec32 {
     fn select0(&self, c: u32) -> Option<u32> {
+        use Rank;
         if self.count_zeros() <= c as u64 {
             return None;
         }
-        let mut rem = c;
-        for (&key, b) in &self.vec16s {
-            let zeros = b.count_zeros();
-            if rem >= zeros {
-                rem -= zeros;
-            } else {
-                let s = b.select0(rem as u16).unwrap() as u32;
-                let k = if key == 0 { 0 } else { (key as u32 - 1) << 16 };
-                return Some(k + s);
-            }
+
+        let fun = |i| {
+            let rank0 = self.rank0(i as u32);
+            rank0 > c as u64
+        };
+        let pos = search!(0u64, 1 << 32, fun);
+        if pos < (1 << 32) {
+            Some(pos as u32)
+        } else {
+            None
         }
-        None
     }
 }
 
 #[derive(Clone, Debug)]
-enum BlockKind {
+pub(crate) enum BlockKind {
     Seq16,
     Seq64,
     Rle16,
 }
 
+/// Stats of block (internal bit vector).
+/// 'ones' is a count of non-zero bits.
+/// 'size' is an approximate size in bytes.
 #[derive(Clone, Debug)]
 pub struct Stats {
-    kind: BlockKind,
-    ones: u64,
-    size: u64,
-}
-
-#[derive(Clone, Debug)]
-pub struct Summary {
-    seq16_count: usize,
-    seq16_ones: u64,
-    seq16_size: u64,
-
-    seq64_count: usize,
-    seq64_ones: u64,
-    seq64_size: u64,
-
-    rle16_count: usize,
-    rle16_ones: u64,
-    rle16_size: u64,
+    pub(crate) kind: BlockKind,
+    pub ones: u128,
+    pub size: u128,
 }
 
 impl Vec32 {
@@ -274,60 +264,19 @@ impl Vec32 {
         self.vec16s.values().map(|v16| match **v16 {
             super::Vec16::Seq16(ref b) => Stats {
                 kind: BlockKind::Seq16,
-                ones: b.count_ones() as u64,
-                size: b.mem_size() as u64,
+                ones: b.count_ones() as u128,
+                size: b.mem_size() as u128,
             },
             super::Vec16::Seq64(ref b) => Stats {
                 kind: BlockKind::Seq64,
-                ones: b.count_ones() as u64,
-                size: b.mem_size() as u64,
+                ones: b.count_ones() as u128,
+                size: b.mem_size() as u128,
             },
             super::Vec16::Rle16(ref b) => Stats {
                 kind: BlockKind::Rle16,
-                ones: b.count_ones() as u64,
-                size: b.mem_size() as u64,
+                ones: b.count_ones() as u128,
+                size: b.mem_size() as u128,
             },
         })
-    }
-}
-
-impl ::std::iter::Sum<Stats> for Summary {
-    fn sum<I>(iter: I) -> Summary
-    where
-        I: Iterator<Item = Stats>,
-    {
-        let mut sum = Summary {
-            seq16_count: 0,
-            seq16_ones: 0,
-            seq16_size: 0,
-
-            seq64_count: 0,
-            seq64_ones: 0,
-            seq64_size: 0,
-
-            rle16_count: 0,
-            rle16_ones: 0,
-            rle16_size: 0,
-        };
-        for stat in iter {
-            match stat.kind {
-                BlockKind::Seq16 => {
-                    sum.seq16_count += 1;
-                    sum.seq16_ones += stat.ones;
-                    sum.seq16_size += stat.size;
-                }
-                BlockKind::Seq64 => {
-                    sum.seq64_count += 1;
-                    sum.seq64_ones += stat.ones;
-                    sum.seq64_size += stat.size;
-                }
-                BlockKind::Rle16 => {
-                    sum.rle16_count += 1;
-                    sum.rle16_ones += stat.ones;
-                    sum.rle16_size += stat.size;
-                }
-            }
-        }
-        sum
     }
 }

@@ -3,8 +3,7 @@ extern crate log;
 extern crate env_logger;
 extern crate compacts_bits;
 
-use compacts_bits::Vec32;
-use compacts_bits::ops::*;
+use compacts_bits::*;
 
 #[test]
 fn intersection() {

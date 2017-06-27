@@ -1,7 +1,5 @@
-use std::collections::VecDeque;
 use std::ops::{Range, RangeInclusive};
-use std::cmp;
-use std::u16;
+use std::{cmp, u16};
 use itertools;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -269,23 +267,19 @@ where
     'a: 'r,
     'b: 'r,
 {
-    let lhs_iter = lhs.iter()
-        .map(to_exclusive)
-        .flat_map(|range| {
-            let mut queue = VecDeque::new();
-            queue.push_back(Boundary::Lhs(Open(range.start)));
-            queue.push_back(Boundary::Lhs(Close(range.end)));
-            queue
-        });
+    let lhs_iter = lhs.iter().map(to_exclusive).flat_map(|range| {
+        vec![
+            Boundary::Lhs(Open(range.start)),
+            Boundary::Lhs(Close(range.end)),
+        ]
+    });
 
-    let rhs_iter = rhs.iter()
-        .map(to_exclusive)
-        .flat_map(|range| {
-            let mut queue = VecDeque::new();
-            queue.push_back(Boundary::Rhs(Open(range.start)));
-            queue.push_back(Boundary::Rhs(Close(range.end)));
-            queue
-        });
+    let rhs_iter = rhs.iter().map(to_exclusive).flat_map(|range| {
+        vec![
+            Boundary::Rhs(Open(range.start)),
+            Boundary::Rhs(Close(range.end)),
+        ]
+    });
 
     itertools::merge(lhs_iter, rhs_iter)
 }

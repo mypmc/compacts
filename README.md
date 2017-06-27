@@ -1,1 +1,1 @@
-succinct data structures
+# compact (or succinct) data structures

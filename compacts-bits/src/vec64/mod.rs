@@ -113,6 +113,14 @@ impl Vec64 {
             vec.iter().map(move |val| <u64 as Merge>::merge((key, val)))
         })
     }
+
+    pub fn stats<'r>(&'r self) -> impl Iterator<Item = super::vec32::Stats> + 'r {
+        self.vec32s.values().flat_map(|vec| vec.stats())
+    }
+
+    pub fn summary(&self) -> super::Summary {
+        self.stats().sum()
+    }
 }
 
 impl ::std::ops::Index<u64> for Vec64 {
@@ -158,10 +166,10 @@ impl ::Rank<u64> for Vec64 {
             if key > hi {
                 break;
             } else if key == hi {
-                rank += u128::from(vec.rank1(lo));
+                rank += Self::Weight::from(vec.rank1(lo));
                 break;
             } else {
-                rank += u128::from(vec.count_ones());
+                rank += Self::Weight::from(vec.count_ones());
             }
         }
         rank
@@ -169,18 +177,17 @@ impl ::Rank<u64> for Vec64 {
 
     /// Returns occurences of zero bit in `[0,i]`.
     fn rank0(&self, i: u64) -> Self::Weight {
-        if i == 0 {
-            0
-        } else {
-            let rank1 = self.rank1(i);
-            i as u128 + 1 - rank1
-        }
+        let rank1 = self.rank1(i);
+        i as Self::Weight + 1 - rank1
     }
 }
 
 impl ::Select1<u64> for Vec64 {
     /// Returns the position of 'c+1'th appearance of non-zero bit.
     fn select1(&self, c: u64) -> Option<u64> {
+        if self.count_ones() <= c as u128 {
+            return None;
+        }
         let mut rem = c;
         for (&key, b) in &self.vec32s {
             let w = b.count_ones();
@@ -199,17 +206,20 @@ impl ::Select1<u64> for Vec64 {
 impl ::Select0<u64> for Vec64 {
     /// Returns the position of 'c+1'th appearance of zero bit.
     fn select0(&self, c: u64) -> Option<u64> {
-        let mut rem = c;
-        for (&key, b) in &self.vec32s {
-            let w = b.count_zeros();
-            if rem >= w {
-                rem -= w;
-            } else {
-                let s = b.select0(rem as u32).unwrap() as u64;
-                let k = if key == 0 { 0 } else { (key as u64 - 1) << 32 };
-                return Some(k + s);
-            }
+        use Rank;
+        if self.count_zeros() <= c as u128 {
+            return None;
         }
-        None
+
+        let fun = |i| {
+            let rank0 = self.rank0(i as u64);
+            rank0 > c as u128
+        };
+        let pos = search!(0u128, 1 << 64, fun);
+        if pos < (1 << 64) {
+            Some(pos as u64)
+        } else {
+            None
+        }
     }
 }

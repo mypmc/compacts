@@ -8,7 +8,6 @@ use test::Bencher;
 use rand::Rng;
 
 use compacts_bits::*;
-use compacts_bits::ops::*;
 
 fn random_insert<R>(vec: &mut Vec64, rng: &mut R, size: u64, max: u64)
 where
