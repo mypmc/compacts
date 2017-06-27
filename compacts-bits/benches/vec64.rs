@@ -13,7 +13,7 @@ fn random_insert<R>(vec: &mut Vec64, rng: &mut R, size: u64, max: u64)
 where
     R: Rng,
 {
-    for _ in 0..rng.gen_range(0, size) {
+    for _ in 0..size {
         vec.insert(rng.gen_range(0, max));
     }
     vec.optimize();

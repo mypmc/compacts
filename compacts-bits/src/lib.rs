@@ -4,7 +4,7 @@
 #![feature(inclusive_range_syntax)]
 #![feature(i128_type)]
 
-// #![deny(warnings)]
+#![deny(warnings)]
 
 #[macro_use]
 extern crate karabiner;
@@ -23,10 +23,10 @@ mod pairwise;
 mod rank;
 mod select;
 
-mod block; // internal representaions of vec16::Vec16
-mod vec16; // bit vector of u16
-pub mod vec32; // bit vector of u32
-pub mod vec64; // bit vector of u64
+mod block;
+mod vec16; // (u16) bit vector
+mod vec32; // (u32) bit vector
+mod vec64; // (u64) bit vector
 
 mod ops {
     pub use pairwise::{Intersection, IntersectionWith};
@@ -61,9 +61,9 @@ pub struct Summary {
     rle16_ones: u128,
     rle16_size: u128,
 
-    total_nums: usize,
-    total_ones: u128,
-    total_size: u128,
+    pub total_nums: usize,
+    pub total_ones: u128,
+    pub total_size: u128,
 }
 
 impl ::std::iter::Sum<vec32::Stats> for Summary {

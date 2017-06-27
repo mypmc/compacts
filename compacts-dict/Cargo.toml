@@ -1,6 +1,6 @@
 [package]
 name    = "compacts-dict"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 license = "Unlicense/MIT"
 repository  = "https://github.com/feb29/compacts"
@@ -8,5 +8,5 @@ keywords    = ["compact", "succinct", "dictionary"]
 description = "succinct dictionary"
 
 [dependencies]
-compacts-prim = { path = "../compacts-prim", version = "0.1" }
-compacts-bits = { path = "../compacts-bits", version = "0.1" }
+compacts-prim = { path = "../compacts-prim", version = "0.2" }
+compacts-bits = { path = "../compacts-bits", version = "0.2" }

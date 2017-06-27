@@ -36,7 +36,6 @@ fn main() {
         vec1.insert(i);
     }
 
-    println!("{:#?}\n{:#?}", vec1.summary(), vec2.summary());
     vec1.optimize();
     vec2.optimize();
     println!("{:#?}\n{:#?}", vec1.summary(), vec2.summary());
