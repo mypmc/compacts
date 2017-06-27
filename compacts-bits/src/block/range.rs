@@ -44,12 +44,6 @@ impl<T> State<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd)]
-enum Side {
-    Lhs,
-    Rhs,
-}
-
 // half open
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Boundary<T: ::UnsignedInt> {
@@ -276,35 +270,27 @@ where
     'b: 'r,
 {
     let lhs_iter = lhs.iter()
-        .map(to_halfopen)
-        .flat_map(|range| enqueue(&range, &Side::Lhs));
+        .map(to_exclusive)
+        .flat_map(|range| {
+            let mut queue = VecDeque::new();
+            queue.push_back(Boundary::Lhs(Open(range.start)));
+            queue.push_back(Boundary::Lhs(Close(range.end)));
+            queue
+        });
 
     let rhs_iter = rhs.iter()
-        .map(to_halfopen)
-        .flat_map(|range| enqueue(&range, &Side::Rhs));
+        .map(to_exclusive)
+        .flat_map(|range| {
+            let mut queue = VecDeque::new();
+            queue.push_back(Boundary::Rhs(Open(range.start)));
+            queue.push_back(Boundary::Rhs(Close(range.end)));
+            queue
+        });
 
     itertools::merge(lhs_iter, rhs_iter)
 }
 
-fn enqueue<T>(range: &Range<T>, side: &Side) -> VecDeque<Boundary<T>>
-where
-    T: ::UnsignedInt,
-{
-    let mut queue = VecDeque::new();
-    match *side {
-        Side::Lhs => {
-            queue.push_back(Boundary::Lhs(Open(range.start)));
-            queue.push_back(Boundary::Lhs(Close(range.end)));
-        }
-        Side::Rhs => {
-            queue.push_back(Boundary::Rhs(Open(range.start)));
-            queue.push_back(Boundary::Rhs(Close(range.end)));
-        }
-    };
-    queue
-}
-
-fn to_halfopen(range: &RangeInclusive<u16>) -> Range<u32> {
+fn to_exclusive(range: &RangeInclusive<u16>) -> Range<u32> {
     let start = range.start as u32;
     let end = range.end as u32;
     (start..(end + 1))
