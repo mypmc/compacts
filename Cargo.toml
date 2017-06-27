@@ -1,11 +1,12 @@
 [package]
 name    = "compacts"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "Unlicense/MIT"
 repository  = "https://github.com/feb29/compacts"
 keywords    = ["compact", "succinct", "rank", "select"]
+categories  = ["data-structures"]
 description = "succinct data structures"
 
 [workspace]
