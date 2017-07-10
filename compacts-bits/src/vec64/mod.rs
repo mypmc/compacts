@@ -134,6 +134,20 @@ impl ::std::ops::Index<u64> for Vec64 {
     }
 }
 
+impl<'a> ::std::iter::FromIterator<u64> for Vec64 {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = u64>,
+    {
+        let mut vec = Vec64::new();
+        for b in iter {
+            vec.insert(b);
+        }
+        vec.optimize();
+        vec
+    }
+}
+
 impl<'a> ::std::iter::FromIterator<&'a u64> for Vec64 {
     fn from_iter<I>(iter: I) -> Self
     where
@@ -143,6 +157,7 @@ impl<'a> ::std::iter::FromIterator<&'a u64> for Vec64 {
         for b in iter {
             vec.insert(*b);
         }
+        vec.optimize();
         vec
     }
 }

@@ -74,7 +74,9 @@ impl Vec32 {
 
 impl Vec32 {
     pub fn new() -> Self {
-        Vec32 { vec16s: BTreeMap::new() }
+        Vec32 {
+            vec16s: BTreeMap::new(),
+        }
     }
 
     /// Clear contents.

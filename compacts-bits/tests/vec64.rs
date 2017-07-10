@@ -4,9 +4,9 @@ extern crate env_logger;
 extern crate rand;
 extern crate compacts_bits;
 
-use self::rand::Rng;
-
+use std::iter::FromIterator;
 use compacts_bits::*;
+use self::rand::Rng;
 
 fn random_insert<R>(map: &mut Vec64, rng: &mut R, size: u64, max: u64)
 where
@@ -183,5 +183,25 @@ fn select() {
         } else {
             assert_eq!(i, r - 1);
         }
+    }
+}
+
+#[test]
+fn bitmaps() {
+    let mut vec1 = Vec64::from_iter((0..6000).chain(1000000..1012000).chain(3000000..3010000));
+    let vec2 = Vec64::from_iter((3000..7000).chain(1006000..1018000).chain(2000000..2010000));
+    let vec3 = Vec64::from_iter(
+        (0..3000)
+            .chain(1000000..1006000)
+            .chain(6000..7000)
+            .chain(1012000..1018000)
+            .chain(2000000..2010000)
+            .chain(3000000..3010000),
+    );
+
+    vec1.symmetric_difference_with(&vec2);
+
+    for b in vec1.iter() {
+        assert!(vec3.contains(b));
     }
 }
