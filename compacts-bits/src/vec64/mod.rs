@@ -47,7 +47,7 @@ impl Vec64 {
 
     pub fn optimize(&mut self) {
         let mut rs = Vec::new();
-        for (k, vec) in self.vec32s.iter_mut() {
+        for (k, vec) in &mut self.vec32s {
             vec.optimize();
             if vec.count_ones() == 0 {
                 rs.push(*k);

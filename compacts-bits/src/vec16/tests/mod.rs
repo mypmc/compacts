@@ -97,9 +97,9 @@ impl RankSelect {
             block.insert(rng.gen_range(0, (size - 1) as u16));
         }
 
-        println!("({:>5?}) before {:?} {:?}", size, block, block.mem_size());
+        // println!("({:>5?}) before {:?} {:?}", size, block, block.mem_size());
         block.optimize();
-        println!("({:>5?}) after  {:?} {:?}", size, block, block.mem_size());
+        // println!("({:>5?}) after  {:?} {:?}", size, block, block.mem_size());
 
         RankSelect { size, block }
     }
@@ -184,11 +184,9 @@ fn insert_remove() {
         i += 1;
     }
 
-    println!("{:?}", b);
     assert!(b.count_ones() == Vec16::CAPACITY);
     b.optimize();
     assert!(b.count_ones() == Vec16::CAPACITY);
-    println!("{:?}", b);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));

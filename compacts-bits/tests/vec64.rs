@@ -4,53 +4,27 @@ extern crate env_logger;
 extern crate rand;
 extern crate compacts_bits;
 
+use compacts_bits::*;
 use self::rand::Rng;
 
-use compacts_bits::*;
+macro_rules! setup {
+    ( $rng:expr, $max:expr, $size:expr ) => {
+        {
+            let mut vec = Vec64::new();
+            random_insert(&mut vec, &mut $rng, $size, $max);
+            vec
+        }
+    };
+}
 
 fn random_insert<R>(map: &mut Vec64, rng: &mut R, size: u64, max: u64)
 where
     R: Rng,
 {
-    for _ in 0..rng.gen_range(0, size) {
+    for _ in 0..size {
         map.insert(rng.gen_range(0, max));
     }
     map.optimize();
-}
-
-#[test]
-fn iterator() {
-    let _ = env_logger::init();
-
-    {
-        let mut bm = Vec64::new();
-        for i in 0..1000000 {
-            bm.insert(i);
-        }
-        for (i, bit) in bm.iter().enumerate() {
-            assert_eq!(i as u64, bit);
-        }
-    }
-    {
-        let b = ::std::u64::MAX - 5;
-        let mut bm = Vec64::new();
-        for i in b..(b + 3) {
-            bm.insert(i);
-        }
-        let col = bm.iter().collect::<Vec<u64>>();
-        assert_eq!(col, vec![b, b + 1, b + 2]);
-        debug!("{:#?}", bm);
-    }
-
-}
-
-#[test]
-fn mem_size() {
-    let _ = env_logger::init();
-    let mut rng = rand::thread_rng();
-    let mut map = Vec64::new();
-    random_insert(&mut map, &mut rng, 1 << 16, 1 << 40);
-    info!("mem={:#?}", map.mem_size());
 }
 
 #[test]
@@ -184,4 +158,137 @@ fn select() {
             assert_eq!(i, r - 1);
         }
     }
+}
+
+#[test]
+fn intersection_associativity() {
+    let mut rng = rand::thread_rng();
+    let vec1 = &setup!(rng, 100, 100);
+    let vec2 = &setup!(rng, 100, 100);
+    let vec3 = &setup!(rng, 100, 100);
+    let i1 = vec1.intersection(vec2).intersection(vec3);
+    let i2 = vec1.intersection(&vec2.intersection(vec3));
+    let c1 = i1.iter().collect::<Vec<_>>();
+    let c2 = i2.iter().collect::<Vec<_>>();
+    assert_eq!(c1, c2);
+}
+
+#[test]
+fn intersection_commutativity() {
+    let mut rng = rand::thread_rng();
+    let vec1 = &setup!(rng, 20, 20);
+    let vec2 = &setup!(rng, 20, 20);
+    let i1 = vec1.intersection(vec2);
+    let i2 = vec2.intersection(vec1);
+    let c1 = i1.iter().collect::<Vec<_>>();
+    let c2 = i2.iter().collect::<Vec<_>>();
+
+    if c1 != c2 {
+        println!("");
+        println!(
+            "v1 {:?} {:#?}",
+            vec1.iter().collect::<Vec<_>>(),
+            vec1.summary()
+        );
+        println!(
+            "v2 {:?} {:#?}",
+            vec2.iter().collect::<Vec<_>>(),
+            vec2.summary()
+        );
+    }
+
+    assert_eq!(c1, c2);
+}
+
+#[test]
+fn union_associativity() {
+    let mut rng = rand::thread_rng();
+    let vec1 = &setup!(rng, 20, 10);
+    let vec2 = &setup!(rng, 200, 100);
+    let vec3 = &setup!(rng, 2000, 1000);
+    let i1 = vec1.union(vec2).union(vec3);
+    let i2 = vec1.union(&vec2.union(vec3));
+    let c1 = i1.iter().collect::<Vec<_>>();
+    let c2 = i2.iter().collect::<Vec<_>>();
+
+    if c1 != c2 {
+        let u1 = vec1.union(vec2);
+        let u2 = vec2.union(vec3);
+        println!("");
+        println!(
+            "v1 {:?} {:#?}",
+            vec1.iter().collect::<Vec<_>>(),
+            vec1.summary()
+        );
+        println!(
+            "v2 {:?} {:#?}",
+            vec2.iter().collect::<Vec<_>>(),
+            vec2.summary()
+        );
+        println!(
+            "v3 {:?} {:#?}",
+            vec3.iter().collect::<Vec<_>>(),
+            vec3.summary()
+        );
+        println!("(v1|v2) {:?}", u1.iter().collect::<Vec<_>>());
+        println!("(v2|v3) {:?}", u2.iter().collect::<Vec<_>>());
+    }
+
+    assert_eq!(c1, c2);
+}
+
+#[test]
+fn union_commutativity() {
+    let mut rng = rand::thread_rng();
+    let vec1 = &setup!(rng, 10, 10);
+    let vec2 = &setup!(rng, 100, 100);
+    let i1 = vec1.union(vec2);
+    let i2 = vec2.union(vec1);
+    let c1 = i1.iter().collect::<Vec<_>>();
+    let c2 = i2.iter().collect::<Vec<_>>();
+    assert_eq!(c1, c2);
+}
+
+#[test]
+fn symmetric_difference_associativity() {
+    let mut rng = rand::thread_rng();
+
+    let vec1 = &setup!(rng, 10, 10);
+    let vec2 = &setup!(rng, 10, 10);
+    let vec3 = &setup!(rng, 10, 10);
+
+    let i1 = vec1.symmetric_difference(vec2).symmetric_difference(vec3);
+    let i2 = vec1.symmetric_difference(&vec2.symmetric_difference(vec3));
+
+    let c1 = i1.iter().collect::<Vec<_>>();
+    let c2 = i2.iter().collect::<Vec<_>>();
+
+    if c1 != c2 {
+        let sd1 = vec1.symmetric_difference(vec2);
+        let sd2 = vec2.symmetric_difference(vec3);
+        println!("");
+        println!("v1 {:?}", vec1.iter().collect::<Vec<_>>());
+        println!("v2 {:?}", vec2.iter().collect::<Vec<_>>());
+        println!("v3 {:?}", vec3.iter().collect::<Vec<_>>());
+        println!("(v1^v2) {:?}", sd1.iter().collect::<Vec<_>>());
+        println!("(v2^v3) {:?}", sd2.iter().collect::<Vec<_>>());
+    }
+
+    assert_eq!(c1, c2);
+}
+
+#[test]
+fn symmetric_difference_commutativity() {
+    let mut rng = rand::thread_rng();
+
+    let vec1 = setup!(rng, 10, 10);
+    let vec2 = setup!(rng, 10, 10);
+
+    let i1 = (&vec1).symmetric_difference(&vec2);
+    let i2 = (&vec2).symmetric_difference(&vec1);
+
+    let c1 = i1.iter().collect::<Vec<_>>();
+    let c2 = i2.iter().collect::<Vec<_>>();
+
+    assert_eq!(c1, c2);
 }

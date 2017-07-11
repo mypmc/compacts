@@ -1,4 +1,3 @@
-#![feature(associated_consts)]
 #![feature(i128_type)]
 
 pub trait UnsignedInt: PartialEq + PartialOrd + Eq + Ord + Copy {

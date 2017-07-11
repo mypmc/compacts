@@ -1,250 +1,228 @@
-use std::mem;
 use std::u16;
+
+use pairwise::*;
 use super::*;
+use self::range::*;
+
+static LHS: &Ranges = &[3...5, 10...13, 18...19, 100...120];
+static RHS: &Ranges = &[2...3, 6...9, 12...14, 17...21, 200...1000];
+
+static NULL: &Ranges = &[];
+static FULL: &Ranges = &[0...u16::MAX];
+static ONE1: &Ranges = &[1...(u16::MAX / 2)];
+static ONE2: &Ranges = &[(u16::MAX / 2)...(u16::MAX - 1)];
 
 #[test]
-fn size_of_repr() {
-    let size = mem::size_of::<Seq16>();
-    println!("Seq16 {:?}", size);
-    let size = mem::size_of::<Seq64>();
-    println!("Seq64 {:?}", size);
-    let size = mem::size_of::<Rle16>();
-    println!("Rle16 {:?}", size);
+fn two_fold() {
+
+    assert_eq!(
+        TwoFold::new(LHS, RHS).collect::<Vec<BelongTo<u32>>>(),
+        vec![
+            BelongTo::Rhs(2..3),
+            BelongTo::Both(3..4),
+            BelongTo::Lhs(4..6),
+            BelongTo::Rhs(6..10),
+            BelongTo::Lhs(10..12),
+            BelongTo::Both(12..14),
+            BelongTo::Rhs(14..15),
+            BelongTo::None(15..17),
+            BelongTo::Rhs(17..18),
+            BelongTo::Both(18..20),
+            BelongTo::Rhs(20..22),
+            BelongTo::None(22..100),
+            BelongTo::Lhs(100..121),
+            BelongTo::None(121..200),
+            BelongTo::Rhs(200..1001),
+        ]
+    );
+
+    assert_eq!(
+        TwoFold::new(NULL, RHS).collect::<Vec<BelongTo<u32>>>(),
+        vec![
+            BelongTo::Rhs(2..4),
+            BelongTo::None(4..6),
+            BelongTo::Rhs(6..10),
+            BelongTo::None(10..12),
+            BelongTo::Rhs(12..15),
+            BelongTo::None(15..17),
+            BelongTo::Rhs(17..22),
+            BelongTo::None(22..200),
+            BelongTo::Rhs(200..1001),
+        ]
+    );
+
+    assert_eq!(
+        TwoFold::new(LHS, NULL).collect::<Vec<BelongTo<u32>>>(),
+        vec![
+            BelongTo::Lhs(3..6),
+            BelongTo::None(6..10),
+            BelongTo::Lhs(10..14),
+            BelongTo::None(14..18),
+            BelongTo::Lhs(18..20),
+            BelongTo::None(20..100),
+            BelongTo::Lhs(100..121),
+        ]
+    );
+
+    assert_eq!(
+        TwoFold::new(FULL, RHS).collect::<Vec<BelongTo<u32>>>(),
+        vec![
+            BelongTo::Lhs(0..2),
+            BelongTo::Both(2..4),
+            BelongTo::Lhs(4..6),
+            BelongTo::Both(6..10),
+            BelongTo::Lhs(10..12),
+            BelongTo::Both(12..15),
+            BelongTo::Lhs(15..17),
+            BelongTo::Both(17..22),
+            BelongTo::Lhs(22..200),
+            BelongTo::Both(200..1001),
+            BelongTo::Lhs(1001..65536),
+        ]
+    );
+
+    assert_eq!(
+        TwoFold::new(LHS, FULL).collect::<Vec<BelongTo<u32>>>(),
+        vec![
+            BelongTo::Rhs(0..3),
+            BelongTo::Both(3..6),
+            BelongTo::Rhs(6..10),
+            BelongTo::Both(10..14),
+            BelongTo::Rhs(14..18),
+            BelongTo::Both(18..20),
+            BelongTo::Rhs(20..100),
+            BelongTo::Both(100..121),
+            BelongTo::Rhs(121..65536),
+        ]
+    );
+
+    let a1 = &[0...1, 3...5, 12...16, 18...19];
+    let a2 = &[0...0, 3...8, 10...13, 15...15, 19...19];
+
+    assert_eq!(
+        TwoFold::new(a1, a2).collect::<Vec<BelongTo<u32>>>(),
+        vec![
+            BelongTo::Both(0..1),
+            BelongTo::Lhs(1..2),
+            BelongTo::None(2..3),
+            BelongTo::Both(3..6),
+            BelongTo::Rhs(6..9),
+            BelongTo::None(9..10),
+            BelongTo::Rhs(10..12),
+            BelongTo::Both(12..14),
+            BelongTo::Lhs(14..15),
+            BelongTo::Both(15..16),
+            BelongTo::Lhs(16..17),
+            BelongTo::None(17..18),
+            BelongTo::Lhs(18..19),
+            BelongTo::Both(19..20),
+        ]
+    );
+
+    assert_eq!(
+        TwoFold::new(a2, a1).collect::<Vec<BelongTo<u32>>>(),
+        vec![
+            BelongTo::Both(0..1),
+            BelongTo::Rhs(1..2),
+            BelongTo::None(2..3),
+            BelongTo::Both(3..6),
+            BelongTo::Lhs(6..9),
+            BelongTo::None(9..10),
+            BelongTo::Lhs(10..12),
+            BelongTo::Both(12..14),
+            BelongTo::Rhs(14..15),
+            BelongTo::Both(15..16),
+            BelongTo::Rhs(16..17),
+            BelongTo::None(17..18),
+            BelongTo::Rhs(18..19),
+            BelongTo::Both(19..20),
+        ]
+    );
+}
+
+macro_rules! test_associativity {
+    ( $x:expr, $y:expr, $z:expr, $fn:ident ) => {
+        let x = &Rle16::from($x);
+        let y = &Rle16::from($y);
+        let z = &Rle16::from($z);
+        let r1 = x.intersection(y).intersection(z);
+        let r2 = x.intersection(&y.intersection(z));
+        assert_eq!(r1.ranges, r2.ranges);
+        assert_eq!(r1.weight, r2.weight);
+    }
+}
+
+macro_rules! test_commutativity {
+    ( $x:expr, $y:expr, $fn:ident ) => {
+        let (w1, v1) = repair(TwoFold::new($x, $y).$fn());
+        let (w2, v2) = repair(TwoFold::new($y, $x).$fn());
+        assert_eq!(w1, w2);
+        assert_eq!(v1, v2);
+    }
 }
 
 #[test]
-fn rle16_insert_remove() {
-    use std::u16;
-    let mut vec16 = Seq16::new();
-    let mut vec64 = Seq64::new();
-
-    let range1 = 0...6666;
-    let range2 = 10000...12345;
-    let range3 = (u16::MAX - 3734)...u16::MAX;
-    let result = vec![
-        range1.clone(),
-        range2.clone(),
-        23456...23456,
-        range3.clone(),
-    ];
-
-    {
-        for i in range1 {
-            vec16.insert(i);
-            vec64.insert(i);
-        }
-
-        let runlen1 = vec16.count_rle();
-        let runlen2 = vec64.count_rle();
-        assert_eq!(runlen1, runlen2);
-        assert_eq!(1, runlen1);
-    }
-
-    {
-        for i in range2 {
-            vec16.insert(i);
-            vec64.insert(i);
-        }
-
-        let runlen1 = vec16.count_rle();
-        let runlen2 = vec64.count_rle();
-        assert_eq!(runlen1, runlen2);
-        assert_eq!(2, runlen1);
-    }
-
-    {
-        vec16.insert(23456);
-        vec64.insert(23456);
-
-        let runlen1 = vec16.count_rle();
-        let runlen2 = vec64.count_rle();
-        assert_eq!(runlen1, runlen2);
-        assert_eq!(3, runlen2);
-    }
-
-    {
-        for i in range3 {
-            vec16.insert(i);
-            vec64.insert(i);
-        }
-
-        let runlen1 = vec16.count_rle();
-        let runlen2 = vec64.count_rle();
-        assert_eq!(runlen1, runlen2);
-        assert_eq!(4, runlen1);
-    }
-
-    let rle16_1 = Rle16::from(&vec16);
-    let rle16_2 = Rle16::from(&vec64);
-
-    assert!(rle16_1.contains(0));
-    assert!(rle16_1.contains(12345));
-    assert!(rle16_1.contains(23456));
-    assert!(rle16_1.contains(u16::MAX));
-
-    assert!(!rle16_1.contains(7000));
-    assert!(!rle16_1.contains(13000));
-    assert!(!rle16_1.contains(23455));
-    assert!(!rle16_1.contains(23457));
-
-    assert_eq!(rle16_1.weight, rle16_2.weight);
-    assert_eq!(rle16_1.weight, vec16.weight);
-    assert_eq!(rle16_1.weight, vec64.weight);
-    assert_eq!(rle16_1.ranges, result);
-    assert_eq!(rle16_2.ranges, result);
-
-    assert_eq!(Seq16::from(&rle16_1), vec16);
-    assert_eq!(Seq64::from(&rle16_2), vec64);
-
-    println!("Rle16 {:?}", rle16_1);
-    println!("Rle16 {:?}", rle16_2);
-}
-
-/*
-_,_,_,3,4,5,_,_,_,_,10,11,12,13,__,__,__,__,18,19,__,__,...
-_,_,2,3,_,_,6,7,8,9,__,__,12,13,14,__,__,17,18,19,20,21,...
-*/
-static LHS: &[::std::ops::RangeInclusive<u16>] = &[3...5, 10...13, 18...19, 100...120];
-static RHS: &[::std::ops::RangeInclusive<u16>] = &[2...3, 6...9, 12...14, 17...21, 200...1000];
-
-static NULL: &[::std::ops::RangeInclusive<u16>] = &[];
-static ONE1: &[::std::ops::RangeInclusive<u16>] = &[1...(u16::MAX / 2)]; // 1...32767
-// 32767...65534
-static ONE2: &[::std::ops::RangeInclusive<u16>] = &[(u16::MAX / 2)...(u16::MAX - 1)];
-
-static FULL: &[::std::ops::RangeInclusive<u16>] = &[0...u16::MAX]; // 0...65536
-
-#[test]
-fn iterate_folding() {
-    // note: result are exclusive
-    let want = vec![
-        range::BelongTo::Rhs(2..3),
-        range::BelongTo::Both(3..4),
-        range::BelongTo::Lhs(4..6),
-        range::BelongTo::Rhs(6..10),
-        range::BelongTo::Lhs(10..12),
-        range::BelongTo::Both(12..14),
-        range::BelongTo::Rhs(14..15),
-        range::BelongTo::None(15..17),
-        range::BelongTo::Rhs(17..18),
-        range::BelongTo::Both(18..20),
-        range::BelongTo::Rhs(20..22),
-        range::BelongTo::None(22..100),
-        range::BelongTo::Lhs(100..121),
-        range::BelongTo::None(121..200),
-        range::BelongTo::Rhs(200..1001),
-    ];
-
-    for (g, w) in range::Folding::new(LHS, RHS).zip(want) {
-        assert_eq!(g, w);
-        println!("{:?}", g);
-    }
-}
-
-#[test]
-#[allow(unused_variables)]
 fn rle16_intersection() {
-    use self::range::*;
+    test_associativity!(LHS, RHS, FULL, intersection);
+    test_associativity!(LHS, RHS, FULL, intersection);
+    test_associativity!(LHS, RHS, ONE1, intersection);
+    test_associativity!(RHS, ONE1, ONE2, intersection);
+    test_associativity!(RHS, NULL, ONE2, intersection);
+    test_associativity!(FULL, NULL, ONE2, intersection);
 
-    let (w, vec) = range::repair(Folding::new(LHS, RHS).intersection());
-    for g in vec {
-        println!("Intersection1 {:?}", g);
-    }
+    test_commutativity!(LHS, RHS, intersection);
+    test_commutativity!(NULL, FULL, intersection);
+    test_commutativity!(LHS, NULL, intersection);
+    test_commutativity!(LHS, FULL, intersection);
+    test_commutativity!(ONE1, ONE2, intersection);
 
-    let (w, vec) = range::repair(Folding::new(NULL, RHS).intersection());
-    for g in vec {
-        println!("Intersection2 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(ONE1, ONE2).intersection());
-    for g in vec {
-        println!("Intersection3 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(NULL, FULL).intersection());
-    for g in vec {
-        println!("Intersection4 {:?}", g);
-    }
+    let a1 = &[0...1, 3...5, 12...16, 18...19];
+    let a2 = &[0...0, 3...8, 10...13, 15...15, 19...19];
+    test_commutativity!(a1, a2, intersection);
 }
 
 #[test]
-#[allow(unused_variables)]
 fn rle16_union() {
-    use self::range::*;
+    test_associativity!(LHS, RHS, FULL, union);
+    test_associativity!(LHS, RHS, FULL, union);
+    test_associativity!(LHS, RHS, ONE1, union);
+    test_associativity!(RHS, ONE1, ONE2, union);
+    test_associativity!(RHS, NULL, ONE2, union);
+    test_associativity!(FULL, NULL, ONE2, union);
 
-    let (w, vec) = range::repair(Folding::new(LHS, RHS).union());
-    for g in &vec {
-        println!("Union1 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(NULL, RHS).union());
-    for g in &vec {
-        println!("Union2 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(ONE1, ONE2).union());
-    assert_eq!(w, 65534, "weight {:?}", w);
-    for g in &vec {
-        println!("Union3 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(NULL, FULL).union());
-    assert_eq!(w, 65536, "weight {:?}", w);
-    for g in &vec {
-        println!("Union4 {:?}", g);
-    }
+    test_commutativity!(LHS, RHS, union);
+    test_commutativity!(NULL, FULL, union);
+    test_commutativity!(LHS, NULL, union);
+    test_commutativity!(LHS, FULL, union);
+    test_commutativity!(ONE1, ONE2, union);
 }
 
 #[test]
-#[allow(unused_variables)]
-fn rle16_difference() {
-    use self::range::*;
-
-    let (w, vec) = range::repair(Folding::new(LHS, RHS).difference());
-    for g in vec {
-        println!("Difference1 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(NULL, RHS).difference());
-    assert_eq!(w, 0, "weight {:?}", w);
-    for g in vec {
-        println!("Difference2 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(ONE1, ONE2).difference());
-    for g in vec {
-        println!("Difference3 {:?}", g);
-    }
-
-    let (w, vec) = range::repair(Folding::new(NULL, FULL).difference());
-    assert_eq!(w, 0, "weight {:?}", w);
-    for g in vec {
-        println!("Difference4 {:?}", g);
-    }
-}
-
-#[test]
-#[allow(unused_variables)]
 fn rle16_symmetric_difference() {
-    use self::range::*;
+    test_associativity!(LHS, RHS, FULL, symmetric_difference);
+    test_associativity!(LHS, RHS, FULL, symmetric_difference);
+    test_associativity!(LHS, RHS, ONE1, symmetric_difference);
+    test_associativity!(RHS, ONE1, ONE2, symmetric_difference);
+    test_associativity!(RHS, NULL, ONE2, symmetric_difference);
+    test_associativity!(FULL, NULL, ONE2, symmetric_difference);
 
-    let (w, vec) = range::repair(Folding::new(LHS, RHS).symmetric_difference());
-    for g in vec {
-        println!("SymmetricDifference1 {:?}", g);
-    }
+    test_commutativity!(LHS, RHS, symmetric_difference);
+    test_commutativity!(NULL, FULL, symmetric_difference);
+    test_commutativity!(LHS, NULL, symmetric_difference);
+    test_commutativity!(LHS, FULL, symmetric_difference);
+    test_commutativity!(ONE1, ONE2, symmetric_difference);
+}
 
-    let (w, vec) = range::repair(Folding::new(NULL, RHS).symmetric_difference());
-    for g in vec {
-        println!("SymmetricDifference2 {:?}", g);
-    }
+#[test]
+fn rle16_test_ops() {
+    use std::iter::FromIterator;
+    let rle1 = &Rle16::from_iter(vec![0u16, 1, 3, 4, 5, 12, 13, 14, 15, 16, 18, 19]);
+    let rle2 = &Rle16::from_iter(vec![0u16, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 19]);
+    println!("{:?}", rle1);
+    println!("{:?}", rle2);
 
-    let (w, vec) = range::repair(Folding::new(ONE1, ONE2).symmetric_difference());
-    for g in vec {
-        println!("SymmetricDifference3 {:?}", g);
-    }
+    let i1 = rle1.intersection(rle2);
+    let i2 = rle2.intersection(rle1);
 
-    let (w, vec) = range::repair(Folding::new(NULL, FULL).symmetric_difference());
-    for g in vec {
-        println!("SymmetricDifference4 {:?}", g);
-    }
+    assert_eq!(i1, i2);
 }

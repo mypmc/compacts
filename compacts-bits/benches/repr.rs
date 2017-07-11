@@ -9,7 +9,6 @@ use rand::Rng;
 const SIZE: usize = 65000;
 
 #[bench]
-#[ignore]
 fn repr_map_iterate(bench: &mut Bencher) {
     use std::collections::BTreeMap;
     let mut b = BTreeMap::new();
@@ -20,7 +19,6 @@ fn repr_map_iterate(bench: &mut Bencher) {
 }
 
 #[bench]
-#[ignore]
 fn repr_vec_iterate(bench: &mut Bencher) {
     let mut b = Vec::with_capacity(SIZE);
     for i in 0..SIZE {
@@ -30,7 +28,6 @@ fn repr_vec_iterate(bench: &mut Bencher) {
 }
 
 #[bench]
-#[ignore]
 fn repr_zip_iterate(bench: &mut Bencher) {
     let mut b1 = Vec::with_capacity(SIZE);
     let mut b2 = Vec::with_capacity(SIZE);
@@ -44,7 +41,6 @@ fn repr_zip_iterate(bench: &mut Bencher) {
 }
 
 #[bench]
-#[ignore]
 fn repr_map_insert(bench: &mut Bencher) {
     use std::collections::BTreeMap;
     let mut rng = rand::thread_rng();
@@ -56,7 +52,6 @@ fn repr_map_insert(bench: &mut Bencher) {
 }
 
 #[bench]
-#[ignore]
 fn repr_vec_insert(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut b = Vec::new();
@@ -68,7 +63,6 @@ fn repr_vec_insert(bench: &mut Bencher) {
 }
 
 #[bench]
-#[ignore]
 fn repr_zip_insert(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut b1 = Vec::new();
