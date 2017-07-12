@@ -60,7 +60,7 @@ impl Vec32 {
     /// Optimize innternal data representaions.
     pub fn optimize(&mut self) {
         let mut rs = Vec::new();
-        for (k, b) in self.vec16s.iter_mut() {
+        for (k, b) in &mut self.vec16s {
             b.optimize();
             if b.count_ones() == 0 {
                 rs.push(*k)

@@ -33,12 +33,8 @@ macro_rules! genvec {
 }
 
 const SIZE: u64 = 1 << 16;
-const MAX1: u64 = 1 << 20;
-const MAX2: u64 = 1 << 40;
-
-// const SIZE: u64 = 1 << 16;
-// const MAX1: u64 = 1 << 10;
-// const MAX2: u64 = 1 << 12;
+const MAX1: u64 = 1 << 16;
+const MAX2: u64 = 1 << 32;
 
 #[bench]
 fn optimize(bench: &mut Bencher) {

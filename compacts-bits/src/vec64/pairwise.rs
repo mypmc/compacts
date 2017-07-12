@@ -40,24 +40,26 @@ impl_op!(
 
 impl<'r> IntersectionWith<&'r super::Vec64> for super::Vec64 {
     fn intersection_with(&mut self, that: &'r super::Vec64) {
-        let rms = {
-            let mut rms = Vec::with_capacity(self.vec32s.len());
+
+        let keys_to_remove = {
+            let mut keys = Vec::with_capacity(self.vec32s.len());
             for (key, vec) in &mut self.vec32s {
                 if that.vec32s.contains_key(key) {
                     vec.intersection_with(&that.vec32s[key]);
                     if vec.count_ones() != 0 {
                         vec.optimize();
                     } else {
-                        rms.push(*key);
+                        keys.push(*key);
                     }
                 } else {
-                    rms.push(*key);
+                    keys.push(*key);
                 }
             }
-            rms
+            keys
         };
-        for rm in &rms {
-            let removed = self.vec32s.remove(rm);
+
+        for key in keys_to_remove {
+            let removed = self.vec32s.remove(&key);
             debug_assert!(removed.is_some());
         }
     }
@@ -99,8 +101,9 @@ impl<'r> SymmetricDifferenceWith<&'r super::Vec64> for super::Vec64 {
                 self.vec32s.insert(key, vec.clone());
                 continue;
             }
-            let lb = self.vec32s[&key].clone();
-            self.vec32s.insert(key, lb.symmetric_difference(vec));
+            let mut b = self.vec32s[&key].clone();
+            b.symmetric_difference_with(vec);
+            self.vec32s.insert(key, b);
         }
     }
 }

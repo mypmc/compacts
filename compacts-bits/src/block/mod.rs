@@ -1,8 +1,13 @@
+#[cfg(test)]
+#[macro_use]
+mod macros;
+
 mod seq16;
 mod seq64;
 mod rle16;
 mod range;
 mod iter;
+
 #[cfg(test)]
 mod tests;
 
@@ -10,18 +15,17 @@ pub use self::iter::*;
 
 use std::ops::RangeInclusive;
 use std::mem;
-use std::fmt;
 
 pub(crate) const CAPACITY: usize = 1 << 16;
 const CAP32: u32 = CAPACITY as u32;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct Seq<T> {
     pub(crate) weight: u32,
     pub(crate) vector: Vec<T>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct Rle<T> {
     pub(crate) weight: u32,
     pub(crate) ranges: Vec<RangeInclusive<T>>,
@@ -93,7 +97,7 @@ impl Seq64 {
     }
     pub fn mem_size(&self) -> usize {
         // seq64 has fixed size
-        Self::size_in_bytes(UNIT)
+        Self::size_in_bytes(1024)
     }
 }
 impl Rle16 {
@@ -102,29 +106,5 @@ impl Rle16 {
     }
     pub fn mem_size(&self) -> usize {
         Self::size_in_bytes(self.ranges.len())
-    }
-}
-
-const UNIT: usize = 1024;
-
-impl fmt::Debug for Seq<u16> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let m = self.mem_size() as f64 / UNIT as f64;
-        let l = self.load_factor();
-        write!(f, "seq16({:4.1}(kb) {:4.2})", m, l)
-    }
-}
-impl fmt::Debug for Seq<u64> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let m = self.mem_size() as f64 / UNIT as f64;
-        let l = self.load_factor();
-        write!(f, "seq64({:4.1}(kb) {:4.2})", m, l)
-    }
-}
-impl fmt::Debug for Rle<u16> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let m = self.mem_size() as f64 / UNIT as f64;
-        let l = self.load_factor();
-        write!(f, "rle16({:4.1}(kb) {:4.2})", m, l)
     }
 }

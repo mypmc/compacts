@@ -2,14 +2,6 @@ use std::iter::FromIterator;
 use super::{Seq16, Seq64, Rle16};
 use Rank;
 
-impl Default for Seq16 {
-    fn default() -> Self {
-        let weight = 0;
-        let vector = Vec::new();
-        Seq16 { weight, vector }
-    }
-}
-
 impl Seq16 {
     pub const THRESHOLD: usize = 1 << 12; // 16 * (1 << 12) == 65536
 

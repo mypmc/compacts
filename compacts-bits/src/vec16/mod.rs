@@ -29,8 +29,9 @@ impl fmt::Debug for Vec16 {
 
 impl Default for Vec16 {
     fn default() -> Self {
-        // default is Seq64.
+        // Seq16(block::Seq16::new())
         Seq64(block::Seq64::new())
+        // Rle16(block::Rle16::new())
     }
 }
 

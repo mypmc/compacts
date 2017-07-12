@@ -1,20 +1,14 @@
 use std::iter::FromIterator;
 use super::{Seq16, Seq64, Rle16};
 
-impl Default for Seq64 {
-    fn default() -> Self {
-        let weight = 0;
-        // ensure that length is 1024, this is important for bitops.
-        let vector = vec![0; Self::THRESHOLD];
-        Seq64 { weight, vector }
-    }
-}
-
 impl Seq64 {
     pub const THRESHOLD: usize = 1 << 10; // 64 * (1 << 10) == 65536
 
     pub fn new() -> Self {
-        Self::default()
+        let weight = 0;
+        // ensure that length is 1024, this is important for bitops.
+        let vector = vec![0; Self::THRESHOLD];
+        Seq64 { weight, vector }
     }
 
     #[inline]
@@ -161,7 +155,6 @@ impl<'a> ::ops::IntersectionWith<&'a Rle16> for Seq64 {
         self.intersection_with(&seq);
     }
 }
-
 
 impl<'a> ::ops::UnionWith<&'a Seq16> for Seq64 {
     fn union_with(&mut self, seq16: &'a Seq16) {

@@ -1,5 +1,3 @@
-#![feature(associated_consts)]
-
 extern crate compacts_prim as prim;
 extern crate compacts_bits as bits;
 
