@@ -80,7 +80,7 @@ fn difference() {
 #[derive(Debug)]
 struct RankSelect {
     size: usize,
-    block: Vec16,
+    block: Map16,
 }
 
 impl RankSelect {
@@ -91,7 +91,7 @@ impl RankSelect {
     }
 
     fn new<R: Rng>(size: usize, rng: &mut R) -> Self {
-        let mut block = Vec16::new();
+        let mut block = Map16::new();
         for _ in 0..size {
             //block.insert(rng.gen_range(0, ::std::u16::MAX));
             block.insert(rng.gen_range(0, (size - 1) as u16));
@@ -153,10 +153,10 @@ fn random_rank_select() {
         0,
         Seq16::THRESHOLD as u64,
         Seq16::THRESHOLD as u64 * 2,
-        Vec16::CAPACITY as u64 / 2,
-        Vec16::CAPACITY as u64,
+        Map16::CAPACITY as u64 / 2,
+        Map16::CAPACITY as u64,
         rng.gen_range(10, Seq16::THRESHOLD as u64),
-        rng.gen_range(Seq16::THRESHOLD as u64 + 1, Vec16::CAPACITY as u64 - 1),
+        rng.gen_range(Seq16::THRESHOLD as u64 + 1, Map16::CAPACITY as u64 - 1),
     ];
     for &size in lenghs.iter() {
         RankSelect::run(size as usize, &mut rng);
@@ -165,7 +165,7 @@ fn random_rank_select() {
 
 #[test]
 fn insert_remove() {
-    let mut b = Vec16::new();
+    let mut b = Map16::new();
     let mut i = 0u16;
     while (i as usize) < block::Seq16::THRESHOLD {
         assert!(b.insert(i), format!("insert({:?}) failed", i));
@@ -175,7 +175,7 @@ fn insert_remove() {
     assert_eq!(i as usize, block::Seq16::THRESHOLD);
     assert_eq!(b.count_ones(), block::Seq16::THRESHOLD as u32);
 
-    while (i as u32) < Vec16::CAPACITY {
+    while (i as u32) < Map16::CAPACITY {
         assert!(b.insert(i), "insert failed");
         assert!(b.contains(i), "insert ok, but not contains");
         if i == !0 {
@@ -184,9 +184,9 @@ fn insert_remove() {
         i += 1;
     }
 
-    assert!(b.count_ones() == Vec16::CAPACITY);
+    assert!(b.count_ones() == Map16::CAPACITY);
     b.optimize();
-    assert!(b.count_ones() == Vec16::CAPACITY);
+    assert!(b.count_ones() == Map16::CAPACITY);
 
     while i > 0 {
         assert!(b.remove(i), format!("remove({:?}) failed", i));
@@ -217,7 +217,7 @@ macro_rules! test_rank {
             use std::u16;
             let vec = vec![0...1, 4...5, 8...9, (u16::MAX - 100)...u16::MAX];
             let rle16 = block::Rle16::from(&vec[..]);
-            let block = Vec16::$block(block::$repr::from(rle16));
+            let block = Map16::$block(block::$repr::from(rle16));
             assert_eq!(1, block.rank1(0));
             assert_eq!(0, block.rank0(0));
             assert_eq!(2, block.rank1(1));
@@ -256,7 +256,7 @@ macro_rules! test_select {
             use std::u16;
             let vec = vec![0...1, 4...5, 8...9, (u16::MAX - 100)...u16::MAX];
             let rle16 = block::Rle16::from(&vec[..]);
-            let block = Vec16::$block(block::$repr::from(rle16));
+            let block = Map16::$block(block::$repr::from(rle16));
             assert_eq!(Some(0), block.select1(0));
             assert_eq!(Some(2), block.select0(0));
             assert_eq!(Some(1), block.select1(1));

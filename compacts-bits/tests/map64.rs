@@ -4,35 +4,18 @@ extern crate env_logger;
 extern crate rand;
 extern crate compacts_bits;
 
+#[macro_use]
+mod helper;
+
 use std::iter::FromIterator;
 use compacts_bits::*;
-use self::rand::Rng;
-
-macro_rules! setup {
-    ( $rng:expr, $max:expr, $size:expr ) => {
-        {
-            let mut vec = Vec64::new();
-            random_insert(&mut vec, &mut $rng, $size, $max);
-            vec
-        }
-    };
-}
-
-fn random_insert<R>(map: &mut Vec64, rng: &mut R, size: u64, max: u64)
-where
-    R: Rng,
-{
-    for _ in 0..size {
-        map.insert(rng.gen_range(0, max));
-    }
-    map.optimize();
-}
+use compacts_bits::pair::*;
 
 #[test]
 fn intersection() {
     let _ = env_logger::init();
-    let map1 = Vec64::from(vec![1 << 10, 1 << 20, 1 << 30, 1 << 40, 1 << 50]);
-    let map2 = Vec64::from(vec![1 << 40, 1 << 50, 1 << 60]);
+    let map1 = Map64::from(vec![1 << 10, 1 << 20, 1 << 30, 1 << 40, 1 << 50]);
+    let map2 = Map64::from(vec![1 << 40, 1 << 50, 1 << 60]);
 
     let mut map = map1.intersection(&map2);
     assert_eq!(2, map.count_ones());
@@ -45,8 +28,8 @@ fn intersection() {
 #[test]
 fn union() {
     let _ = env_logger::init();
-    let map1 = Vec64::from(vec![1 << 1, 1 << 2, 1 << 4]);
-    let map2 = Vec64::from(vec![1 << 8, 1 << 16, 1 << 32, 1 << 60]);
+    let map1 = Map64::from(vec![1 << 1, 1 << 2, 1 << 4]);
+    let map2 = Map64::from(vec![1 << 8, 1 << 16, 1 << 32, 1 << 60]);
 
     let mut map = map1.union(&map2);
 
@@ -66,8 +49,8 @@ fn union() {
 fn difference() {
     let _ = env_logger::init();
 
-    let map1 = Vec64::from(vec![1 << 1, 1 << 2, 1 << 4, 1 << 8, 1 << 16, 1 << 32]);
-    let map2 = Vec64::from(vec![1 << 8, 1 << 16, 1 << 32]);
+    let map1 = Map64::from(vec![1 << 1, 1 << 2, 1 << 4, 1 << 8, 1 << 16, 1 << 32]);
+    let map2 = Map64::from(vec![1 << 8, 1 << 16, 1 << 32]);
 
     let mut map = map1.difference(&map2);
 
@@ -82,7 +65,7 @@ fn difference() {
 #[test]
 fn rank() {
     let _ = env_logger::init();
-    let vec = Vec64::from(vec![
+    let vec = Map64::from(vec![
         0,
         1 << 4,
         1 << 16,
@@ -111,7 +94,7 @@ fn rank() {
 #[test]
 fn select() {
     let _ = env_logger::init();
-    let mut vec = Vec64::from(vec![
+    let mut vec = Map64::from(vec![
         0,
         1 << 2, // 4
         1 << 4, // 16
@@ -163,15 +146,23 @@ fn select() {
 
 #[test]
 fn bitmaps() {
-    let mut vec1 = Vec64::from_iter((0..6000).chain(1000000..1012000).chain(3000000..3010000));
-    let vec2 = Vec64::from_iter((3000..7000).chain(1006000..1018000).chain(2000000..2010000));
-    let vec3 = Vec64::from_iter(
+    let mut vec1 = Map64::from_iter(
+        (0..6000)
+            .chain(1_000_000..1_012_000)
+            .chain(3_000_000..3_010_000),
+    );
+    let vec2 = Map64::from_iter(
+        (3000..7000)
+            .chain(1_006_000..1_018_000)
+            .chain(2_000_000..2_010_000),
+    );
+    let vec3 = Map64::from_iter(
         (0..3000)
-            .chain(1000000..1006000)
+            .chain(1_000_000..1_006_000)
             .chain(6000..7000)
-            .chain(1012000..1018000)
-            .chain(2000000..2010000)
-            .chain(3000000..3010000),
+            .chain(1_012_000..1_018_000)
+            .chain(2_000_000..2_010_000)
+            .chain(3_000_000..3_010_000),
     );
 
     vec1.symmetric_difference_with(&vec2);

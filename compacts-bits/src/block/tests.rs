@@ -1,6 +1,6 @@
 use std::u16;
 
-use pairwise::*;
+use pair::*;
 use super::*;
 use self::range::*;
 

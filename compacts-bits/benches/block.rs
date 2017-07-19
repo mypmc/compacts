@@ -6,7 +6,7 @@ extern crate test;
 use test::Bencher;
 use rand::Rng;
 
-const SIZE: usize = 65000;
+const SIZE: usize = 65_000;
 
 #[bench]
 fn repr_map_iterate(bench: &mut Bencher) {

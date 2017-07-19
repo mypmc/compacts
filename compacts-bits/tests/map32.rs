@@ -4,25 +4,12 @@ extern crate env_logger;
 extern crate rand;
 extern crate compacts_bits;
 
+#[macro_use]
+mod helper;
+
 use compacts_bits::*;
+use compacts_bits::pair::*;
 use self::rand::Rng;
-
-macro_rules! bit_vec {
-    ( ) => {&Vec32::new()};
-
-    ( $size:expr, $end:expr, $rng:expr ) => {{
-        bit_vec!($size, 0, $end, $rng)
-    }};
-    ( $size:expr, $start:expr, $end:expr, $rng:expr ) => {{
-        let mut vec = Vec32::new();
-        for _ in 0..$size {
-            let gen = $rng.gen_range($start, $end);
-            vec.insert(gen);
-        }
-        vec.optimize();
-        vec
-    }};
-}
 
 #[test]
 #[ignore]
@@ -61,12 +48,12 @@ fn similarity() {
 
 #[test]
 fn rank_select() {
-    use compacts_bits::{Rank, Select1, Select0};
+    use compacts_bits::{Rank, Select0, Select1};
 
     let _ = env_logger::init();
-    let mut vec = Vec32::new();
+    let mut vec = Map32::new();
     vec.insert(0);
-    vec.insert(1000000);
+    vec.insert(1_000_000);
 
     assert_eq!(vec.select0(0), Some(1));
     assert_eq!(vec.rank0(1), 1);
@@ -77,8 +64,8 @@ fn rank_select() {
     assert_eq!(vec.select0(1), Some(2));
     assert_eq!(vec.rank0(2), 2);
 
-    assert_eq!(vec.select1(1), Some(1000000));
-    assert_eq!(vec.rank1(1000000), 2);
+    assert_eq!(vec.select1(1), Some(1_000_000));
+    assert_eq!(vec.rank1(1_000_000), 2);
 }
 
 #[test]
@@ -86,8 +73,8 @@ fn iterator() {
     let _ = env_logger::init();
 
     {
-        let mut vec = Vec32::new();
-        for i in 0..1000000 {
+        let mut vec = Map32::new();
+        for i in 0..1_000_000 {
             vec.insert(i);
         }
         for (i, bit) in vec.iter().enumerate() {
@@ -95,12 +82,12 @@ fn iterator() {
         }
     }
     {
-        let mut vec = Vec32::new();
-        for i in 65533..65537 {
+        let mut vec = Map32::new();
+        for i in 65_533..65_537 {
             vec.insert(i);
         }
         let col = vec.iter().collect::<Vec<u32>>();
-        assert_eq!(col, vec![65533, 65534, 65535, 65536]);
+        assert_eq!(col, vec![65_533, 65_534, 65_535, 65_536]);
     }
 }
 
@@ -109,13 +96,13 @@ fn intersection() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 16);
         vec.insert(1 << 20);
         vec
     };
     let b2 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);
@@ -132,14 +119,14 @@ fn union() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 16);
         vec.insert(1 << 20);
         vec
     };
 
     let b2 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);
@@ -156,7 +143,7 @@ fn difference() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 12);
@@ -165,7 +152,7 @@ fn difference() {
         vec
     };
     let b2 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);
@@ -182,7 +169,7 @@ fn symmetric_difference() {
     let _ = env_logger::init();
 
     let mut b1 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 12);
@@ -191,7 +178,7 @@ fn symmetric_difference() {
         vec
     };
     let b2 = {
-        let mut vec = Vec32::new();
+        let mut vec = Map32::new();
         vec.insert(1 << 10);
         vec.insert(1 << 11);
         vec.insert(1 << 20);

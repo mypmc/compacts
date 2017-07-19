@@ -1,18 +1,24 @@
-pub trait Select1<T: ::UnsignedInt> {
-    /// Returns the position of 'c+1'th appearance of non-zero bit.
-    fn select1(&self, c: T) -> Option<T>;
+use UnsignedInt;
+
+pub trait Select1<Count: UnsignedInt> {
+    type Index = Count;
+    /// Returns the index of 'c+1'th appearance of non-zero bit.
+    fn select1(&self, c: Count) -> Option<Self::Index>;
 }
-pub trait Select0<T: ::UnsignedInt> {
-    /// Returns the position of 'c+1'th appearance of non-zero bit.
-    fn select0(&self, c: T) -> Option<T>;
+
+pub trait Select0<Count: UnsignedInt> {
+    type Index = Count;
+    /// Returns the index of 'c+1'th appearance of non-zero bit.
+    fn select0(&self, c: Count) -> Option<Self::Index>;
 }
 
 macro_rules! impl_Select {
     ( $( $pos:ty ),* ) => ($(
         impl Select1<$pos> for u64 {
+            type Index = $pos;
             #[inline]
-            fn select1(&self, c: $pos) -> Option<$pos> {
-                let width = <u64 as ::UnsignedInt>::WIDTH as u64;
+            fn select1(&self, c: $pos) -> Option<Self::Index> {
+                let width = <u64 as UnsignedInt>::WIDTH as u64;
                 debug_assert!(c as u64 <= width);
                 let x = self;
                 let w = c as u64;
@@ -31,9 +37,11 @@ macro_rules! impl_Select {
                 if p >= width { None } else { Some(p as $pos) }
             }
         }
+
         impl Select0<$pos> for u64 {
+            type Index = $pos;
             #[inline]
-            fn select0(&self, c: $pos) -> Option<$pos> {
+            fn select0(&self, c: $pos) -> Option<Self::Index> {
                 (!self).select1(c)
             }
         }
@@ -41,13 +49,13 @@ macro_rules! impl_Select {
 }
 impl_Select!(usize, u64, u32, u16, u8);
 
-const X01: u64 = 0x0101010101010101;
-const X02: u64 = 0x2020202020202020;
-const X33: u64 = 0x3333333333333333;
-const X22: u64 = 0x2222222222222222;
-const X80: u64 = 0x2010080402010080;
-const X81: u64 = 0x2010080402010081;
-const X0F: u64 = 0x0f0f0f0f0f0f0f0f;
+const X01: u64 = 0x0101_0101_0101_0101;
+const X02: u64 = 0x2020_2020_2020_2020;
+const X33: u64 = 0x3333_3333_3333_3333;
+const X22: u64 = 0x2222_2222_2222_2222;
+const X80: u64 = 0x2010_0804_0201_0080;
+const X81: u64 = 0x2010_0804_0201_0081;
+const X0F: u64 = 0x0f0f_0f0f_0f0f_0f0f;
 const X55: u64 = X22 + X33 + X22 + X33;
 const X8X: u64 = X81 + X80 + X80 + X80;
 

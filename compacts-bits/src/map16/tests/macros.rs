@@ -16,7 +16,7 @@ macro_rules! make_block {
         Seq64(b)
     }};
     ( MAX_MAP; $rng: expr ) => {{
-        let size = Vec16::CAPACITY - 1;
+        let size = Map16::CAPACITY - 1;
         let b = random_block!(u64; size as usize, $rng);
         Seq64(b)
     }};
@@ -26,7 +26,7 @@ macro_rules! make_block {
         Seq16(b)
     }};
     ( MAP; $rng: expr ) => {{
-        let size = $rng.gen_range(block::Seq16::THRESHOLD, Vec16::CAPACITY as usize);
+        let size = $rng.gen_range(block::Seq16::THRESHOLD, Map16::CAPACITY as usize);
         let b = random_block!(u64; size as usize, $rng);
         Seq64(b)
     }};
@@ -85,7 +85,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::intersection;
             let pair = intersection(lhs.iter(), rhs.iter());
-            pair.collect::<Vec16>().count_ones()
+            pair.collect::<Map16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} AND {rhs:?}: got={got:?} want={want:?} ",
@@ -102,7 +102,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::union;
             let pair = union(lhs.iter(), rhs.iter());
-            pair.collect::<Vec16>().count_ones()
+            pair.collect::<Map16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} OR {rhs:?}: got={got:?} want={want:?}",
@@ -120,7 +120,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::difference;
             let pair = difference(lhs.iter(), rhs.iter());
-            pair.collect::<Vec16>().count_ones()
+            pair.collect::<Map16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} - {rhs:?}: got={got:?} want={want:?}",
@@ -138,7 +138,7 @@ macro_rules! bitops_test {
         let expect = {
             use pairwise::symmetric_difference;
             let pair = symmetric_difference(lhs.iter(), rhs.iter());
-            pair.collect::<Vec16>().count_ones()
+            pair.collect::<Map16>().count_ones()
         };
         assert!(block.count_ones() == expect,
                 "{lhs:?} XOR {rhs:?}: got={got:?} want={want:?}",

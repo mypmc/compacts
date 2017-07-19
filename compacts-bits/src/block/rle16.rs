@@ -1,57 +1,13 @@
 use std::ops::RangeInclusive;
+use std::mem;
 
-use ops::*;
-use super::{Seq16, Seq64, Rle16};
+use pair::*;
+use super::{Block, Rle16, Seq16, Seq64};
 use super::range::{self, TwoFold};
-use Rank;
 
-impl From<Seq16> for Rle16 {
-    fn from(vec16: Seq16) -> Self {
-        Rle16::from(&vec16)
-    }
-}
-impl<'a> From<&'a Seq16> for Rle16 {
-    fn from(vec16: &'a Seq16) -> Self {
-        vec16.vector.iter().collect()
-    }
-}
-
-impl From<Seq64> for Rle16 {
-    fn from(vec64: Seq64) -> Self {
-        Rle16::from(&vec64)
-    }
-}
-impl<'a> From<&'a Seq64> for Rle16 {
-    fn from(vec64: &'a Seq64) -> Self {
-        const WIDTH: u16 = <u64 as ::UnsignedInt>::WIDTH as u16;
-        let mut rle = Rle16::new();
-        let enumerate = vec64.vector.iter().enumerate();
-        for (i, &bit) in enumerate.filter(|&(_, &v)| v != 0) {
-            let mut word = bit;
-            for pos in 0..WIDTH {
-                if word & (1 << pos) != 0 {
-                    let x = (i as u16 * WIDTH) + pos;
-                    rle.insert(x);
-                    word &= !(1 << pos);
-                }
-            }
-        }
-        rle
-    }
-}
-
-impl Seq16 {
-    pub fn count_rle(&self) -> usize {
-        let rle = Rle16::from(self);
-        rle.ranges.len()
-    }
-}
-
-impl Seq64 {
-    pub fn count_rle(&self) -> usize {
-        let rle = Rle16::from(self);
-        rle.ranges.len()
-    }
+pub struct Rle16Iter<'a> {
+    boxed: Box<Iterator<Item = u16> + 'a>,
+    len: usize,
 }
 
 impl Rle16 {
@@ -59,18 +15,44 @@ impl Rle16 {
         Rle16::default()
     }
 
+    pub fn iter(&self) -> Rle16Iter {
+        let len = self.weight as usize;
+        let boxed = Box::new(
+            self.ranges
+                .iter()
+                .flat_map(|range| (range.start...range.end).into_iter()),
+        );
+        Rle16Iter { boxed, len }
+    }
+
+    pub fn count_ones(&self) -> u32 {
+        self.weight
+    }
+
+    pub fn count_zeros(&self) -> u32 {
+        Block::CAPACITY as u32 - self.count_ones()
+    }
+
     pub fn count_rle(&self) -> usize {
         self.ranges.len()
     }
 
-    pub fn search(&self, x: u16) -> Result<usize, usize> {
+    pub fn size(run_length: usize) -> usize {
+        run_length * mem::size_of::<RangeInclusive<u16>>() + mem::size_of::<u32>()
+    }
+
+    pub fn mem_size(&self) -> usize {
+        Self::size(self.ranges.len())
+    }
+
+    pub fn search(&self, x: &u16) -> Result<usize, usize> {
         use std::cmp::Ordering;
         self.ranges.binary_search_by(
-            |range| if range.start <= x && x <= range.end {
+            |range| if range.start <= *x && *x <= range.end {
                 Ordering::Equal
-            } else if x < range.start {
+            } else if *x < range.start {
                 Ordering::Greater
-            } else if range.end < x {
+            } else if range.end < *x {
                 Ordering::Less
             } else {
                 unreachable!()
@@ -78,19 +60,20 @@ impl Rle16 {
         )
     }
 
-    fn index_to_insert(&self, x: u16) -> Option<usize> {
+    pub fn index_to_insert(&self, x: &u16) -> Option<usize> {
         self.search(x).err()
     }
-    fn index_to_remove(&self, x: u16) -> Option<usize> {
+
+    pub fn index_to_remove(&self, x: &u16) -> Option<usize> {
         self.search(x).ok()
     }
 
     pub fn contains(&self, x: u16) -> bool {
-        self.search(x).is_ok()
+        self.search(&x).is_ok()
     }
 
     pub fn insert(&mut self, x: u16) -> bool {
-        if let Some(pos) = self.index_to_insert(x) {
+        if let Some(pos) = self.index_to_insert(&x) {
             self.weight += 1;
 
             let lhs = if pos > 0 && pos <= self.ranges.len() {
@@ -131,7 +114,7 @@ impl Rle16 {
     }
 
     pub fn remove(&mut self, x: u16) -> bool {
-        if let Some(pos) = self.index_to_remove(x) {
+        if let Some(pos) = self.index_to_remove(&x) {
             self.weight -= 1;
 
             match (self.ranges[pos].start, self.ranges[pos].end) {
@@ -144,12 +127,12 @@ impl Rle16 {
                     self.ranges.insert(pos + 1, (x + 1)...j);
                 }
                 (i, j) if i == x => {
+                    assert!(i + 1 <= j);
                     self.ranges[pos] = (i + 1)...j;
-                    debug_assert!((i + 1) <= j);
                 }
                 (i, j) if j == x => {
+                    assert!(i <= j - 1);
                     self.ranges[pos] = i...(j - 1);
-                    debug_assert!(i <= (j - 1));
                 }
                 _ => unreachable!(),
             };
@@ -157,6 +140,41 @@ impl Rle16 {
         } else {
             false
         }
+    }
+}
+
+impl From<Seq16> for Rle16 {
+    fn from(vec16: Seq16) -> Self {
+        Rle16::from(&vec16)
+    }
+}
+impl<'a> From<&'a Seq16> for Rle16 {
+    fn from(vec16: &'a Seq16) -> Self {
+        vec16.vector.iter().collect()
+    }
+}
+
+impl From<Seq64> for Rle16 {
+    fn from(vec64: Seq64) -> Self {
+        Rle16::from(&vec64)
+    }
+}
+impl<'a> From<&'a Seq64> for Rle16 {
+    fn from(vec64: &'a Seq64) -> Self {
+        const WIDTH: u16 = <u64 as ::UnsignedInt>::WIDTH as u16;
+        let mut rle = Rle16::new();
+        let enumerate = vec64.vector.iter().enumerate();
+        for (i, &bit) in enumerate.filter(|&(_, &v)| v != 0) {
+            let mut word = bit;
+            for pos in 0..WIDTH {
+                if word & (1 << pos) != 0 {
+                    let x = (i as u16 * WIDTH) + pos;
+                    rle.insert(x);
+                    word &= !(1 << pos);
+                }
+            }
+        }
+        rle
     }
 }
 
@@ -209,16 +227,6 @@ macro_rules! impl_Pairwise {
     )*)
 }
 
-macro_rules! impl_PairwiseWith {
-    ( $( ( $op:ident, $fn_with:ident, $fn:ident ) ),* ) => ($(
-        impl<'a> $op<&'a Rle16> for Rle16 {
-            fn $fn_with(&mut self, rle16: &'a Rle16) {
-                *self = (&*self).$fn(rle16);
-            }
-        }
-    )*)
-}
-
 impl_Pairwise!(
     (Intersection, intersection),
     (Union, union),
@@ -226,93 +234,62 @@ impl_Pairwise!(
     (SymmetricDifference, symmetric_difference)
 );
 
-impl_PairwiseWith!(
-    (IntersectionWith, intersection_with, intersection),
-    (UnionWith, union_with, union),
-    (DifferenceWith, difference_with, difference),
-    (
-        SymmetricDifferenceWith,
-        symmetric_difference_with,
-        symmetric_difference
-    )
-);
-
-impl ::Rank<u16> for Rle16 {
-    type Weight = u32;
-
-    const SIZE: Self::Weight = super::CAPACITY as u32;
-
-    fn rank1(&self, i: u16) -> Self::Weight {
-        if i as usize >= super::CAPACITY {
-            return self.count_ones();
-        }
-        match self.search(i) {
-            Err(n) => {
-                if n >= self.ranges.len() {
-                    self.weight
-                } else {
-                    self.ranges
-                        .iter()
-                        .map(|r| (r.end - r.start) as u32 + 1)
-                        .take(n)
-                        .sum::<u32>()
-                }
-            }
-            Ok(n) => {
-                let r = self.ranges
-                    .iter()
-                    .map(|r| (r.end - r.start) as u32 + 1)
-                    .take(n)
-                    .sum::<u32>();
-                (i as u32 - (self.ranges[n].start as u32)) + r + 1
-            }
-        }
+impl<'a> IntersectionWith<&'a Rle16> for Rle16 {
+    fn intersection_with(&mut self, rle16: &'a Rle16) {
+        *self = (&*self).intersection(rle16);
     }
-
-    fn rank0(&self, i: u16) -> Self::Weight {
-        i as Self::Weight + 1 - self.rank1(i)
+}
+impl<'a> UnionWith<&'a Rle16> for Rle16 {
+    fn union_with(&mut self, rle16: &'a Rle16) {
+        *self = (&*self).union(rle16);
+    }
+}
+impl<'a> DifferenceWith<&'a Rle16> for Rle16 {
+    fn difference_with(&mut self, rle16: &'a Rle16) {
+        *self = (&*self).difference(rle16);
+    }
+}
+impl<'a> SymmetricDifferenceWith<&'a Rle16> for Rle16 {
+    fn symmetric_difference_with(&mut self, rle16: &'a Rle16) {
+        *self = (&*self).symmetric_difference(rle16);
     }
 }
 
-impl ::Select1<u16> for Rle16 {
-    fn select1(&self, c: u16) -> Option<u16> {
-        if c as u32 >= self.count_ones() {
-            return None;
+impl<'a> Iterator for Rle16Iter<'a> {
+    type Item = u16;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.boxed.next();
+        if next.is_some() {
+            self.len -= 1;
         }
-        let mut curr = 0;
-        for range in &self.ranges {
-            let next = curr + (range.end - range.start + 1);
-            if next > c {
-                return Some(range.start - curr + c);
-            }
-            curr = next;
-        }
-        None
+        next
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len, Some(self.len))
     }
 }
 
-impl ::Select0<u16> for Rle16 {
-    fn select0(&self, c: u16) -> Option<u16> {
-        let c32 = c as u32;
-        if c as u32 >= self.count_zeros() {
-            return None;
-        }
-
-        let pos = self.ranges
-            .binary_search_by(|ri| self.rank0(ri.start).cmp(&c32));
-
-        let rank1 = match pos {
-            Err(i) if i == 0 => 0,
-            Err(i) => self.rank1(self.ranges[i - 1].end),
-            Ok(i) => self.rank1(self.ranges[i].end),
-        } as u16;
-        Some(c + rank1)
+impl<'a> ExactSizeIterator for Rle16Iter<'a> {
+    fn len(&self) -> usize {
+        self.len
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    macro_rules! insert_all {
+        ( $rle:expr $(, $x:expr )* ) => ($(
+            assert!($rle.insert($x));
+        )*)
+    }
+
+    macro_rules! remove_all {
+        ( $rle:expr $(, $x:expr )* ) => ($(
+            assert!($rle.remove($x));
+        )*)
+    }
 
     fn test_identity(rle: &Rle16) {
         let from_seq16 = Rle16::from(Seq16::from(rle));

@@ -173,7 +173,7 @@ where
     let mut vec = Vec::new();
     let mut w = 0;
     for curr in folded {
-        // doesn't allow value like (3..2)
+        // doesn't allow value like `3..2`
         assert!(curr.start < curr.end);
 
         w += curr.end - curr.start;

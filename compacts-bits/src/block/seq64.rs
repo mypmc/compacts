@@ -1,5 +1,14 @@
-use std::iter::FromIterator;
-use super::{Seq16, Seq64, Rle16};
+use std::iter::{ExactSizeIterator, FromIterator};
+use std::borrow::Cow;
+use std::mem;
+use super::{Block, Rle16, Seq16, Seq64};
+
+pub struct Seq64Iter<'a> {
+    len: u32,
+    cow: Cow<'a, [u64]>,
+    idx: usize,
+    pos: usize,
+}
 
 impl Seq64 {
     pub const THRESHOLD: usize = 1 << 10; // 64 * (1 << 10) == 65536
@@ -11,12 +20,35 @@ impl Seq64 {
         Seq64 { weight, vector }
     }
 
+    pub fn iter(&self) -> Seq64Iter {
+        assert!(self.weight as usize <= Block::CAPACITY);
+        Seq64Iter::new(self.weight, Cow::Borrowed(self.vector.as_ref()))
+    }
+
+    pub fn count_ones(&self) -> u32 {
+        self.weight
+    }
+
+    pub fn count_zeros(&self) -> u32 {
+        Block::CAPACITY as u32 - self.count_ones()
+    }
+
+    pub fn size(length_of_u64: usize) -> usize {
+        length_of_u64 * mem::size_of::<u64>() + mem::size_of::<u32>()
+    }
+
+    pub fn mem_size(&self) -> usize {
+        // seq64 has fixed size
+        Self::size(1024)
+    }
+
     #[inline]
-    fn check(&self, key: usize, mask: u64) -> Option<bool> {
+    pub fn check(&self, key: usize, mask: u64) -> Option<bool> {
         self.vector.get(key).map(|&bit| bit & mask != 0)
     }
+
     #[inline]
-    fn check_or(&self, def: bool, key: usize, mask: u64) -> bool {
+    pub fn check_or(&self, def: bool, key: usize, mask: u64) -> bool {
         self.check(key, mask).unwrap_or(def)
     }
 
@@ -128,20 +160,13 @@ impl FromIterator<u16> for Seq64 {
     }
 }
 
-impl<'a> ::ops::IntersectionWith<&'a Seq16> for Seq64 {
-    fn intersection_with(&mut self, seq16: &'a Seq16) {
-        let seq = Self::from(seq16);
-        self.intersection_with(&seq);
-    }
-}
-
-impl<'a> ::ops::IntersectionWith<&'a Seq64> for Seq64 {
+impl<'a> ::pair::IntersectionWith<&'a Seq64> for Seq64 {
     fn intersection_with(&mut self, seq64: &'a Seq64) {
         assert_eq!(self.vector.len(), seq64.vector.len());
         self.weight = {
             let mut new = 0;
             for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
-                x.intersection_with(*y);
+                *x &= *y;
                 new += x.count_ones();
             }
             new
@@ -149,28 +174,13 @@ impl<'a> ::ops::IntersectionWith<&'a Seq64> for Seq64 {
     }
 }
 
-impl<'a> ::ops::IntersectionWith<&'a Rle16> for Seq64 {
-    fn intersection_with(&mut self, rle16: &'a Rle16) {
-        let seq = Self::from(rle16);
-        self.intersection_with(&seq);
-    }
-}
-
-impl<'a> ::ops::UnionWith<&'a Seq16> for Seq64 {
-    fn union_with(&mut self, seq16: &'a Seq16) {
-        for &bit in &seq16.vector {
-            self.insert(bit);
-        }
-    }
-}
-
-impl<'a> ::ops::UnionWith<&'a Seq64> for Seq64 {
+impl<'a> ::pair::UnionWith<&'a Seq64> for Seq64 {
     fn union_with(&mut self, seq64: &'a Seq64) {
         assert_eq!(self.vector.len(), seq64.vector.len());
         self.weight = {
             let mut new = 0;
             for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
-                x.union_with(*y);
+                *x |= *y;
                 new += x.count_ones();
             }
             new
@@ -178,31 +188,13 @@ impl<'a> ::ops::UnionWith<&'a Seq64> for Seq64 {
     }
 }
 
-impl<'a> ::ops::UnionWith<&'a Rle16> for Seq64 {
-    fn union_with(&mut self, rle16: &'a Rle16) {
-        for range in &rle16.ranges {
-            for bit in range.start...range.end {
-                self.insert(bit);
-            }
-        }
-    }
-}
-
-impl<'a> ::ops::DifferenceWith<&'a Seq16> for Seq64 {
-    fn difference_with(&mut self, seq16: &'a Seq16) {
-        for &bit in &seq16.vector {
-            self.remove(bit);
-        }
-    }
-}
-
-impl<'a> ::ops::DifferenceWith<&'a Seq64> for Seq64 {
+impl<'a> ::pair::DifferenceWith<&'a Seq64> for Seq64 {
     fn difference_with(&mut self, seq64: &'a Seq64) {
         assert_eq!(self.vector.len(), seq64.vector.len());
         self.weight = {
             let mut new = 0;
             for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
-                x.difference_with(*y);
+                *x &= !*y;
                 new += x.count_ones();
             }
             new
@@ -210,35 +202,13 @@ impl<'a> ::ops::DifferenceWith<&'a Seq64> for Seq64 {
     }
 }
 
-impl<'a> ::ops::DifferenceWith<&'a Rle16> for Seq64 {
-    fn difference_with(&mut self, rle16: &'a Rle16) {
-        for range in &rle16.ranges {
-            for bit in range.start...range.end {
-                self.remove(bit);
-            }
-        }
-    }
-}
-
-impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq16> for Seq64 {
-    fn symmetric_difference_with(&mut self, seq16: &'a Seq16) {
-        for &bit in &seq16.vector {
-            if self.contains(bit) {
-                self.remove(bit);
-            } else {
-                self.insert(bit);
-            }
-        }
-    }
-}
-
-impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq64> for Seq64 {
+impl<'a> ::pair::SymmetricDifferenceWith<&'a Seq64> for Seq64 {
     fn symmetric_difference_with(&mut self, seq64: &'a Seq64) {
         assert_eq!(self.vector.len(), seq64.vector.len());
         self.weight = {
             let mut new = 0;
             for (x, y) in self.vector.iter_mut().zip(&seq64.vector) {
-                x.symmetric_difference_with(*y);
+                *x ^= *y;
                 new += x.count_ones();
             }
             new
@@ -246,75 +216,51 @@ impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq64> for Seq64 {
     }
 }
 
-impl<'a> ::ops::SymmetricDifferenceWith<&'a Rle16> for Seq64 {
-    fn symmetric_difference_with(&mut self, rle16: &'a Rle16) {
-        for range in &rle16.ranges {
-            for bit in range.start...range.end {
-                if self.contains(bit) {
-                    self.remove(bit);
-                } else {
-                    self.insert(bit);
-                }
-            }
+impl<'a> Seq64Iter<'a> {
+    const BITS_WIDTH: usize = 64;
+
+    fn new(len: u32, cow: Cow<'a, [u64]>) -> Self {
+        let idx = 0;
+        let pos = 0;
+        Seq64Iter { len, cow, idx, pos }
+    }
+
+    fn move_next(&mut self) {
+        self.pos += 1;
+        if self.pos == Self::BITS_WIDTH {
+            self.pos = 0;
+            self.idx += 1;
         }
     }
 }
 
-impl ::Rank<u16> for Seq64 {
-    type Weight = u32;
+impl<'a> Iterator for Seq64Iter<'a> {
+    type Item = u16;
 
-    const SIZE: Self::Weight = super::CAPACITY as u32;
-
-    fn rank1(&self, i: u16) -> Self::Weight {
-        if i as usize >= super::CAPACITY {
-            return self.count_ones();
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let i = self.idx;
+            let p = self.pos;
+            if i >= self.cow.len() {
+                return None;
+            } else if self.cow[i] & (1u64 << p) != 0 {
+                let bit = Some((i * Self::BITS_WIDTH + p) as u16);
+                self.move_next();
+                self.len -= 1;
+                return bit;
+            }
+            self.move_next();
         }
-        let q = i as usize / <u64 as ::UnsignedInt>::WIDTH;
-        let r = i as u32 % <u64 as ::UnsignedInt>::WIDTH as u32;
-        let vec = &self.vector;
-        vec.iter().take(q).fold(0, |acc, w| acc + w.count_ones()) +
-            vec.get(q).map_or(0, |w| w.rank1(r))
     }
 
-    fn rank0(&self, i: u16) -> Self::Weight {
-        i as Self::Weight + 1 - self.rank1(i)
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len as usize;
+        (len, Some(len))
     }
 }
 
-impl ::Select1<u16> for Seq64 {
-    fn select1(&self, c: u16) -> Option<u16> {
-        let c32 = c as u32;
-        if c32 >= self.count_ones() {
-            return None;
-        }
-        let mut rem = c32;
-        for (i, bit) in self.vector.iter().enumerate() {
-            let ones = bit.count_ones();
-            if rem < ones {
-                let select = bit.select1(rem).unwrap_or(0);
-                return Some((<u64 as ::UnsignedInt>::WIDTH * i) as u16 + select as u16);
-            }
-            rem -= ones;
-        }
-        None
-    }
-}
-
-impl ::Select0<u16> for Seq64 {
-    fn select0(&self, c: u16) -> Option<u16> {
-        let c32 = c as u32;
-        if c32 >= self.count_zeros() {
-            return None;
-        }
-        let mut rem = c32;
-        for (i, bit) in self.vector.iter().enumerate() {
-            let zeros = bit.count_zeros();
-            if rem < zeros {
-                let select = bit.select0(rem).unwrap_or(0);
-                return Some((<u64 as ::UnsignedInt>::WIDTH * i) as u16 + select as u16);
-            }
-            rem -= zeros;
-        }
-        None
+impl<'a> ExactSizeIterator for Seq64Iter<'a> {
+    fn len(&self) -> usize {
+        self.len as usize
     }
 }

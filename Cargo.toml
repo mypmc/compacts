@@ -11,12 +11,8 @@ description = "succinct data structures"
 
 [workspace]
 members = [
-  "compacts-prim",
   "compacts-bits",
-  "compacts-dict"
 ]
 
 [dependencies]
-compacts-prim = { path = "./compacts-prim", version = "0.3" }
 compacts-bits = { path = "./compacts-bits", version = "0.3" }
-compacts-dict = { path = "./compacts-dict", version = "0.3" }

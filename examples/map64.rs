@@ -2,13 +2,13 @@
 
 extern crate compacts;
 
-use compacts::{bits, dict};
+use compacts::bits;
+use self::bits::pair::*;
 
 fn main() {
-    use bits::UnionWith;
-    use dict::BitDict;
+    use bits::{Rank, Select0, Select1};
 
-    let mut vec1 = bits::Vec64::new();
+    let mut vec1 = bits::Map64::new();
     let bit = 1 << 60;
     assert!(vec1.insert(bit));
     assert!(vec1.contains(bit));
@@ -20,19 +20,21 @@ fn main() {
     assert_eq!(vec1.rank0(1), 2);
     assert_eq!(vec1.select1(0), None);
 
-    for i in 0..100000 {
+    let max = 100_000;
+
+    for i in 0..max {
         assert_eq!(vec1.select0(i), Some(i));
     }
 
-    let mut vec2 = bits::Vec64::new();
-    for i in 0..100000 {
+    let mut vec2 = bits::Map64::new();
+    for i in 0..max {
         vec2.insert(i);
     }
 
     vec1.union_with(&vec2);
-    assert_eq!(vec1.count_ones(), 100000);
+    assert_eq!(vec1.count_ones() as u64, max);
 
-    for i in (::std::u64::MAX - 100000)...::std::u64::MAX {
+    for i in (::std::u64::MAX - max)...::std::u64::MAX {
         vec1.insert(i);
     }
 

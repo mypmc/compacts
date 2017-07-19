@@ -1,6 +1,9 @@
-use std::iter::FromIterator;
-use super::{Seq16, Seq64, Rle16};
-use Rank;
+use std::iter::{Cloned, FromIterator};
+use std::slice::Iter as SliceIter;
+use std::mem;
+use super::{Block, Rle16, Seq16, Seq64};
+
+pub type Seq16Iter<'a> = Cloned<SliceIter<'a, u16>>;
 
 impl Seq16 {
     pub const THRESHOLD: usize = 1 << 12; // 16 * (1 << 12) == 65536
@@ -20,8 +23,31 @@ impl Seq16 {
         Seq16 { weight, vector }
     }
 
+    pub fn iter(&self) -> Seq16Iter {
+        assert_eq!(self.weight as usize, self.vector.len());
+        assert!(self.weight as usize <= Block::CAPACITY);
+        let iter = (&self.vector[..]).iter();
+        iter.cloned()
+    }
+
+    pub fn count_ones(&self) -> u32 {
+        self.weight
+    }
+
+    pub fn count_zeros(&self) -> u32 {
+        Block::CAPACITY as u32 - self.count_ones()
+    }
+
+    pub fn size(weight: usize) -> usize {
+        weight * mem::size_of::<u16>() + mem::size_of::<u32>()
+    }
+
+    pub fn mem_size(&self) -> usize {
+        Self::size(self.weight as usize)
+    }
+
     #[inline]
-    fn search(&self, bit: &u16) -> Result<usize, usize> {
+    pub fn search(&self, bit: &u16) -> Result<usize, usize> {
         self.vector.binary_search(bit)
     }
 
@@ -92,7 +118,7 @@ impl<'r> From<&'r Rle16> for Seq16 {
 
 impl From<Vec<u16>> for Seq16 {
     fn from(vector: Vec<u16>) -> Self {
-        debug_assert!(vector.len() <= super::CAPACITY);
+        debug_assert!(vector.len() <= Block::CAPACITY);
         let weight = vector.len() as u32;
         Seq16 { weight, vector }
     }
@@ -117,101 +143,30 @@ impl<'a> FromIterator<&'a u16> for Seq16 {
     }
 }
 
-impl<'a> ::ops::IntersectionWith<&'a Seq16> for Seq16 {
+impl<'a> ::pair::IntersectionWith<&'a Seq16> for Seq16 {
     fn intersection_with(&mut self, seq16: &'a Seq16) {
-        let data = ::pairwise::intersection(self.iter(), seq16.iter()).collect();
+        let data = ::pair::intersection(self.iter(), seq16.iter()).collect();
         *self = data;
     }
 }
 
-impl<'a> ::ops::IntersectionWith<&'a Seq64> for Seq16 {
-    fn intersection_with(&mut self, seq64: &'a Seq64) {
-        let weight = {
-            let mut new = 0;
-            for i in 0..self.vector.len() {
-                if seq64.contains(self.vector[i]) {
-                    self.vector[new] = self.vector[i];
-                    new += 1;
-                }
-            }
-            new
-        };
-        self.vector.truncate(weight);
-        self.weight = weight as u32;
-    }
-}
-
-impl<'a> ::ops::UnionWith<&'a Seq16> for Seq16 {
+impl<'a> ::pair::UnionWith<&'a Seq16> for Seq16 {
     fn union_with(&mut self, seq16: &'a Seq16) {
-        let data = ::pairwise::union(self.iter(), seq16.iter()).collect();
+        let data = ::pair::union(self.iter(), seq16.iter()).collect();
         *self = data;
     }
 }
 
-impl<'a> ::ops::DifferenceWith<&'a Seq16> for Seq16 {
+impl<'a> ::pair::DifferenceWith<&'a Seq16> for Seq16 {
     fn difference_with(&mut self, seq16: &'a Seq16) {
-        let data = ::pairwise::difference(self.iter(), seq16.iter()).collect();
+        let data = ::pair::difference(self.iter(), seq16.iter()).collect();
         *self = data;
     }
 }
 
-impl<'a> ::ops::SymmetricDifferenceWith<&'a Seq16> for Seq16 {
+impl<'a> ::pair::SymmetricDifferenceWith<&'a Seq16> for Seq16 {
     fn symmetric_difference_with(&mut self, seq16: &'a Seq16) {
-        let data = ::pairwise::symmetric_difference(self.iter(), seq16.iter()).collect();
+        let data = ::pair::symmetric_difference(self.iter(), seq16.iter()).collect();
         *self = data;
-    }
-}
-
-impl ::Rank<u16> for Seq16 {
-    type Weight = u32;
-
-    const SIZE: Self::Weight = super::CAPACITY as u32;
-
-    fn rank1(&self, i: u16) -> Self::Weight {
-        if i as usize >= super::CAPACITY {
-            return self.count_ones();
-        }
-        let vec = &self.vector;
-        let fun = |j| vec.get(j).map_or(false, |&v| v >= i);
-        let k = search!(0, vec.len(), fun);
-        (if k < vec.len() && vec[k] == i {
-             k + 1 // found
-         } else {
-             k // not found
-         }) as Self::Weight
-    }
-
-    fn rank0(&self, i: u16) -> Self::Weight {
-        i as Self::Weight + 1 - self.rank1(i)
-    }
-}
-
-impl ::Select1<u16> for Seq16 {
-    fn select1(&self, c: u16) -> Option<u16> {
-        if c as u32 >= self.count_ones() {
-            return None;
-        }
-        self.vector.get(c as usize).cloned()
-    }
-}
-
-impl ::Select0<u16> for Seq16 {
-    fn select0(&self, c: u16) -> Option<u16> {
-        let c32 = c as u32;
-        if c32 >= self.count_zeros() {
-            return None;
-        }
-        let cap = super::CAPACITY as u32;
-        let fun = |i| {
-            let i = i as u16;
-            let rank = self.rank0(i);
-            rank > c as u32
-        };
-        let pos = search!(0, cap, fun);
-        if pos < super::CAPACITY as u32 {
-            Some(pos as u16)
-        } else {
-            None
-        }
     }
 }
