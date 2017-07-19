@@ -1,6 +1,6 @@
 [package]
 name    = "compacts"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "Unlicense/MIT"
@@ -17,6 +17,6 @@ members = [
 ]
 
 [dependencies]
-compacts-prim = { path = "./compacts-prim", version = "0.2" }
-compacts-bits = { path = "./compacts-bits", version = "0.2" }
-compacts-dict = { path = "./compacts-dict", version = "0.2" }
+compacts-prim = { path = "./compacts-prim", version = "0.3" }
+compacts-bits = { path = "./compacts-bits", version = "0.3" }
+compacts-dict = { path = "./compacts-dict", version = "0.3" }

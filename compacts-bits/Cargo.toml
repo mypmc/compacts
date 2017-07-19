@@ -1,6 +1,6 @@
 [package]
 name    = "compacts-bits"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 license = "Unlicense/MIT"
 repository  = "https://github.com/feb29/compacts"
@@ -11,7 +11,7 @@ description = "succinct bit vector"
 [dependencies]
 karabiner = "0.1"
 itertools = "0.6"
-compacts-prim = { path = "../compacts-prim", version = "0.2" }
+compacts-prim = { path = "../compacts-prim", version = "0.3" }
 
 [dev-dependencies]
 log  = "0.3"

@@ -5,10 +5,10 @@
 
 // #![deny(warnings)]
 
+extern crate compacts_prim as prim;
+
 #[macro_use]
 extern crate karabiner;
-#[macro_use]
-extern crate compacts_prim as prim;
 extern crate itertools;
 
 // Broadword implementation of rank/select queries

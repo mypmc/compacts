@@ -26,3 +26,23 @@ macro_rules! extend_by_u16 {
         }
     }
 }
+
+/// Find the smallest index i in range at which f(i) is true, assuming that
+/// f(i) == true implies f(i+1) == true.
+macro_rules! search {
+    ( $start:expr, $end:expr, $func:expr ) => {
+        {
+            let mut i = $start;
+            let mut j = $end;
+            while i < j {
+                let h = i + (j - i) / 2;
+                if $func(h) {
+                    j = h; // f(j) == true
+                } else {
+                    i = h + 1; // f(i-1) == false
+                }
+            }
+            i
+        }
+    }
+}
