@@ -9,10 +9,12 @@ keywords    = ["compact", "succinct", "rank", "select"]
 categories  = ["data-structures"]
 description = "succinct data structures"
 
-[workspace]
-members = [
-  "compacts-bits",
-]
-
 [dependencies]
-compacts-bits = { path = "./compacts-bits", version = "0.3" }
+parking_lot = "0.4"
+itertools   = "0.6"
+
+[dev-dependencies]
+log  = "0.3"
+rand = "0.3"
+env_logger = "0.4"
+quickcheck = "0.4"
