@@ -4,8 +4,8 @@ macro_rules! delegate {
     }};
 }
 
-use std::fmt;
-use dict::{Rank, Select0, Select1};
+use std::{fmt, iter, ops};
+use dict::{PopCount, Rank, Select0, Select1};
 use bits::pair::*;
 use bits::block::{self, Block};
 
@@ -53,16 +53,6 @@ impl Map16 {
     }
 
     #[inline]
-    pub fn count_ones(&self) -> u32 {
-        delegate!(self, count_ones)
-    }
-
-    #[inline]
-    pub fn count_zeros(&self) -> u32 {
-        delegate!(self, count_zeros)
-    }
-
-    #[inline]
     pub fn contains(&self, bit: u16) -> bool {
         delegate!(self, contains, bit)
     }
@@ -88,7 +78,7 @@ impl Map16 {
     }
 }
 
-impl ::std::ops::Index<u16> for Map16 {
+impl ops::Index<u16> for Map16 {
     type Output = bool;
     fn index(&self, i: u16) -> &Self::Output {
         if self.contains(i) {
@@ -99,7 +89,7 @@ impl ::std::ops::Index<u16> for Map16 {
     }
 }
 
-impl<'a> ::std::iter::IntoIterator for &'a Map16 {
+impl<'a> iter::IntoIterator for &'a Map16 {
     type Item = <block::Iter<'a> as Iterator>::Item;
     type IntoIter = block::Iter<'a>;
     fn into_iter(self) -> Self::IntoIter {
@@ -107,41 +97,41 @@ impl<'a> ::std::iter::IntoIterator for &'a Map16 {
     }
 }
 
-impl ::std::iter::Extend<u16> for Map16 {
+impl iter::Extend<u16> for Map16 {
     fn extend<I>(&mut self, iterable: I)
     where
-        I: ::std::iter::IntoIterator<Item = u16>,
+        I: iter::IntoIterator<Item = u16>,
     {
         extend_by_u16!(self, iterable);
     }
 }
 
-impl ::std::iter::FromIterator<u16> for Map16 {
+impl iter::FromIterator<u16> for Map16 {
     fn from_iter<I>(iterable: I) -> Self
     where
-        I: ::std::iter::IntoIterator<Item = u16>,
+        I: iter::IntoIterator<Item = u16>,
     {
         let iter = iterable.into_iter();
         let mut block = Map16::new();
         let ones = extend_by_u16!(&mut block, iter);
-        debug_assert_eq!(ones, block.count_ones());
+        debug_assert_eq!(ones, block.count1());
         block
     }
 }
-impl<'a> ::std::iter::FromIterator<&'a u16> for Map16 {
+impl<'a> iter::FromIterator<&'a u16> for Map16 {
     fn from_iter<I>(iterable: I) -> Self
     where
-        I: ::std::iter::IntoIterator<Item = &'a u16>,
+        I: iter::IntoIterator<Item = &'a u16>,
     {
         let iter = iterable.into_iter();
         iter.cloned().collect::<Self>()
     }
 }
 
-impl ::std::iter::FromIterator<bool> for Map16 {
+impl iter::FromIterator<bool> for Map16 {
     fn from_iter<I>(iterable: I) -> Self
     where
-        I: ::std::iter::IntoIterator<Item = bool>,
+        I: iter::IntoIterator<Item = bool>,
     {
         let iter = iterable.into_iter();
         iter.take(Self::CAPACITY as usize)
@@ -150,36 +140,43 @@ impl ::std::iter::FromIterator<bool> for Map16 {
             .collect::<Self>()
     }
 }
-impl<'a> ::std::iter::FromIterator<&'a bool> for Map16 {
+impl<'a> iter::FromIterator<&'a bool> for Map16 {
     fn from_iter<I>(iterable: I) -> Self
     where
-        I: ::std::iter::IntoIterator<Item = &'a bool>,
+        I: iter::IntoIterator<Item = &'a bool>,
     {
         let iter = iterable.into_iter();
         iter.cloned().collect::<Self>()
     }
 }
 
+impl PopCount<u32> for super::Map16 {
+    const SIZE: u32 = 1 << 16;
+    fn count1(&self) -> u32 {
+        delegate!(self, count1)
+    }
+    fn count0(&self) -> u32 {
+        delegate!(self, count0)
+    }
+}
+
 impl Rank<u16> for super::Map16 {
-    type Count = u32;
-    fn rank1(&self, i: u16) -> Self::Count {
+    fn rank1(&self, i: u16) -> u16 {
         delegate!(self, rank1, i)
     }
-    fn rank0(&self, i: u16) -> Self::Count {
+    fn rank0(&self, i: u16) -> u16 {
         delegate!(self, rank0, i)
     }
 }
 
 impl Select1<u16> for super::Map16 {
-    type Index = u16;
-    fn select1(&self, c: u16) -> Option<Self::Index> {
+    fn select1(&self, c: u16) -> Option<u16> {
         delegate!(self, select1, c)
     }
 }
 
 impl Select0<u16> for super::Map16 {
-    type Index = u16;
-    fn select0(&self, c: u16) -> Option<Self::Index> {
+    fn select0(&self, c: u16) -> Option<u16> {
         delegate!(self, select0, c)
     }
 }

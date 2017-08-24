@@ -1,13 +1,11 @@
 mod seq16;
 mod seq64;
 mod rle16;
-#[cfg(test)]
-mod tests;
 
-use std::iter::ExactSizeIterator;
+use std::iter::{ExactSizeIterator, FromIterator};
 use std::ops::RangeInclusive;
 
-use dict::{Rank, Select0, Select1};
+use dict::{PopCount, Rank, Select0, Select1};
 use bits::pair::*;
 
 use self::seq16::Seq16Iter;
@@ -89,17 +87,17 @@ impl Block {
         match *self {
             Block::Seq16(ref b) => Stats {
                 kind: Kind::Seq16,
-                ones: b.count_ones() as u64,
+                ones: b.weight as u64,
                 size: b.mem_size() as u64,
             },
             Block::Seq64(ref b) => Stats {
                 kind: Kind::Seq64,
-                ones: b.count_ones() as u64,
+                ones: b.weight as u64,
                 size: b.mem_size() as u64,
             },
             Block::Rle16(ref b) => Stats {
                 kind: Kind::Rle16,
-                ones: b.count_ones() as u64,
+                ones: b.weight as u64,
                 size: b.mem_size() as u64,
             },
         }
@@ -129,36 +127,6 @@ impl Block {
         }
     }
 
-    pub fn count_ones(&self) -> u32 {
-        match *self {
-            Block::Seq16(ref seq) => seq.weight,
-            Block::Seq64(ref seq) => seq.weight,
-            Block::Rle16(ref rle) => rle.weight,
-        }
-    }
-
-    pub fn count_zeros(&self) -> u32 {
-        match *self {
-            Block::Seq16(ref seq) => Self::CAPACITY as u32 - seq.weight,
-            Block::Seq64(ref seq) => Self::CAPACITY as u32 - seq.weight,
-            Block::Rle16(ref rle) => Self::CAPACITY as u32 - rle.weight,
-        }
-    }
-
-    pub fn count_rle(&self) -> usize {
-        match *self {
-            Block::Seq16(ref seq) => {
-                let rle = Rle16::from(seq);
-                rle.ranges.len()
-            }
-            Block::Seq64(ref seq) => {
-                let rle = Rle16::from(seq);
-                rle.ranges.len()
-            }
-            Block::Rle16(ref rle) => rle.ranges.len(),
-        }
-    }
-
     pub fn shrink_to_fit(&mut self) {
         match *self {
             Block::Seq16(ref mut seq) => seq.vector.shrink_to_fit(),
@@ -175,7 +143,7 @@ impl Block {
         }
     }
 
-    pub fn as_seq64(&mut self) {
+    pub(crate) fn as_seq64(&mut self) {
         *self = match *self {
             Block::Seq16(ref seq) => Block::Seq64(Seq64::from(seq)),
             Block::Rle16(ref rle) => Block::Seq64(Seq64::from(rle)),
@@ -199,7 +167,7 @@ impl Block {
 
                 if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
                     Some(Block::Rle16(rle))
-                } else if self.count_ones() as usize <= SEQ16 {
+                } else if self.count1() as usize <= SEQ16 {
                     None
                 } else {
                     Some(Block::Seq64(Seq64::from(seq)))
@@ -207,7 +175,7 @@ impl Block {
             }
 
             Block::Seq64(ref seq) => {
-                let mem_in_seq16 = Seq16::size(seq.count_ones() as usize);
+                let mem_in_seq16 = Seq16::size(seq.weight as usize);
                 let mem_in_seq64 = mem_size;
                 let rle = Rle16::from(seq);
                 let mem_in_rle16 = Rle16::size(rle.count_rle());
@@ -222,7 +190,7 @@ impl Block {
             }
 
             Block::Rle16(ref rle) => {
-                let mem_in_seq16 = Seq16::size(rle.count_ones() as usize);
+                let mem_in_seq16 = Seq16::size(rle.weight as usize);
                 let mem_in_seq64 = Seq64::size(SEQ64);
                 let mem_in_rle16 = mem_size;
 
@@ -241,66 +209,65 @@ impl Block {
     }
 }
 
+impl PopCount<u32> for Block {
+    const SIZE: u32 = 1 << 16;
+
+    fn count1(&self) -> u32 {
+        match *self {
+            Block::Seq16(ref seq) => seq.weight,
+            Block::Seq64(ref seq) => seq.weight,
+            Block::Rle16(ref rle) => rle.weight,
+        }
+    }
+}
+
 impl Rank<u16> for Block {
-    type Count = u32;
-
-    fn rank1(&self, i: u16) -> Self::Count {
-        // assert!(i > 0);
-        // if i as usize >= Self::CAPACITY {
-        //     return self.count_ones();
-        // }
-
+    fn rank1(&self, i: u16) -> u16 {
         match *self {
             Block::Seq16(ref seq) => {
                 let vec = &seq.vector;
                 let fun = |p| vec.get(p).map_or(false, |&v| v >= i);
-                search!(0, vec.len(), fun) as Self::Count
+                search!(0, vec.len(), fun) as u16
             }
 
             Block::Seq64(ref seq) => {
                 let q = (i / 64) as usize;
                 let r = (i % 64) as u32;
                 let vec = &seq.vector;
-                vec.iter().take(q).fold(0, |acc, w| acc + w.count_ones()) + (if r == 0 {
-                    0
-                } else {
-                    vec.get(q).map_or(0, |w| w.rank1(r))
-                })
+                let init = vec.iter().take(q).fold(0, |acc, w| {
+                    let c1: u16 = w.count1();
+                    acc + c1
+                });
+                let last = vec.get(q).map_or(0, |w| w.rank1(r) as u16);
+                init + last
             }
 
             Block::Rle16(ref rle) => match rle.search(&i) {
                 Err(n) => if n >= rle.ranges.len() {
-                    rle.weight
+                    rle.weight as u16
                 } else {
                     rle.ranges
                         .iter()
-                        .map(|r| (r.end - r.start) as u32 + 1)
+                        .map(|r| r.end - r.start + 1)
                         .take(n)
-                        .sum::<u32>()
+                        .sum::<u16>()
                 },
                 Ok(n) => {
                     let r = rle.ranges
                         .iter()
-                        .map(|r| (r.end - r.start) as u32 + 1)
+                        .map(|r| r.end - r.start + 1)
                         .take(n)
-                        .sum::<u32>();
-                    (i as u32 - (rle.ranges[n].start as u32)) + r
+                        .sum::<u16>();
+                    i - rle.ranges[n].start + r
                 }
             },
         }
     }
-
-    fn rank0(&self, i: u16) -> Self::Count {
-        // assert!(i > 0);
-        i as Self::Count - self.rank1(i)
-    }
 }
 
 impl Select1<u16> for Block {
-    type Index = u16;
-
-    fn select1(&self, c: u16) -> Option<Self::Index> {
-        if c as u32 >= self.count_ones() {
+    fn select1(&self, c: u16) -> Option<u16> {
+        if c as u32 >= self.count1() {
             return None;
         }
         match *self {
@@ -309,7 +276,7 @@ impl Select1<u16> for Block {
             Block::Seq64(ref seq) => {
                 let mut remain = c as u32;
                 for (i, bit) in seq.vector.iter().enumerate().filter(|&(_, v)| *v != 0) {
-                    let ones = bit.count_ones();
+                    let ones = bit.count1();
                     if remain < ones {
                         let width = 64;
                         let select = bit.select1(remain).unwrap_or(0);
@@ -336,29 +303,17 @@ impl Select1<u16> for Block {
 }
 
 impl Select0<u16> for Block {
-    type Index = u16;
-
-    fn select0(&self, c: u16) -> Option<Self::Index> {
-        if c as u32 >= self.count_zeros() {
+    fn select0(&self, c: u16) -> Option<u16> {
+        if c as u32 >= self.count0() {
             return None;
         }
-        let c32 = c as u32;
         match *self {
-            Block::Seq16(_) | Block::Rle16(_) => {
-                let cap = Self::CAPACITY as u32;
-                let fun = |i| self.rank0(i as u16) > c32;
-                let pos = search!(0, cap, fun);
-                if pos < Self::CAPACITY as u32 {
-                    Some(pos as u16 - 1)
-                } else {
-                    None
-                }
-            }
+            Block::Seq16(_) | Block::Rle16(_) => select_by_rank!(0, self, c, 0u32, 1 << 16, u16),
 
             Block::Seq64(ref seq) => {
-                let mut remain = c32;
+                let mut remain = c as u32;
                 for (i, bit) in seq.vector.iter().enumerate() {
-                    let zeros = bit.count_zeros();
+                    let zeros = bit.count0();
                     if remain < zeros {
                         let width = 64;
                         let select = bit.select0(remain).unwrap_or(0);
@@ -372,7 +327,7 @@ impl Select0<u16> for Block {
     }
 }
 
-impl ::std::iter::FromIterator<u16> for Block {
+impl FromIterator<u16> for Block {
     fn from_iter<I>(iterable: I) -> Self
     where
         I: ::std::iter::IntoIterator<Item = u16>,
@@ -380,11 +335,11 @@ impl ::std::iter::FromIterator<u16> for Block {
         let iter = iterable.into_iter();
         let mut block = Block::new();
         let ones = extend_by_u16!(&mut block, iter);
-        debug_assert_eq!(ones, block.count_ones());
+        debug_assert_eq!(ones, block.count1());
         block
     }
 }
-impl<'a> ::std::iter::FromIterator<&'a u16> for Block {
+impl<'a> FromIterator<&'a u16> for Block {
     fn from_iter<I>(iterable: I) -> Self
     where
         I: ::std::iter::IntoIterator<Item = &'a u16>,

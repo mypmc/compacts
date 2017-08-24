@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
+use std::{iter, ops};
+
 use bits::Map32;
 use bits::prim::{Merge, Split};
 use bits::pair::*;
 use bits::block;
-use dict::{Rank, Select0, Select1};
+use dict::{PopCount, Rank, Select0, Select1};
 
 /// Map of Map32.
 #[derive(Clone, Debug)]
@@ -27,34 +29,6 @@ impl Map64 {
         self.map32s.clear()
     }
 
-    pub fn count_ones(&self) -> u128 {
-        self.map32s
-            .values()
-            .map(|vec| vec.count_ones() as u128)
-            .sum()
-    }
-
-    pub fn count_zeros(&self) -> u128 {
-        (1 << 64) - self.count_ones()
-    }
-
-    pub fn mem_size(&self) -> u128 {
-        self.map32s.values().map(|vec| vec.mem_size() as u128).sum()
-    }
-
-    pub fn optimize(&mut self) {
-        let mut rs = Vec::new();
-        for (k, vec) in &mut self.map32s {
-            vec.optimize();
-            if vec.count_ones() == 0 {
-                rs.push(*k);
-            }
-        }
-        for k in rs {
-            self.map32s.remove(&k);
-        }
-    }
-
     /// Return `true` if the value exists.
     ///
     /// # Examples
@@ -65,7 +39,6 @@ impl Map64 {
     /// assert!(!bits.contains(1 << 50));
     /// bits.insert(1 << 50);
     /// assert!(bits.contains(1 << 50));
-    /// assert_eq!(1, bits.count_ones());
     /// ```
     pub fn contains(&self, x: u64) -> bool {
         let (key, bit) = x.split();
@@ -81,7 +54,6 @@ impl Map64 {
     /// let mut bits = Map64::new();
     /// assert!(bits.insert(1 << 50));
     /// assert!(!bits.insert(1 << 50));
-    /// assert_eq!(1, bits.count_ones());
     /// ```
     pub fn insert(&mut self, x: u64) -> bool {
         let (key, bit) = x.split();
@@ -98,7 +70,6 @@ impl Map64 {
     /// let mut bits = Map64::new();
     /// assert!(bits.insert(1 << 60));
     /// assert!(bits.remove(1 << 60));
-    /// assert_eq!(0, bits.count_ones());
     /// ```
     pub fn remove(&mut self, x: u64) -> bool {
         let (key, bit) = x.split();
@@ -111,17 +82,42 @@ impl Map64 {
         })
     }
 
+    pub fn mem_size(&self) -> usize {
+        self.map32s.values().map(|b| b.mem_size()).sum()
+    }
+
     pub fn stats<'r>(&'r self) -> impl Iterator<Item = block::Stats> + 'r {
         self.map32s.values().flat_map(|vec| vec.stats())
     }
 
-    pub fn summary(&self) -> super::Summary {
-        self.stats().sum()
+    /// Optimize innternal data representaions.
+    pub fn optimize(&mut self) {
+        let mut remove_keys = Vec::new();
+        for (k, vec) in &mut self.map32s {
+            vec.optimize();
+            if vec.count1() == 0 {
+                remove_keys.push(*k);
+            }
+        }
+        for key in remove_keys {
+            self.map32s.remove(&key);
+        }
     }
 }
 
-impl ::std::ops::Index<u64> for Map64 {
+impl ops::Index<u64> for Map64 {
     type Output = bool;
+
+    /// # Examples
+    ///
+    /// ```rust
+    /// use compacts::bits::Map64;
+    /// let bits = Map64::from(vec![0, 1 << 60]);
+    /// assert!(bits[0]);
+    /// assert!(!bits[1 << 20]);
+    /// assert!(!bits[1 << 30]);
+    /// assert!(bits[1 << 60]);
+    /// ```
     fn index(&self, i: u64) -> &Self::Output {
         if self.contains(i) {
             super::TRUE
@@ -131,7 +127,7 @@ impl ::std::ops::Index<u64> for Map64 {
     }
 }
 
-impl<'a> ::std::iter::FromIterator<u64> for Map64 {
+impl<'a> iter::FromIterator<u64> for Map64 {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = u64>,
@@ -145,7 +141,7 @@ impl<'a> ::std::iter::FromIterator<u64> for Map64 {
     }
 }
 
-impl<'a> ::std::iter::FromIterator<&'a u64> for Map64 {
+impl<'a> iter::FromIterator<&'a u64> for Map64 {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = &'a u64>,
@@ -165,44 +161,73 @@ impl<T: AsRef<[u64]>> From<T> for Map64 {
     }
 }
 
-impl Rank<u64> for Map64 {
-    type Count = u128;
+impl PopCount<u128> for Map64 {
+    const SIZE: u128 = 1 << 64;
 
-    /// Returns occurences of non-zero bit in `[0,i]`.
-    fn rank1(&self, i: u64) -> Self::Count {
+    /// # Examples
+    ///
+    /// ```rust
+    /// use compacts::bits::Map64;
+    /// use compacts::dict::PopCount;
+    /// let bits = Map64::from(vec![0, 1, 4, 1 << 32, 1 << 50, 1 << 60]);
+    /// assert_eq!(bits.count1(), 6);
+    /// ```
+    fn count1(&self) -> u128 {
+        self.map32s.values().map(|b| u128::from(b.count1())).sum()
+    }
+}
+
+
+impl Rank<u64> for Map64 {
+    /// # Examples
+    ///
+    /// ```rust
+    /// use compacts::bits::Map64;
+    /// use compacts::dict::Rank;
+    /// let bits = Map64::from(vec![0, 1, 4, 1 << 32, 1 << 50, 1 << 60]);
+    /// assert_eq!(bits.rank1(0), 0);
+    /// assert_eq!(bits.rank1(1), 1);
+    /// assert_eq!(bits.rank1(2), 2);
+    /// assert_eq!(bits.rank1(3), 2);
+    /// assert_eq!(bits.rank1(4), 2);
+    /// assert_eq!(bits.rank1(5), 3);
+    /// ```
+    fn rank1(&self, i: u64) -> u64 {
         let (hi, lo) = i.split();
         let mut rank = 0;
         for (&key, vec) in &self.map32s {
             if key > hi {
                 break;
             } else if key == hi {
-                rank += Self::Count::from(vec.rank1(lo));
+                rank += u64::from(vec.rank1(lo));
                 break;
             } else {
-                rank += Self::Count::from(vec.count_ones());
+                rank += u64::from(vec.count1());
             }
         }
         rank
     }
-
-    /// Returns occurences of zero bit in `[0,i]`.
-    fn rank0(&self, i: u64) -> Self::Count {
-        let rank1 = self.rank1(i);
-        i as Self::Count - rank1
-    }
 }
 
 impl Select1<u64> for Map64 {
-    type Index = u64;
-
-    /// Returns the position of 'c+1'th appearance of non-zero bit.
-    fn select1(&self, c: u64) -> Option<Self::Index> {
-        if self.count_ones() <= c as u128 {
+    /// # Examples
+    ///
+    /// ```rust
+    /// use compacts::bits::Map64;
+    /// use compacts::dict::Select1;
+    /// let bits = Map64::from(vec![0, 1, 4, 1 << 32, 1 << 50, 1 << 60]);
+    /// assert_eq!(bits.select1(0), Some(0));
+    /// assert_eq!(bits.select1(1), Some(1));
+    /// assert_eq!(bits.select1(2), Some(4));
+    /// assert_eq!(bits.select1(3), Some(1 << 32));
+    /// ```
+    fn select1(&self, c: u64) -> Option<u64> {
+        if self.count1() <= c as u128 {
             return None;
         }
         let mut remain = c;
         for (&key, b) in &self.map32s {
-            let w = b.count_ones();
+            let w = b.count1();
             if remain >= w {
                 remain -= w;
             } else {
@@ -216,21 +241,22 @@ impl Select1<u64> for Map64 {
 }
 
 impl Select0<u64> for Map64 {
-    type Index = u64;
-
-    /// Returns the position of 'c+1'th appearance of zero bit.
-    fn select0(&self, c: u64) -> Option<Self::Index> {
-        if self.count_zeros() <= c as u128 {
+    /// # Examples
+    ///
+    /// ```rust
+    /// use compacts::bits::Map64;
+    /// use compacts::dict::Select0;
+    /// let bits = Map64::from(vec![0, 1, 4, 1 << 32, 1 << 50, 1 << 60]);
+    /// assert_eq!(bits.select0(0), Some(2));
+    /// assert_eq!(bits.select0(1), Some(3));
+    /// assert_eq!(bits.select0(2), Some(5));
+    /// assert_eq!(bits.select0(3), Some(6));
+    /// ```
+    fn select0(&self, c: u64) -> Option<u64> {
+        if self.count0() <= c as u128 {
             return None;
         }
-
-        let fun = |i| self.rank0(i as u64) > c as u128;
-        let pos = search!(0u128, 1 << 64, fun);
-        if pos < 1 << 64 {
-            Some(pos as u64 - 1)
-        } else {
-            None
-        }
+        select_by_rank!(0, self, c, 0u128, 1 << 64, u64)
     }
 }
 
@@ -273,7 +299,7 @@ impl<'r> IntersectionWith<&'r Map64> for Map64 {
             for (key, vec) in &mut self.map32s {
                 if that.map32s.contains_key(key) {
                     vec.intersection_with(&that.map32s[key]);
-                    if vec.count_ones() != 0 {
+                    if vec.count1() != 0 {
                         vec.optimize();
                     } else {
                         keys.push(*key);

@@ -46,3 +46,28 @@ macro_rules! search {
         }
     }
 }
+
+macro_rules! select_by_rank {
+    ( 0, $this:ident, $count:expr, $start:expr, $end:expr, $out:ty ) => {
+        {
+            let fun = |i| $this.rank0(i as $out) > $count;
+            let pos = search!($start, $end, fun);
+            if pos < $end {
+                Some(pos as $out - 1)
+            } else {
+                None
+            }
+        }
+    };
+    ( 1, $this:ident, $count:expr, $start:expr, $end:expr, $out:ty ) => {
+        {
+            let fun = |i| $this.rank1(i as $out) > $count;
+            let pos = search!($start, $end, fun);
+            if pos < $end {
+                Some(pos as $out - 1)
+            } else {
+                None
+            }
+        }
+    }
+}

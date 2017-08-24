@@ -1,21 +1,18 @@
-pub trait Select1<Count> {
-    type Index = Count;
+pub trait Select1<T> {
     /// Returns the position of 'c+1'th appearance of non-zero bit.
-    fn select1(&self, c: Count) -> Option<Self::Index>;
+    fn select1(&self, c: T) -> Option<T>;
 }
 
-pub trait Select0<Count> {
-    type Index = Count;
+pub trait Select0<T> {
     /// Returns the position of 'c+1'th appearance of non-zero bit.
-    fn select0(&self, c: Count) -> Option<Self::Index>;
+    fn select0(&self, c: T) -> Option<T>;
 }
 
 macro_rules! impl_Select {
     ( $( $pos:ty ),* ) => ($(
         impl Select1<$pos> for u64 {
-            type Index = $pos;
             #[inline]
-            fn select1(&self, c: $pos) -> Option<Self::Index> {
+            fn select1(&self, c: $pos) -> Option<$pos> {
                 if c >= self.count_ones() as $pos {
                     return None;
                 }
@@ -40,9 +37,8 @@ macro_rules! impl_Select {
         }
 
         impl Select0<$pos> for u64 {
-            type Index = $pos;
             #[inline]
-            fn select0(&self, c: $pos) -> Option<Self::Index> {
+            fn select0(&self, c: $pos) -> Option<$pos> {
                 (!self).select1(c)
             }
         }

@@ -72,17 +72,10 @@ fn remove(bench: &mut Bencher) {
 }
 
 #[bench]
-fn count_ones(bench: &mut Bencher) {
+fn pop_count(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let vec = genvec!(vec, rng);
-    bench.iter(|| vec.count_ones());
-}
-
-#[bench]
-fn count_zeros(bench: &mut Bencher) {
-    let mut rng = rand::thread_rng();
-    let vec = genvec!(vec, rng);
-    bench.iter(|| vec.count_zeros());
+    bench.iter(|| vec.count1());
 }
 
 #[bench]
