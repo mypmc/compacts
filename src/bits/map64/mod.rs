@@ -262,6 +262,14 @@ impl Select0<u64> for Map64 {
 
 macro_rules! impl_Pairwise {
     ( $( ( $op:ident, $fn:ident, $fn_with:ident ) ),* ) => ($(
+        impl $op<Map64> for Map64 {
+            type Output = Map64;
+            fn $fn(self, that: Map64) -> Self::Output {
+                let mut this = self;
+                this.$fn_with(&that);
+                this
+            }
+        }
         impl<'r> $op<&'r Map64> for Map64 {
             type Output = Map64;
             fn $fn(self, that: &Map64) -> Self::Output {

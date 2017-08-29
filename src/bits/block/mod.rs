@@ -398,6 +398,15 @@ impl<'a> From<Rle16Iter<'a>> for Iter<'a> {
 
 macro_rules! impl_Pairwise {
     ( $( ( $op:ident, $fn:ident, $fn_with:ident ) ),* ) => ($(
+        impl $op<Block> for Block {
+            type Output = Block;
+            fn $fn(self, that: Block) -> Self::Output {
+                let mut this = self;
+                this.$fn_with(&that);
+                this
+            }
+        }
+
         impl<'a> $op<&'a Block> for Block {
             type Output = Block;
             fn $fn(self, that: &Block) -> Self::Output {

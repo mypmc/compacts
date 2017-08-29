@@ -310,6 +310,15 @@ impl Select0<u32> for Map32 {
 
 macro_rules! impl_Pairwise {
     ( $( ( $op:ident, $fn:ident, $fn_with:ident ) ),* ) => ($(
+        impl $op<Map32> for Map32 {
+            type Output = Map32;
+            fn $fn(self, that: Map32) -> Self::Output {
+                let mut this = self;
+                this.$fn_with(&that);
+                this
+            }
+        }
+
         impl<'r> $op<&'r Map32> for Map32 {
             type Output = Map32;
             fn $fn(self, that: &Map32) -> Self::Output {

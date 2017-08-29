@@ -183,6 +183,12 @@ impl Select0<u16> for super::Map16 {
 
 macro_rules! impl_Pairwise {
     ( $( ( $op:ident, $fn:ident ) ),* ) => ($(
+        impl $op<Map16> for Map16 {
+            type Output = Map16;
+            fn $fn(self, that: Map16) -> Self::Output {
+                Map16 { block: self.block.$fn(that.block) }
+            }
+        }
         impl<'a> $op<&'a Map16> for Map16 {
             type Output = Map16;
             fn $fn(self, that: &Map16) -> Self::Output {
