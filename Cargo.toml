@@ -10,7 +10,7 @@ categories  = ["data-structures"]
 description = "succinct data structures"
 
 [dependencies]
-parking_lot = "0.4"
+parking_lot = { version = "0.4", features = ["nightly"] }
 itertools   = "0.6"
 
 [dev-dependencies]

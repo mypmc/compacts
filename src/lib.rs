@@ -1,6 +1,5 @@
 #![feature(i128_type)]
 #![feature(integer_atomics)]
-#![feature(associated_type_defaults)]
 #![feature(conservative_impl_trait)]
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
