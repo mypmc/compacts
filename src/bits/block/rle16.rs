@@ -205,7 +205,7 @@ impl<'a> From<&'a [RangeInclusive<u16>]> for Rle16 {
             ranges: Vec::with_capacity(slice.len()),
         };
         for r in slice {
-            let w = (r.end - r.start) as u32 + 1;
+            let w = u32::from(r.end - r.start) + 1;
             rle16.weight += w;
             rle16.ranges.push(r.start...r.end);
         }
@@ -382,8 +382,8 @@ where
 }
 
 fn to_exclusive(range: &RangeInclusive<u16>) -> Range<u32> {
-    let start = range.start as u32;
-    let end = range.end as u32;
+    let start = u32::from(range.start);
+    let end = u32::from(range.end);
     (start..(end + 1))
 }
 

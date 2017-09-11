@@ -55,7 +55,7 @@ pub(crate) enum Kind {
 pub struct Stats {
     pub(crate) kind: Kind,
     pub ones: u64,
-    pub size: u64,
+    pub size: usize,
 }
 
 impl Default for Block {
@@ -87,18 +87,18 @@ impl Block {
         match *self {
             Block::Seq16(ref b) => Stats {
                 kind: Kind::Seq16,
-                ones: b.weight as u64,
-                size: b.mem_size() as u64,
+                ones: u64::from(b.weight),
+                size: b.mem_size(),
             },
             Block::Seq64(ref b) => Stats {
                 kind: Kind::Seq64,
-                ones: b.weight as u64,
-                size: b.mem_size() as u64,
+                ones: u64::from(b.weight),
+                size: b.mem_size(),
             },
             Block::Rle16(ref b) => Stats {
                 kind: Kind::Rle16,
-                ones: b.weight as u64,
-                size: b.mem_size() as u64,
+                ones: u64::from(b.weight),
+                size: b.mem_size(),
             },
         }
     }
@@ -232,7 +232,7 @@ impl Rank<u16> for Block {
 
             Block::Seq64(ref seq) => {
                 let q = (i / 64) as usize;
-                let r = (i % 64) as u32;
+                let r = u32::from(i % 64);
                 let vec = &seq.vector;
                 let init = vec.iter().take(q).fold(0, |acc, w| {
                     let c1: u16 = w.count1();
@@ -267,14 +267,14 @@ impl Rank<u16> for Block {
 
 impl Select1<u16> for Block {
     fn select1(&self, c: u16) -> Option<u16> {
-        if c as u32 >= self.count1() {
+        if u32::from(c) >= self.count1() {
             return None;
         }
         match *self {
             Block::Seq16(ref seq) => seq.vector.get(c as usize).cloned(),
 
             Block::Seq64(ref seq) => {
-                let mut remain = c as u32;
+                let mut remain = u32::from(c);
                 for (i, bit) in seq.vector.iter().enumerate().filter(|&(_, v)| *v != 0) {
                     let ones = bit.count1();
                     if remain < ones {
@@ -304,14 +304,14 @@ impl Select1<u16> for Block {
 
 impl Select0<u16> for Block {
     fn select0(&self, c: u16) -> Option<u16> {
-        if c as u32 >= self.count0() {
+        if u32::from(c) >= self.count0() {
             return None;
         }
         match *self {
             Block::Seq16(_) | Block::Rle16(_) => select_by_rank!(0, self, c, 0u32, 1 << 16, u16),
 
             Block::Seq64(ref seq) => {
-                let mut remain = c as u32;
+                let mut remain = u32::from(c);
                 for (i, bit) in seq.vector.iter().enumerate() {
                     let zeros = bit.count0();
                     if remain < zeros {

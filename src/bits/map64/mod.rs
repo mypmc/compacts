@@ -222,7 +222,7 @@ impl Select1<u64> for Map64 {
     /// assert_eq!(bits.select1(3), Some(1 << 32));
     /// ```
     fn select1(&self, c: u64) -> Option<u64> {
-        if self.count1() <= c as u128 {
+        if self.count1() <= u128::from(c) {
             return None;
         }
         let mut remain = c;
@@ -231,8 +231,8 @@ impl Select1<u64> for Map64 {
             if remain >= w {
                 remain -= w;
             } else {
-                let s = b.select1(remain as u32).unwrap() as u64;
-                let k = (key as u64) << 32;
+                let s = u64::from(b.select1(remain as u32).unwrap());
+                let k = u64::from(key) << 32;
                 return Some(k + s);
             }
         }
@@ -253,7 +253,7 @@ impl Select0<u64> for Map64 {
     /// assert_eq!(bits.select0(3), Some(6));
     /// ```
     fn select0(&self, c: u64) -> Option<u64> {
-        if self.count0() <= c as u128 {
+        if self.count0() <= u128::from(c) {
             return None;
         }
         select_by_rank!(0, self, c, 0u128, 1 << 64, u64)

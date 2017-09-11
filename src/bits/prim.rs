@@ -20,7 +20,10 @@ macro_rules! impl_SplitMerge {
         }
         impl Merge for $this {
             type Source = $half;
-            #[inline] fn merge(parts: (Self::Source, Self::Source)) -> $this {
+
+            #[inline]
+            #[cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
+            fn merge(parts: (Self::Source, Self::Source)) -> $this {
                 let s = $size / 2;
                 (parts.0 as $this << s) | parts.1 as $this
             }

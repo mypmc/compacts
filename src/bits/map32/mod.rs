@@ -270,7 +270,7 @@ impl Select1<u32> for Map32 {
     /// assert_eq!(bits.select1(3), Some(1 << 8));
     /// ```
     fn select1(&self, c: u32) -> Option<u32> {
-        if self.count1() <= c as u64 {
+        if self.count1() <= u64::from(c) {
             return None;
         }
         let mut remain = c;
@@ -279,8 +279,8 @@ impl Select1<u32> for Map32 {
             if remain >= w {
                 remain -= w;
             } else {
-                let s = b.select1(remain as u16).unwrap() as u32;
-                let k = (key as u32) << 16;
+                let s = u32::from(b.select1(remain as u16).unwrap());
+                let k = u32::from(key) << 16;
                 return Some(s + k);
             }
         }
@@ -301,7 +301,7 @@ impl Select0<u32> for Map32 {
     /// assert_eq!(bits.select0(3), Some(6));
     /// ```
     fn select0(&self, c: u32) -> Option<u32> {
-        if self.count0() <= c as u64 {
+        if self.count0() <= u64::from(c) {
             return None;
         }
         select_by_rank!(0, self, c, 0u64, 1 << 32, u32)
@@ -350,14 +350,17 @@ impl_Pairwise!(
     )
 );
 
+#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 fn pair_union<'a, T: UnionWith<&'a T>>(mut lhs: T, rhs: &'a T) -> T {
     lhs.union_with(rhs);
     lhs
 }
+#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 fn pair_difference<'a, T: DifferenceWith<&'a T>>(mut lhs: T, rhs: &'a T) -> T {
     lhs.difference_with(rhs);
     lhs
 }
+#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 fn pair_symmetric_difference<'a, T: SymmetricDifferenceWith<&'a T>>(mut lhs: T, rhs: &'a T) -> T {
     lhs.symmetric_difference_with(rhs);
     lhs

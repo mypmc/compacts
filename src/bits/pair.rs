@@ -67,7 +67,7 @@ fn comparing<T: Ord>(
     match (a, b) {
         (None, _) => x,
         (_, None) => y,
-        (Some(ref l), Some(ref r)) => l.cmp(r),
+        (Some(ref lhs), Some(ref rhs)) => lhs.cmp(rhs),
     }
 }
 

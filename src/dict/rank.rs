@@ -1,6 +1,6 @@
 use std::ops;
 
-/// PopCount is a trait for `PopCount` or `HammingWeight`.
+/// `PopCount` is a trait for `PopCount` or `HammingWeight`.
 pub trait PopCount<T>
 where
     T: ops::Sub<Output = T> + Copy,
@@ -16,7 +16,7 @@ where
     }
 }
 
-/// Rank is a generalization of `PopCount`.
+/// `Rank` is a generalization of `PopCount`.
 pub trait Rank<T>
 where
     T: ops::Sub<Output = T> + Copy,
@@ -38,6 +38,7 @@ macro_rules! impl_PopCount {
     ( $( $out:ty ),* ) => ($(
         impl PopCount<$out> for u64 {
             const SIZE: $out = 64;
+            #[cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
             fn count1(&self) -> $out {
                 self.count_ones() as $out
             }

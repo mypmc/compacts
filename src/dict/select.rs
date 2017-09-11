@@ -10,6 +10,7 @@ pub trait Select0<T> {
 
 macro_rules! impl_Select {
     ( $( $pos:ty ),* ) => ($(
+        #[cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
         impl Select1<$pos> for u64 {
             #[inline]
             fn select1(&self, c: $pos) -> Option<$pos> {
@@ -19,7 +20,7 @@ macro_rules! impl_Select {
                 let width = 64;
                 assert!(c < width as $pos);
                 let x = self;
-                let w = c as u64;
+                let w = u64::from(c);
                 let s0 = x - ((x & X55) >> 1);
                 let s1 = (s0 & X33) + ((s0 >> 2) & X33);
                 let s2 = ((s1 + (s1 >> 4)) & X0F).wrapping_mul(X01);
@@ -44,7 +45,7 @@ macro_rules! impl_Select {
         }
     )*)
 }
-impl_Select!(usize, u64, u32, u16, u8);
+impl_Select!(u64, u32, u16, u8);
 
 const X01: u64 = 0x0101_0101_0101_0101;
 const X02: u64 = 0x2020_2020_2020_2020;
