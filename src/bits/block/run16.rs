@@ -1,48 +1,19 @@
 use std::ops::{Range, RangeInclusive};
-use std::{cmp, mem, u16};
+use std::{cmp, u16};
 use itertools;
 
 use bits::pair::*;
-use super::{Block, Rle16, Seq16, Seq64};
+use super::{Arr64, Seq16};
 
-pub struct Rle16Iter<'a> {
-    boxed: Box<Iterator<Item = u16> + 'a>,
-    len: usize,
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Run16 {
+    pub weight: u32,
+    pub ranges: Vec<RangeInclusive<u16>>,
 }
 
-impl Rle16 {
+impl Run16 {
     pub fn new() -> Self {
-        Rle16::default()
-    }
-
-    pub fn iter(&self) -> Rle16Iter {
-        let len = self.weight as usize;
-        let boxed = Box::new(
-            self.ranges
-                .iter()
-                .flat_map(|range| (range.start...range.end).into_iter()),
-        );
-        Rle16Iter { boxed, len }
-    }
-
-    pub fn count_ones(&self) -> u32 {
-        self.weight
-    }
-
-    pub fn count_zeros(&self) -> u32 {
-        Block::CAPACITY as u32 - self.count_ones()
-    }
-
-    pub fn count_rle(&self) -> usize {
-        self.ranges.len()
-    }
-
-    pub fn size(run_length: usize) -> usize {
-        run_length * mem::size_of::<RangeInclusive<u16>>() + mem::size_of::<u32>()
-    }
-
-    pub fn mem_size(&self) -> usize {
-        Self::size(self.ranges.len())
+        Run16::default()
     }
 
     pub fn search(&self, x: &u16) -> Result<usize, usize> {
@@ -59,11 +30,11 @@ impl Rle16 {
             })
     }
 
-    pub fn index_to_insert(&self, x: &u16) -> Option<usize> {
+    fn index_to_insert(&self, x: &u16) -> Option<usize> {
         self.search(x).err()
     }
 
-    pub fn index_to_remove(&self, x: &u16) -> Option<usize> {
+    fn index_to_remove(&self, x: &u16) -> Option<usize> {
         self.search(x).ok()
     }
 
@@ -88,22 +59,22 @@ impl Rle16 {
 
             match (lhs, rhs) {
                 (None, Some(rhs)) if x == rhs - 1 => {
-                    self.ranges[pos] = (self.ranges[pos].start - 1)...self.ranges[pos].end;
+                    self.ranges[pos] = (self.ranges[pos].start - 1)..=self.ranges[pos].end;
                 }
                 (Some(lhs), Some(rhs)) if lhs + 1 == x && x == rhs - 1 => {
                     let i = pos - 1;
-                    self.ranges[i] = self.ranges[i].start...self.ranges[pos].end;
+                    self.ranges[i] = self.ranges[i].start..=self.ranges[pos].end;
                     self.ranges.remove(pos);
                 }
                 (Some(lhs), _) if lhs + 1 == x => {
                     let i = pos - 1;
-                    self.ranges[i] = self.ranges[i].start...(self.ranges[i].end + 1);
+                    self.ranges[i] = self.ranges[i].start..=(self.ranges[i].end + 1);
                 }
                 (_, Some(rhs)) if x == rhs - 1 => {
-                    self.ranges[pos] = (self.ranges[pos].start - 1)...self.ranges[pos].end;
+                    self.ranges[pos] = (self.ranges[pos].start - 1)..=self.ranges[pos].end;
                 }
                 _ => {
-                    self.ranges.insert(pos, x...x);
+                    self.ranges.insert(pos, x..=x);
                 }
             }
             true
@@ -122,16 +93,16 @@ impl Rle16 {
                 }
                 (i, j) if i < x && x < j => {
                     self.ranges.remove(pos);
-                    self.ranges.insert(pos, i...(x - 1));
-                    self.ranges.insert(pos + 1, (x + 1)...j);
+                    self.ranges.insert(pos, i..=(x - 1));
+                    self.ranges.insert(pos + 1, (x + 1)..=j);
                 }
                 (i, j) if i == x => {
                     assert!(i + 1 <= j);
-                    self.ranges[pos] = (i + 1)...j;
+                    self.ranges[pos] = (i + 1)..=j;
                 }
                 (i, j) if j == x => {
                     assert!(i <= j - 1);
-                    self.ranges[pos] = i...(j - 1);
+                    self.ranges[pos] = i..=(j - 1);
                 }
                 _ => unreachable!(),
             };
@@ -142,26 +113,26 @@ impl Rle16 {
     }
 }
 
-impl From<Seq16> for Rle16 {
+impl From<Seq16> for Run16 {
     fn from(vec16: Seq16) -> Self {
-        Rle16::from(&vec16)
+        Run16::from(&vec16)
     }
 }
-impl<'a> From<&'a Seq16> for Rle16 {
+impl<'a> From<&'a Seq16> for Run16 {
     fn from(vec16: &'a Seq16) -> Self {
         vec16.vector.iter().collect()
     }
 }
 
-impl From<Seq64> for Rle16 {
-    fn from(vec64: Seq64) -> Self {
-        Rle16::from(&vec64)
+impl From<Arr64> for Run16 {
+    fn from(vec64: Arr64) -> Self {
+        Run16::from(&vec64)
     }
 }
-impl<'a> From<&'a Seq64> for Rle16 {
-    fn from(vec64: &'a Seq64) -> Self {
+impl<'a> From<&'a Arr64> for Run16 {
+    fn from(vec64: &'a Arr64) -> Self {
         const WIDTH: u16 = 64;
-        let mut rle = Rle16::new();
+        let mut rle = Run16::new();
         let enumerate = vec64.vector.iter().enumerate();
         for (i, &bit) in enumerate.filter(|&(_, &v)| v != 0) {
             let mut word = bit;
@@ -177,19 +148,19 @@ impl<'a> From<&'a Seq64> for Rle16 {
     }
 }
 
-impl<'a> ::std::iter::FromIterator<u16> for Rle16 {
+impl<'a> ::std::iter::FromIterator<u16> for Run16 {
     fn from_iter<I>(iterable: I) -> Self
     where
         I: IntoIterator<Item = u16>,
     {
-        let mut rle = Rle16::new();
+        let mut rle = Run16::new();
         for bit in iterable {
             rle.insert(bit);
         }
         rle
     }
 }
-impl<'a> ::std::iter::FromIterator<&'a u16> for Rle16 {
+impl<'a> ::std::iter::FromIterator<&'a u16> for Run16 {
     fn from_iter<I>(iterable: I) -> Self
     where
         I: IntoIterator<Item = &'a u16>,
@@ -198,79 +169,43 @@ impl<'a> ::std::iter::FromIterator<&'a u16> for Rle16 {
     }
 }
 
-impl<'a> From<&'a [RangeInclusive<u16>]> for Rle16 {
+impl<'a> From<&'a [RangeInclusive<u16>]> for Run16 {
     fn from(slice: &'a [RangeInclusive<u16>]) -> Self {
-        let mut rle16 = Rle16 {
+        let mut rle16 = Run16 {
             weight: 0,
             ranges: Vec::with_capacity(slice.len()),
         };
         for r in slice {
             let w = u32::from(r.end - r.start) + 1;
             rle16.weight += w;
-            rle16.ranges.push(r.start...r.end);
+            rle16.ranges.push(r.start..=r.end);
         }
         rle16
     }
 }
 
-macro_rules! impl_Pairwise {
-    ( $( ( $op:ident, $fn:ident ) ),* ) => ($(
-        impl<'a, 'b> $op<&'b Rle16> for &'a Rle16 {
-            type Output = Rle16;
-            fn $fn(self, rle16: &'b Rle16) -> Self::Output {
-                let fold = TwoFold::new(&self.ranges, &rle16.ranges).$fn();
-                let (weight, ranges) = repair(fold);
-                Rle16 { weight, ranges }
-            }
+macro_rules! do_pair {
+    ( $this:expr, $that:expr, $fn:ident ) => {
+        {
+            let fold = TwoFold::new(&$this.ranges, &$that.ranges).$fn();
+            let (weight, ranges) = repair(fold);
+            Run16 { weight, ranges }
         }
-    )*)
-}
-
-impl_Pairwise!(
-    (Intersection, intersection),
-    (Union, union),
-    (Difference, difference),
-    (SymmetricDifference, symmetric_difference)
-);
-
-impl<'a> IntersectionWith<&'a Rle16> for Rle16 {
-    fn intersection_with(&mut self, rle16: &'a Rle16) {
-        *self = (&*self).intersection(rle16);
-    }
-}
-impl<'a> UnionWith<&'a Rle16> for Rle16 {
-    fn union_with(&mut self, rle16: &'a Rle16) {
-        *self = (&*self).union(rle16);
-    }
-}
-impl<'a> DifferenceWith<&'a Rle16> for Rle16 {
-    fn difference_with(&mut self, rle16: &'a Rle16) {
-        *self = (&*self).difference(rle16);
-    }
-}
-impl<'a> SymmetricDifferenceWith<&'a Rle16> for Rle16 {
-    fn symmetric_difference_with(&mut self, rle16: &'a Rle16) {
-        *self = (&*self).symmetric_difference(rle16);
     }
 }
 
-impl<'a> Iterator for Rle16Iter<'a> {
-    type Item = u16;
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = self.boxed.next();
-        if next.is_some() {
-            self.len -= 1;
-        }
-        next
+impl<'a> Assign<&'a Run16> for Run16 {
+    fn and_assign(&mut self, rle16: &'a Run16) {
+        *self = do_pair!(self, rle16, intersection);
     }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.len, Some(self.len))
+    fn or_assign(&mut self, rle16: &'a Run16) {
+        *self = do_pair!(self, rle16, union);
     }
-}
-
-impl<'a> ExactSizeIterator for Rle16Iter<'a> {
-    fn len(&self) -> usize {
-        self.len
+    fn and_not_assign(&mut self, rle16: &'a Run16) {
+        *self = do_pair!(self, rle16, difference);
+    }
+    fn xor_assign(&mut self, rle16: &'a Run16) {
+        *self = do_pair!(self, rle16, symmetric_difference);
     }
 }
 
@@ -291,8 +226,6 @@ impl<T: Copy> BelongTo<T> {
         }
     }
 }
-
-pub(crate) type Ranges<T = u16> = [RangeInclusive<T>];
 
 pub(crate) struct TwoFold<'r, T> {
     lhs: Option<State<T>>,
@@ -359,19 +292,24 @@ impl<'r, T> TwoFold<'r, T> {
 }
 
 // assume that each elements (range) has no overlap
-fn merge<'a, 'b, 'r>(lhs: &'a Ranges, rhs: &'b Ranges) -> impl Iterator<Item = Boundary<u32>> + 'r
+fn merge<'a, 'b, 'r>(
+    lhs: &'a [RangeInclusive<u16>],
+    rhs: &'b [RangeInclusive<u16>],
+) -> impl Iterator<Item = Boundary<u32>> + 'r
 where
     'a: 'r,
     'b: 'r,
 {
-    let lhs_iter = lhs.iter().map(to_exclusive).flat_map(|range| {
+    let lhs_iter = lhs.iter().flat_map(|range| {
+        let range = to_exclusive(range);
         vec![
             Boundary::Lhs(Open(range.start)),
             Boundary::Lhs(Close(range.end)),
         ]
     });
 
-    let rhs_iter = rhs.iter().map(to_exclusive).flat_map(|range| {
+    let rhs_iter = rhs.iter().flat_map(|range| {
+        let range = to_exclusive(range);
         vec![
             Boundary::Rhs(Open(range.start)),
             Boundary::Rhs(Close(range.end)),
@@ -389,7 +327,10 @@ fn to_exclusive(range: &RangeInclusive<u16>) -> Range<u32> {
 
 impl<'r> TwoFold<'r, u32> {
     // assume that each elements (range) has no overlap
-    pub fn new<'a, 'b>(l: &'a Ranges, r: &'b Ranges) -> TwoFold<'r, u32>
+    pub fn new<'a, 'b>(
+        l: &'a [RangeInclusive<u16>],
+        r: &'b [RangeInclusive<u16>],
+    ) -> TwoFold<'r, u32>
     where
         'a: 'r,
         'b: 'r,
@@ -454,7 +395,7 @@ where
         let end = (curr.end - 1) as u16;
 
         if vec.is_empty() {
-            vec.push(start...end);
+            vec.push(start..=end);
             continue;
         }
 
@@ -465,9 +406,9 @@ where
 
         if start == (vec[i - 1].end + 1) {
             // merge into a previous range
-            vec[i - 1] = vec[i - 1].start...end;
+            vec[i - 1] = vec[i - 1].start..=end;
         } else {
-            vec.push(start...end);
+            vec.push(start..=end);
         }
     }
     (w, vec)
@@ -602,86 +543,86 @@ mod tests {
         )*)
     }
 
-    fn test_identity(rle: &Rle16) {
-        let from_seq16 = Rle16::from(Seq16::from(rle));
-        let from_seq64 = Rle16::from(Seq64::from(rle));
+    fn test_identity(rle: &Run16) {
+        let from_seq16 = Run16::from(Seq16::from(rle));
+        let from_arr64 = Run16::from(Arr64::from(rle));
         assert_eq!(rle.weight, from_seq16.weight);
         assert_eq!(rle.ranges, from_seq16.ranges);
-        assert_eq!(rle.weight, from_seq64.weight);
-        assert_eq!(rle.ranges, from_seq64.ranges);
+        assert_eq!(rle.weight, from_arr64.weight);
+        assert_eq!(rle.ranges, from_arr64.ranges);
     }
 
     #[test]
     fn insert_remove() {
-        let mut rle = Rle16::new();
+        let mut rle = Run16::new();
 
         test_identity(&rle);
         insert_all!(rle, 1, 3, 5, 4);
-        assert_eq!(rle.count_ones(), 4);
-        assert_eq!(rle.ranges, &[1...1, 3...5]);
+        assert_eq!(rle.weight, 4);
+        assert_eq!(rle.ranges, &[1..=1, 3..=5]);
 
         test_identity(&rle);
         insert_all!(rle, 2, 8);
-        assert_eq!(rle.count_ones(), 6);
-        assert_eq!(rle.ranges, &[1...5, 8...8]);
+        assert_eq!(rle.weight, 6);
+        assert_eq!(rle.ranges, &[1..=5, 8..=8]);
 
         test_identity(&rle);
         insert_all!(rle, 10, 7);
-        assert_eq!(rle.count_ones(), 8);
-        assert_eq!(rle.ranges, &[1...5, 7...8, 10...10]);
+        assert_eq!(rle.weight, 8);
+        assert_eq!(rle.ranges, &[1..=5, 7..=8, 10..=10]);
 
         test_identity(&rle);
         insert_all!(rle, 9, 6, 0);
-        assert_eq!(rle.count_ones(), 11);
-        assert_eq!(rle.ranges, &[0...10]);
+        assert_eq!(rle.weight, 11);
+        assert_eq!(rle.ranges, &[0..=10]);
 
         test_identity(&rle);
         insert_all!(rle, 65534, 65535);
-        assert_eq!(rle.count_ones(), 13);
-        assert_eq!(rle.ranges, &[0...10, 65534...65535]);
+        assert_eq!(rle.weight, 13);
+        assert_eq!(rle.ranges, &[0..=10, 65534..=65535]);
 
         test_identity(&rle);
         remove_all!(rle, 65534, 65535);
-        assert_eq!(rle.count_ones(), 11);
-        assert_eq!(rle.ranges, &[0...10]);
+        assert_eq!(rle.weight, 11);
+        assert_eq!(rle.ranges, &[0..=10]);
 
         test_identity(&rle);
         remove_all!(rle, 0, 4);
-        assert_eq!(rle.count_ones(), 9);
-        assert_eq!(rle.ranges, &[1...3, 5...10]);
+        assert_eq!(rle.weight, 9);
+        assert_eq!(rle.ranges, &[1..=3, 5..=10]);
 
         test_identity(&rle);
         remove_all!(rle, 7, 2);
-        assert_eq!(rle.count_ones(), 7);
-        assert_eq!(rle.ranges, &[1...1, 3...3, 5...6, 8...10]);
+        assert_eq!(rle.weight, 7);
+        assert_eq!(rle.ranges, &[1..=1, 3..=3, 5..=6, 8..=10]);
 
         test_identity(&rle);
         remove_all!(rle, 3, 5);
-        assert_eq!(rle.count_ones(), 5);
-        assert_eq!(rle.ranges, &[1...1, 6...6, 8...10]);
+        assert_eq!(rle.weight, 5);
+        assert_eq!(rle.ranges, &[1..=1, 6..=6, 8..=10]);
 
         test_identity(&rle);
         remove_all!(rle, 1, 6);
-        assert_eq!(rle.count_ones(), 3);
-        assert_eq!(rle.ranges, &[8...10]);
+        assert_eq!(rle.weight, 3);
+        assert_eq!(rle.ranges, &[8..=10]);
 
         test_identity(&rle);
         remove_all!(rle, 10, 8);
-        assert_eq!(rle.count_ones(), 1);
-        assert_eq!(rle.ranges, &[9...9]);
+        assert_eq!(rle.weight, 1);
+        assert_eq!(rle.ranges, &[9..=9]);
 
         test_identity(&rle);
         remove_all!(rle, 9);
-        assert_eq!(rle.count_ones(), 0);
+        assert_eq!(rle.weight, 0);
         assert_eq!(rle.ranges, &[]);
     }
 
     #[test]
     fn two_fold() {
-        static LHS: &Ranges = &[3...5, 10...13, 18...19, 100...120];
-        static RHS: &Ranges = &[2...3, 6...9, 12...14, 17...21, 200...1000];
-        static NULL: &Ranges = &[];
-        static FULL: &Ranges = &[0...u16::MAX];
+        static LHS: &[RangeInclusive<u16>] = &[3..=5, 10..=13, 18..=19, 100..=120];
+        static RHS: &[RangeInclusive<u16>] = &[2..=3, 6..=9, 12..=14, 17..=21, 200..=1000];
+        static NULL: &[RangeInclusive<u16>] = &[];
+        static FULL: &[RangeInclusive<u16>] = &[0..=u16::MAX];
 
         assert_eq!(
             TwoFold::new(LHS, RHS).collect::<Vec<BelongTo<u32>>>(),
@@ -764,8 +705,8 @@ mod tests {
             ]
         );
 
-        let a1 = &[0...1, 3...5, 12...16, 18...19];
-        let a2 = &[0...0, 3...8, 10...13, 15...15, 19...19];
+        let a1 = &[0..=1, 3..=5, 12..=16, 18..=19];
+        let a2 = &[0..=0, 3..=8, 10..=13, 15..=15, 19..=19];
 
         assert_eq!(
             TwoFold::new(a1, a2).collect::<Vec<BelongTo<u32>>>(),

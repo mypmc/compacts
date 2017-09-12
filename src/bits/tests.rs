@@ -1,32 +1,30 @@
 use std::u16;
 use quickcheck::TestResult;
 
-use dict::{PopCount, Rank, Select0, Select1};
-use bits::{Map32, Map64};
-use bits::prim::*;
-use bits::pair::*;
-use bits::block::*;
+use bits;
+use self::bits::*;
+use self::bits::block::*;
 
 fn to_seq16(vec: &Vec<u16>) -> Seq16 {
     Seq16::from(vec.clone())
 }
-fn to_seq64(vec: &Vec<u16>) -> Seq64 {
+fn to_arr64(vec: &Vec<u16>) -> Arr64 {
     vec.iter().collect()
 }
-fn to_rle16(vec: &Vec<u16>) -> Rle16 {
+fn to_rle16(vec: &Vec<u16>) -> Run16 {
     vec.iter().collect()
 }
 
 fn all_kind_block(vec: &Vec<u16>) -> (Block, Block, Block) {
     let b1 = Block::Seq16(to_seq16(vec));
-    let b2 = Block::Seq64(to_seq64(vec));
-    let b3 = Block::Rle16(to_rle16(vec));
+    let b2 = Block::Arr64(to_arr64(vec));
+    let b3 = Block::Run16(to_rle16(vec));
     (b1, b2, b3)
 }
 
 quickcheck!{
     fn prop_u64_split_merge_identity(w: u64) -> bool {
-        w == <u64 as Merge>::merge(w.split())
+        w == <u64 as ::bits::prim::Merge>::merge(w.split())
     }
 }
 
@@ -84,38 +82,19 @@ quickcheck!{
 }
 
 quickcheck!{
-    fn prop_map64_rank0_rank1(vec: Vec<u64>, i: u64) -> TestResult {
-        let b = Map64::from(vec);
-        TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
-    }
-
-    fn prop_map64_rank0_select0(vec: Vec<u64>, i: u64) -> bool {
-        let b = Map64::from(vec);
-        check_rank_select!(0, b, i);
-        true
-    }
-
-    fn prop_map64_rank1_select1(vec: Vec<u64>, i: u64) -> bool {
-        let b = Map64::from(vec);
-        check_rank_select!(1, b, i);
-        true
-    }
-}
-
-quickcheck!{
     fn prop_map32_rank0_rank1(vec: Vec<u32>, i: u32) -> TestResult {
-        let b = Map32::from(vec);
+        let b = bits::Map::from(vec);
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
 
     fn prop_map32_rank0_select0(vec: Vec<u32>, i: u32) -> bool {
-        let b = Map32::from(vec);
+        let b = bits::Map::from(vec);
         check_rank_select!(0, b, i);
         true
     }
 
     fn prop_map32_rank1_select1(vec: Vec<u32>, i: u32) -> bool {
-        let b = Map32::from(vec);
+        let b = bits::Map::from(vec);
         check_rank_select!(1, b, i);
         true
     }
@@ -141,17 +120,17 @@ quickcheck!{
 }
 
 quickcheck!{
-    fn prop_block_seq64_rank0_rank1(vec: Vec<u16>, i: u16) -> TestResult {
-        let b = Block::Seq64(to_seq64(&vec));
+    fn prop_block_arr64_rank0_rank1(vec: Vec<u16>, i: u16) -> TestResult {
+        let b = Block::Arr64(to_arr64(&vec));
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
-    fn prop_block_seq64_rank0_select0(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Seq64(to_seq64(&vec));
+    fn prop_block_arr64_rank0_select0(vec: Vec<u16>, i: u16) -> bool {
+        let b = Block::Arr64(to_arr64(&vec));
         check_rank_select!(0, b, i);
         true
     }
-    fn prop_block_seq64_rank1_select1(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Seq64(to_seq64(&vec));
+    fn prop_block_arr64_rank1_select1(vec: Vec<u16>, i: u16) -> bool {
+        let b = Block::Arr64(to_arr64(&vec));
         check_rank_select!(1, b, i);
         true
     }
@@ -159,18 +138,18 @@ quickcheck!{
 
 quickcheck!{
     fn prop_block_rle16_rank0_rank1(vec: Vec<u16>, i: u16) -> TestResult {
-        let b = Block::Rle16(to_rle16(&vec));
+        let b = Block::Run16(to_rle16(&vec));
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
 
     fn prop_block_rle16_rank0_select0(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Rle16(to_rle16(&vec));
+        let b = Block::Run16(to_rle16(&vec));
         check_rank_select!(0, b, i);
         true
     }
 
     fn prop_block_rle16_rank1_select1(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Rle16(to_rle16(&vec));
+        let b = Block::Run16(to_rle16(&vec));
         check_rank_select!(1, b, i);
         true
     }
@@ -179,9 +158,10 @@ quickcheck!{
 macro_rules! associative {
     ( $x:expr, $y:expr, $z:expr, $fn:ident ) => {
         {
-            let r1 = $x.$fn($y).$fn($z);
-            let r2 = $x.$fn(&$y.$fn($z));
-            r1.count1() == r2.count1() && r1.count0() == r2.count0()
+            let r1 = $x.$fn($y).$fn($z).bits();
+            let r2 = $x.$fn($y.$fn($z)).bits();
+            //r1.count1() == r2.count1() && r1.count0() == r2.count0()
+            r1.count() == r2.count()
         }
     }
 }
@@ -189,122 +169,129 @@ macro_rules! associative {
 macro_rules! commutative {
     ( $x:expr, $y:expr, $fn:ident ) => {
         {
-            let r1 = $x.$fn(&$y);
-            let r2 = $y.$fn(&$x);
-            r1.count1() == r2.count1() && r1.count0() == r2.count0()
-        }
-    }
-}
-
-macro_rules! check_block_associativity {
-    ( $vec1:expr, $vec2:expr, $vec3:expr, $fn:ident ) => {
-        {
-            let (a1, a2, a3) = all_kind_block($vec1);
-            let (b1, b2, b3) = all_kind_block($vec2);
-            let (c1, c2, c3) = all_kind_block($vec3);
-            associative!(&a1, &b1, &c1, $fn) &&
-            associative!(&a1, &b1, &c2, $fn) &&
-            associative!(&a1, &b1, &c3, $fn) &&
-            associative!(&a1, &b2, &c1, $fn) &&
-            associative!(&a1, &b2, &c2, $fn) &&
-            associative!(&a1, &b2, &c3, $fn) &&
-            associative!(&a1, &b3, &c1, $fn) &&
-            associative!(&a1, &b3, &c2, $fn) &&
-            associative!(&a1, &b3, &c3, $fn) &&
-            associative!(&a2, &b1, &c1, $fn) &&
-            associative!(&a2, &b1, &c2, $fn) &&
-            associative!(&a2, &b1, &c3, $fn) &&
-            associative!(&a2, &b2, &c1, $fn) &&
-            associative!(&a2, &b2, &c2, $fn) &&
-            associative!(&a2, &b2, &c3, $fn) &&
-            associative!(&a2, &b3, &c1, $fn) &&
-            associative!(&a2, &b3, &c2, $fn) &&
-            associative!(&a2, &b3, &c3, $fn) &&
-            associative!(&a3, &b1, &c1, $fn) &&
-            associative!(&a3, &b1, &c2, $fn) &&
-            associative!(&a3, &b1, &c3, $fn) &&
-            associative!(&a3, &b2, &c1, $fn) &&
-            associative!(&a3, &b2, &c2, $fn) &&
-            associative!(&a3, &b2, &c3, $fn) &&
-            associative!(&a3, &b3, &c1, $fn) &&
-            associative!(&a3, &b3, &c2, $fn) &&
-            associative!(&a3, &b3, &c3, $fn)
-        }
-    }
-}
-
-macro_rules! check_block_commutativity {
-    ( $vec1:expr, $vec2:expr, $fn:ident ) => {
-        {
-            let (a1, a2, a3) = all_kind_block($vec1);
-            let (b1, b2, b3) = all_kind_block($vec2);
-            commutative!(&a1, &b1, $fn) &&
-            commutative!(&a1, &b2, $fn) &&
-            commutative!(&a1, &b3, $fn) &&
-            commutative!(&a2, &b1, $fn) &&
-            commutative!(&a2, &b2, $fn) &&
-            commutative!(&a2, &b3, $fn) &&
-            commutative!(&a3, &b1, $fn) &&
-            commutative!(&a3, &b2, $fn) &&
-            commutative!(&a3, &b3, $fn)
+            let r1 = $x.$fn($y).bits();
+            let r2 = $y.$fn($x).bits();
+            // r1.count1() == r2.count1() && r1.count0() == r2.count0()
+            r1.count() == r2.count()
         }
     }
 }
 
 quickcheck!{
-    fn prop_map64_associativity(vec1: Vec<u64>, vec2: Vec<u64>, vec3: Vec<u64>) -> bool {
-        let b1 = &Map64::from(vec1);
-        let b2 = &Map64::from(vec2);
-        let b3 = &Map64::from(vec3);
-        let r1 = associative!(b1, b2, b3, intersection);
-        let r2 = associative!(b1, b2, b3, union);
-        let r3 = associative!(b1, b2, b3, symmetric_difference);
+    fn prop_associativity(vec1: Vec<u32>, vec2: Vec<u32>, vec3: Vec<u32>) -> bool {
+        let b1 = &bits::Map::from(vec1);
+        let b2 = &bits::Map::from(vec2);
+        let b3 = &bits::Map::from(vec3);
+        let r1 = associative!(b1, b2, b3, and);
+        let r2 = associative!(b1, b2, b3, or);
+        let r3 = associative!(b1, b2, b3, xor);
         r1 && r2 && r3
     }
 
-    fn prop_map64_commutativity(vec1: Vec<u64>, vec2: Vec<u64>) -> bool {
-        let b1 = &Map64::from(vec1);
-        let b2 = &Map64::from(vec2);
-        let r1 = commutative!(b1, b2, intersection);
-        let r2 = commutative!(b1, b2, union);
-        let r3 = commutative!(b1, b2, symmetric_difference);
+    fn prop_commutativity(vec1: Vec<u32>, vec2: Vec<u32>) -> bool {
+        let b1 = &bits::Map::from(vec1);
+        let b2 = &bits::Map::from(vec2);
+        let r1 = commutative!(b1, b2, and);
+        let r2 = commutative!(b1, b2, or);
+        let r3 = commutative!(b1, b2, xor);
         r1 && r2 && r3
     }
 }
 
-quickcheck!{
-    fn prop_map32_associativity(vec1: Vec<u32>, vec2: Vec<u32>, vec3: Vec<u32>) -> bool {
-        let b1 = &Map32::from(vec1);
-        let b2 = &Map32::from(vec2);
-        let b3 = &Map32::from(vec3);
-        let r1 = associative!(b1, b2, b3, intersection);
-        let r2 = associative!(b1, b2, b3, union);
-        let r3 = associative!(b1, b2, b3, symmetric_difference);
-        r1 && r2 && r3
-    }
+#[test]
+fn and() {
+    let b1 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 16);
+        vec.insert(1 << 20);
+        vec
+    };
+    let b2 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 10);
+        vec.insert(1 << 11);
+        vec.insert(1 << 20);
+        vec
+    };
 
-    fn prop_map32_commutativity(vec1: Vec<u32>, vec2: Vec<u32>) -> bool {
-        let b1 = &Map32::from(vec1);
-        let b2 = &Map32::from(vec2);
-        let r1 = commutative!(b1, b2, intersection);
-        let r2 = commutative!(b1, b2, union);
-        let r3 = commutative!(b1, b2, symmetric_difference);
-        r1 && r2 && r3
-    }
+    let bits = b1.and(&b2).bits().collect::<Vec<u32>>();
+    assert_eq!(bits.len(), 1);
 }
 
-quickcheck!{
-    fn prop_block_associativity(vec1: Vec<u16>, vec2: Vec<u16>, vec3: Vec<u16>) -> bool {
-        let r1 = check_block_associativity!(&vec1, &vec2, &vec3, intersection);
-        let r2 = check_block_associativity!(&vec1, &vec2, &vec3, union);
-        let r3 = check_block_associativity!(&vec1, &vec2, &vec3, symmetric_difference);
-        r1 && r2 && r3
+#[test]
+fn or() {
+    let b1 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 16);
+        vec.insert(1 << 20);
+        vec
+    };
+
+    let b2 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 10);
+        vec.insert(1 << 11);
+        vec.insert(1 << 20);
+        vec
+    };
+
+    let bits = b1.or(&b2).bits().collect::<Vec<u32>>();
+    assert_eq!(bits.len(), 4);
+}
+
+#[test]
+fn and_not() {
+    let b1 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 10);
+        vec.insert(1 << 11);
+        vec.insert(1 << 12);
+        vec.insert(1 << 16);
+        vec.insert(1 << 20);
+        vec
+    };
+    let b2 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 10);
+        vec.insert(1 << 11);
+        vec.insert(1 << 20);
+        vec
+    };
+
+    let bits = b1.and_not(&b2).bits().collect::<Vec<u32>>();
+    assert_eq!(bits.len(), 2);
+}
+
+#[test]
+fn xor() {
+    let b1 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 10); // 1024
+        vec.insert(1 << 11); // 2048
+        vec.insert(1 << 12); // 4096
+        vec.insert(1 << 16); // 65536
+        vec.insert(1 << 20); // 1048576
+        vec
+    };
+    let b2 = {
+        let mut vec = Map::new();
+        vec.insert(1 << 10); // 1024
+        vec.insert(1 << 11); // 2048
+        vec.insert(1 << 20); // 1048576
+        vec.insert(1 << 26); // 67108864
+        vec.insert(1 << 30); // 1073741824
+        vec
+    };
+
+    for b in b1.bits() {
+        println!("b1 {:?}", b);
+    }
+    for b in b2.bits() {
+        println!("b2 {:?}", b);
     }
 
-    fn prop_block_commutativity(vec1: Vec<u16>, vec2: Vec<u16>) -> bool {
-        let r1 = check_block_commutativity!(&vec1, &vec2, intersection);
-        let r2 = check_block_commutativity!(&vec1, &vec2, union);
-        let r3 = check_block_commutativity!(&vec1, &vec2, symmetric_difference);
-        r1 && r2 && r3
-    }
+    // 10 11 12 16 20
+    // 10 11       20 26 30
+    let bits = b1.xor(&b2).bits().collect::<Vec<u32>>();
+    assert_eq!(bits.len(), 4);
 }

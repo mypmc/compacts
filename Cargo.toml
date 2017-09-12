@@ -1,6 +1,6 @@
 [package]
 name    = "compacts"
-version = "0.3.1"
+version = "0.5.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "Unlicense/MIT"
@@ -10,11 +10,11 @@ categories  = ["data-structures"]
 description = "succinct data structures"
 
 [dependencies]
-parking_lot = { version = "0.4", features = ["nightly"] }
+byteorder   = "1"
 itertools   = "0.6"
 
 [dev-dependencies]
-log  = "0.3"
+log = "0.3"
+env_logger = "0.3"
 rand = "0.3"
-env_logger = "0.4"
 quickcheck = "0.4"

@@ -1,41 +1,41 @@
+// mod io;
+
 use std::{iter, ops};
 use std::fmt::{self, Debug, Formatter};
 use std::collections::BTreeMap;
+use std::borrow::Cow;
+use std::iter::IntoIterator;
 
-use bits::Map16;
-use bits::prim::{Merge, Split};
-use bits::pair::*;
-use bits::{block, thunk};
-use dict::{PopCount, Rank, Select0, Select1};
+use bits::{self, block};
+use bits::{Block, Merge, Split};
+use bits::{PopCount, Rank, Select0, Select1};
 
-type Lazy<T> = thunk::Thunk<'static, T>;
-
-/// Map of (deffered) Map16.
+/// Map of deffered `Block`s.
 #[derive(Default)]
-pub struct Map32 {
-    map16s: BTreeMap<u16, Lazy<Map16>>,
+pub struct Map {
+    blocks: BTreeMap<u16, Block>,
 }
 
-impl Debug for Map32 {
+impl Debug for Map {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let b = self.map16s.len();
-        write!(f, "Map32 {{ blocks:{:?} }}", b)
+        let b = self.blocks.len();
+        write!(f, "Map {{ blocks:{:?} }}", b)
     }
 }
-impl Clone for Map32 {
+impl Clone for Map {
     fn clone(&self) -> Self {
-        let mut map = Map32::new();
-        for (&k, block) in &self.map16s {
-            map.map16s.insert(k, eval!((**block).clone()));
+        let mut map = Map::new();
+        for (&k, block) in &self.blocks {
+            map.blocks.insert(k, block.clone());
         }
         map
     }
 }
 
-impl Map32 {
+impl Map {
     pub fn new() -> Self {
-        Map32 {
-            map16s: BTreeMap::new(),
+        Map {
+            blocks: BTreeMap::new(),
         }
     }
 
@@ -44,17 +44,16 @@ impl Map32 {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::PopCount;
+    /// use compacts::bits::{Map, PopCount};
     ///
-    /// let mut bits = Map32::new();
+    /// let mut bits = Map::new();
     /// bits.insert(0);
     /// assert!(bits.count1() == 1);
     /// bits.clear();
     /// assert!(bits.count1() == 0);
     /// ```
     pub fn clear(&mut self) {
-        self.map16s.clear();
+        self.blocks.clear();
     }
 
     /// Return `true` if the value exists.
@@ -62,10 +61,9 @@ impl Map32 {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::PopCount;
+    /// use compacts::bits::{Map, PopCount};
     ///
-    /// let mut bits = Map32::new();
+    /// let mut bits = Map::new();
     /// assert_eq!(bits.count0(), 1 << 32);
     /// bits.insert(1);
     /// assert!(!bits.contains(0));
@@ -75,7 +73,7 @@ impl Map32 {
     /// ```
     pub fn contains(&self, x: u32) -> bool {
         let (key, bit) = x.split();
-        self.map16s.get(&key).map_or(false, |b| b.contains(bit))
+        self.blocks.get(&key).map_or(false, |b| b.contains(bit))
     }
 
     /// Return `true` if the value doesn't exists and inserted successfuly.
@@ -83,10 +81,9 @@ impl Map32 {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::PopCount;
+    /// use compacts::bits::{Map, PopCount};
     ///
-    /// let mut bits = Map32::new();
+    /// let mut bits = Map::new();
     /// assert!(bits.insert(3));
     /// assert!(!bits.insert(3));
     /// assert!(bits.contains(3));
@@ -94,9 +91,7 @@ impl Map32 {
     /// ```
     pub fn insert(&mut self, x: u32) -> bool {
         let (key, bit) = x.split();
-        let b = self.map16s
-            .entry(key)
-            .or_insert_with(|| eval!(Map16::new()));
+        let b = self.blocks.entry(key).or_insert_with(Block::new);
         b.insert(bit)
     }
 
@@ -105,10 +100,9 @@ impl Map32 {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::PopCount;
+    /// use compacts::bits::{Map, PopCount};
     ///
-    /// let mut bits = Map32::new();
+    /// let mut bits = Map::new();
     /// assert!(bits.insert(3));
     /// assert!(bits.remove(3));
     /// assert!(!bits.contains(3));
@@ -116,52 +110,60 @@ impl Map32 {
     /// ```
     pub fn remove(&mut self, x: u32) -> bool {
         let (key, bit) = x.split();
-        if let Some(b) = self.map16s.get_mut(&key) {
+        if let Some(b) = self.blocks.get_mut(&key) {
             b.remove(bit)
         } else {
             false
         }
     }
 
-    pub fn iter<'r>(&'r self) -> impl Iterator<Item = u32> + 'r {
-        self.map16s.iter().flat_map(|(&key, block)| {
-            block
-                .iter()
-                .map(move |val| <u32 as Merge>::merge((key, val)))
-        })
-    }
-
-    pub fn stats<'a>(&'a self) -> impl Iterator<Item = block::Stats> + 'a {
-        self.map16s.values().map(|v16| v16.stats())
-    }
-
     pub fn mem_size(&self) -> usize {
-        self.map16s.values().map(|b| b.mem_size()).sum()
+        self.blocks.values().map(|b| b.mem_size()).sum()
     }
 
     /// Optimize innternal data representaions.
     pub fn optimize(&mut self) {
         let mut remove_keys = Vec::new();
-        for (k, b) in &mut self.map16s {
+        for (k, b) in &mut self.blocks {
             b.optimize();
             if b.count1() == 0 {
                 remove_keys.push(*k)
             }
         }
         for key in remove_keys {
-            self.map16s.remove(&key);
+            self.blocks.remove(&key);
         }
+    }
+
+    pub fn stats<'a>(&'a self) -> impl Iterator<Item = block::Stats> + 'a {
+        self.blocks.values().map(|v16| v16.stats())
+    }
+
+    fn entries(&self) -> bits::Entries {
+        let entries = Box::new(self.blocks.iter().map(|(&key, block)| {
+            let cow = Cow::Borrowed(block);
+            bits::Entry { key, cow }
+        }));
+        bits::Entries { entries }
+    }
+
+    pub fn bits<'a>(&'a self) -> impl Iterator<Item = u32> + 'a {
+        self.blocks.iter().flat_map(|(&key, block)| {
+            block
+                .iter()
+                .map(move |val| <u32 as Merge>::merge((key, val)))
+        })
     }
 }
 
-impl ops::Index<u32> for Map32 {
+impl ops::Index<u32> for Map {
     type Output = bool;
 
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// let bits = Map32::from(vec![0, 1 << 30]);
+    /// use compacts::bits::Map;
+    /// let bits = Map::from(vec![0, 1 << 30]);
     /// assert!(bits[0]);
     /// assert!(!bits[1 << 10]);
     /// assert!(!bits[1 << 20]);
@@ -176,63 +178,61 @@ impl ops::Index<u32> for Map32 {
     }
 }
 
-impl<T: AsRef<[u32]>> From<T> for Map32 {
+impl<T: AsRef<[u32]>> From<T> for Map {
     fn from(v: T) -> Self {
         v.as_ref().iter().collect()
     }
 }
 
-impl<'a> iter::FromIterator<u32> for Map32 {
+impl<'a> iter::FromIterator<u32> for Map {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = u32>,
     {
-        let mut vec = Map32::new();
+        let mut map = Map::new();
         for b in iter {
-            vec.insert(b);
+            map.insert(b);
         }
-        vec.optimize();
-        vec
+        map.optimize();
+        map
     }
 }
 
-impl<'a> iter::FromIterator<&'a u32> for Map32 {
+impl<'a> iter::FromIterator<&'a u32> for Map {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = &'a u32>,
     {
-        let mut vec = Map32::new();
+        let mut map = Map::new();
         for b in iter {
-            vec.insert(*b);
+            map.insert(*b);
         }
-        vec.optimize();
-        vec
+        map.optimize();
+        map
     }
 }
 
-impl PopCount<u64> for Map32 {
+impl PopCount<u64> for Map {
     const SIZE: u64 = 1 << 32;
 
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::PopCount;
-    /// let bits = Map32::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
+    /// use compacts::bits::{Map, PopCount};
+    /// let bits = Map::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
     /// assert_eq!(bits.count1(), 5);
     /// ```
     fn count1(&self) -> u64 {
-        self.map16s.values().map(|b| u64::from(b.count1())).sum()
+        self.blocks.values().map(|b| u64::from(b.count1())).sum()
     }
 }
 
-impl Rank<u32> for Map32 {
+impl Rank<u32> for Map {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::Rank;
-    /// let bits = Map32::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
+    /// use compacts::bits::{Map, Rank};
+    /// let bits = Map::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
     /// assert_eq!(bits.rank1(0), 0);
     /// assert_eq!(bits.rank1(1), 1);
     /// assert_eq!(bits.rank1(2), 2);
@@ -243,7 +243,7 @@ impl Rank<u32> for Map32 {
     fn rank1(&self, i: u32) -> u32 {
         let (hi, lo) = i.split();
         let mut rank = 0;
-        for (&key, block) in &self.map16s {
+        for (&key, block) in &self.blocks {
             if key > hi {
                 break;
             } else if key == hi {
@@ -257,13 +257,12 @@ impl Rank<u32> for Map32 {
     }
 }
 
-impl Select1<u32> for Map32 {
+impl Select1<u32> for Map {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::Select1;
-    /// let bits = Map32::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
+    /// use compacts::bits::{Map, Select1};
+    /// let bits = Map::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
     /// assert_eq!(bits.select1(0), Some(0));
     /// assert_eq!(bits.select1(1), Some(1));
     /// assert_eq!(bits.select1(2), Some(4));
@@ -274,7 +273,7 @@ impl Select1<u32> for Map32 {
             return None;
         }
         let mut remain = c;
-        for (&key, b) in &self.map16s {
+        for (&key, b) in &self.blocks {
             let w = b.count1();
             if remain >= w {
                 remain -= w;
@@ -288,13 +287,12 @@ impl Select1<u32> for Map32 {
     }
 }
 
-impl Select0<u32> for Map32 {
+impl Select0<u32> for Map {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map32;
-    /// use compacts::dict::Select0;
-    /// let bits = Map32::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
+    /// use compacts::bits::{Map, Select0};
+    /// let bits = Map::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
     /// assert_eq!(bits.select0(0), Some(2));
     /// assert_eq!(bits.select0(1), Some(3));
     /// assert_eq!(bits.select0(2), Some(5));
@@ -308,128 +306,40 @@ impl Select0<u32> for Map32 {
     }
 }
 
-macro_rules! impl_Pairwise {
-    ( $( ( $op:ident, $fn:ident, $fn_with:ident ) ),* ) => ($(
-        impl $op<Map32> for Map32 {
-            type Output = Map32;
-            fn $fn(self, that: Map32) -> Self::Output {
-                let mut this = self;
-                this.$fn_with(&that);
-                this
-            }
-        }
-
-        impl<'r> $op<&'r Map32> for Map32 {
-            type Output = Map32;
-            fn $fn(self, that: &Map32) -> Self::Output {
-                let mut this = self;
-                this.$fn_with(that);
-                this
-            }
-        }
-
-        impl<'a, 'b> $op<&'b Map32> for &'a Map32 {
-            type Output = Map32;
-            fn $fn(self, that: &Map32) -> Self::Output {
-                let mut this = self.clone();
-                this.$fn_with(that);
-                this
-            }
-        }
-    )*)
-}
-
-impl_Pairwise!(
-    (Intersection, intersection, intersection_with),
-    (Union, union, union_with),
-    (Difference, difference, difference_with),
-    (
-        SymmetricDifference,
-        symmetric_difference,
-        symmetric_difference_with
-    )
-);
-
-#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
-fn pair_union<'a, T: UnionWith<&'a T>>(mut lhs: T, rhs: &'a T) -> T {
-    lhs.union_with(rhs);
-    lhs
-}
-#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
-fn pair_difference<'a, T: DifferenceWith<&'a T>>(mut lhs: T, rhs: &'a T) -> T {
-    lhs.difference_with(rhs);
-    lhs
-}
-#[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
-fn pair_symmetric_difference<'a, T: SymmetricDifferenceWith<&'a T>>(mut lhs: T, rhs: &'a T) -> T {
-    lhs.symmetric_difference_with(rhs);
-    lhs
-}
-
-impl<'r> IntersectionWith<&'r Map32> for Map32 {
-    fn intersection_with(&mut self, that: &'r Map32) {
-        let rms = {
-            let mut rms = Vec::with_capacity(self.map16s.len());
-            for (key, block) in &mut self.map16s {
-                if that.map16s.contains_key(key) {
-                    block.intersection_with(&that.map16s[key]);
-                    if block.count1() != 0 {
-                        block.optimize();
-                    } else {
-                        rms.push(*key);
-                    }
-                } else {
-                    rms.push(*key);
-                }
-            }
-            rms
-        };
-        for rm in &rms {
-            let removed = self.map16s.remove(rm);
-            debug_assert!(removed.is_some());
-        }
+impl<'a> IntoIterator for &'a bits::Map {
+    type Item = bits::Entry<'a>;
+    type IntoIter = bits::Entries<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries()
     }
 }
 
-impl<'r> UnionWith<&'r Map32> for Map32 {
-    fn union_with(&mut self, that: &'r Map32) {
-        for (&key, block) in &that.map16s {
-            let rhs = (**block).clone();
-            let thunk = if self.map16s.contains_key(&key) {
-                let lhs = (*self.map16s[&key]).clone();
-                lazy!(pair_union(lhs, &rhs))
-            } else {
-                eval!(rhs)
-            };
-            self.map16s.insert(key, thunk);
-        }
+impl Map {
+    pub fn and<'a, T>(&'a self, that: T) -> bits::And<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::and(self, that)
     }
-}
 
-impl<'r> DifferenceWith<&'r Map32> for Map32 {
-    fn difference_with(&mut self, that: &'r Map32) {
-        for (&key, block) in &mut self.map16s {
-            if !that.map16s.contains_key(&key) {
-                continue;
-            }
-            let lhs = (**block).clone();
-            let rhs = (*that.map16s[&key]).clone();
-            *block = lazy!(pair_difference(lhs, &rhs));
-        }
+    pub fn or<'a, T>(&'a self, that: T) -> bits::Or<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::or(self, that)
     }
-}
 
-impl<'r> SymmetricDifferenceWith<&'r Map32> for Map32 {
-    fn symmetric_difference_with(&mut self, that: &'r Map32) {
-        for (&key, block) in &that.map16s {
-            let rhs = (**block).clone();
-            let thunk = if self.map16s.contains_key(&key) {
-                let lhs = (*self.map16s[&key]).clone();
-                lazy!(pair_symmetric_difference(lhs, &rhs))
-            } else {
-                eval!(rhs)
-            };
-            self.map16s.insert(key, thunk);
-        }
+    pub fn and_not<'a, T>(&'a self, that: T) -> bits::AndNot<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::and_not(self, that)
+    }
+
+    pub fn xor<'a, T>(&'a self, that: T) -> bits::Xor<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::xor(self, that)
     }
 }

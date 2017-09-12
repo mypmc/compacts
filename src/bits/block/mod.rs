@@ -1,71 +1,51 @@
 mod seq16;
-mod seq64;
-mod rle16;
+mod arr64;
+mod run16;
+mod iter;
 
-use std::iter::{ExactSizeIterator, FromIterator};
-use std::ops::RangeInclusive;
+use std::iter::{FromIterator, IntoIterator};
+use std::{cmp, fmt, mem, ops};
+use bits::dict::{PopCount, Rank, Select0, Select1};
+use bits::pair::Assign;
 
-use dict::{PopCount, Rank, Select0, Select1};
-use bits::pair::*;
+pub(crate) use self::seq16::Seq16;
+pub(crate) use self::arr64::Arr64;
+pub(crate) use self::run16::Run16;
 
-use self::seq16::Seq16Iter;
-use self::seq64::Seq64Iter;
-use self::rle16::Rle16Iter;
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct Seq<T> {
-    pub(crate) weight: u32,
-    pub(crate) vector: Vec<T>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct Rle<T> {
-    pub(crate) weight: u32,
-    pub(crate) ranges: Vec<RangeInclusive<T>>,
-}
-
-pub(crate) type Seq16 = Seq<u16>;
-pub(crate) type Seq64 = Seq<u64>;
-pub(crate) type Rle16 = Rle<u16>;
-
-#[derive(Clone, Debug)]
+/// Internal representaions of a bits block.
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) enum Block {
     Seq16(Seq16),
-    Seq64(Seq64),
-    Rle16(Rle16),
+    Arr64(Arr64),
+    Run16(Run16),
+}
+impl fmt::Debug for Block {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Block::Seq16(_) => write!(f, "Seq16({})", self.count1()),
+            Block::Arr64(_) => write!(f, "Arr64({})", self.count1()),
+            Block::Run16(_) => write!(f, "Run16({})", self.count1()),
+        }
+    }
 }
 
-pub enum Iter<'a> {
-    Seq16(Seq16Iter<'a>),
-    Seq64(Seq64Iter<'a>),
-    Rle16(Rle16Iter<'a>),
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum Kind {
-    Seq16,
-    Seq64,
-    Rle16,
-}
-
-/// Stats of block.
+/// Stats of Block.
 /// 'ones' is a count of non-zero bits.
 /// 'size' is an approximate size in bytes.
 #[derive(Clone, Debug)]
 pub struct Stats {
-    pub(crate) kind: Kind,
     pub ones: u64,
     pub size: usize,
 }
 
 impl Default for Block {
     fn default() -> Self {
-        Block::Seq64(Seq64::new())
+        Block::Arr64(Arr64::default())
     }
 }
 
 impl Block {
-    pub const CAPACITY: usize = 1 << 16;
+    const CAPACITY: usize = 1 << 16;
 
     pub fn new() -> Self {
         Self::default()
@@ -75,78 +55,60 @@ impl Block {
         *self = Self::new();
     }
 
-    pub fn iter(&self) -> Iter {
-        match *self {
-            Block::Seq16(ref seq) => Iter::from(seq.iter()),
-            Block::Seq64(ref seq) => Iter::from(seq.iter()),
-            Block::Rle16(ref rle) => Iter::from(rle.iter()),
-        }
-    }
-
-    pub fn stats(&self) -> Stats {
-        match *self {
-            Block::Seq16(ref b) => Stats {
-                kind: Kind::Seq16,
-                ones: u64::from(b.weight),
-                size: b.mem_size(),
-            },
-            Block::Seq64(ref b) => Stats {
-                kind: Kind::Seq64,
-                ones: u64::from(b.weight),
-                size: b.mem_size(),
-            },
-            Block::Rle16(ref b) => Stats {
-                kind: Kind::Rle16,
-                ones: u64::from(b.weight),
-                size: b.mem_size(),
-            },
-        }
-    }
-
     pub fn contains(&self, bit: u16) -> bool {
         match *self {
             Block::Seq16(ref seq) => seq.contains(bit),
-            Block::Seq64(ref seq) => seq.contains(bit),
-            Block::Rle16(ref rle) => rle.contains(bit),
+            Block::Arr64(ref arr) => arr.contains(bit),
+            Block::Run16(ref run) => run.contains(bit),
         }
     }
 
     pub fn insert(&mut self, bit: u16) -> bool {
         match *self {
             Block::Seq16(ref mut seq) => seq.insert(bit),
-            Block::Seq64(ref mut seq) => seq.insert(bit),
-            Block::Rle16(ref mut rle) => rle.insert(bit),
+            Block::Arr64(ref mut arr) => arr.insert(bit),
+            Block::Run16(ref mut run) => run.insert(bit),
         }
     }
 
     pub fn remove(&mut self, bit: u16) -> bool {
         match *self {
             Block::Seq16(ref mut seq) => seq.remove(bit),
-            Block::Seq64(ref mut seq) => seq.remove(bit),
-            Block::Rle16(ref mut rle) => rle.remove(bit),
+            Block::Arr64(ref mut arr) => arr.remove(bit),
+            Block::Run16(ref mut run) => run.remove(bit),
         }
     }
 
-    pub fn shrink_to_fit(&mut self) {
+    pub fn shrink(&mut self) {
         match *self {
             Block::Seq16(ref mut seq) => seq.vector.shrink_to_fit(),
-            Block::Seq64(ref mut seq) => seq.vector.shrink_to_fit(),
-            Block::Rle16(ref mut rle) => rle.ranges.shrink_to_fit(),
+            Block::Arr64(ref mut _arr) => { /* ignore */ }
+            Block::Run16(ref mut run) => run.ranges.shrink_to_fit(),
         }
+    }
+
+    fn size_of_units() -> (usize, usize, usize, usize) {
+        let size_of_u16 = mem::size_of::<u16>();
+        let size_of_u32 = mem::size_of::<u32>();
+        let size_of_u64 = mem::size_of::<u64>();
+        let size_of_run = mem::size_of::<ops::RangeInclusive<u16>>();
+        (size_of_u16, size_of_u32, size_of_u64, size_of_run)
     }
 
     pub fn mem_size(&self) -> usize {
+        let (size_of_u16, size_of_u32, size_of_u64, size_of_run) = Self::size_of_units();
+
         match *self {
-            Block::Seq16(ref seq) => seq.mem_size(),
-            Block::Seq64(ref seq) => seq.mem_size(),
-            Block::Rle16(ref rle) => rle.mem_size(),
+            Block::Seq16(ref seq) => size_of_u16 * seq.vector.len(),
+            Block::Arr64(ref arr) => size_of_u32 + size_of_u64 * arr.vector.len(),
+            Block::Run16(ref run) => size_of_u32 + size_of_run * run.ranges.len(),
         }
     }
 
-    pub(crate) fn as_seq64(&mut self) {
+    fn as_arr64(&mut self) {
         *self = match *self {
-            Block::Seq16(ref seq) => Block::Seq64(Seq64::from(seq)),
-            Block::Rle16(ref rle) => Block::Seq64(Seq64::from(rle)),
+            Block::Seq16(ref seq) => Block::Arr64(Arr64::from(seq)),
+            Block::Run16(ref run) => Block::Arr64(Arr64::from(run)),
             _ => unreachable!(),
         }
     }
@@ -156,50 +118,50 @@ impl Block {
         const SEQ16: usize = 4096; // 4096 * 16 == 65536
         const SEQ64: usize = 1024; // 1024 * 64 == 65536
 
-        let mem_size = self.mem_size();
+        let (size_of_u16, size_of_u32, size_of_u64, size_of_run) = Self::size_of_units();
 
         let new_block = match *self {
             Block::Seq16(ref seq) => {
-                let mem_in_seq16 = mem_size;
-                let mem_in_seq64 = Seq64::size(SEQ64);
-                let rle = Rle16::from(seq);
-                let mem_in_rle16 = Rle16::size(rle.count_rle());
+                let run = Run16::from(seq);
+                let mem_in_seq16 = size_of_u16 * seq.vector.len();
+                let mem_in_arr64 = size_of_u64 * SEQ64 + size_of_u32;
+                let mem_in_run16 = size_of_run * run.ranges.len() + size_of_u32;
 
-                if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
-                    Some(Block::Rle16(rle))
+                if mem_in_run16 <= cmp::min(mem_in_arr64, mem_in_seq16) {
+                    Some(Block::Run16(run))
                 } else if self.count1() as usize <= SEQ16 {
                     None
                 } else {
-                    Some(Block::Seq64(Seq64::from(seq)))
+                    Some(Block::Arr64(Arr64::from(seq)))
                 }
             }
 
-            Block::Seq64(ref seq) => {
-                let mem_in_seq16 = Seq16::size(seq.weight as usize);
-                let mem_in_seq64 = mem_size;
-                let rle = Rle16::from(seq);
-                let mem_in_rle16 = Rle16::size(rle.count_rle());
+            Block::Arr64(ref arr) => {
+                let run = Run16::from(arr);
+                let mem_in_seq16 = size_of_u16 * (arr.weight as usize);
+                let mem_in_arr64 = size_of_u64 * SEQ64 + size_of_u32;
+                let mem_in_run16 = size_of_run * run.ranges.len() + size_of_u32;
 
-                if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
-                    Some(Block::Rle16(rle))
-                } else if seq.weight as usize <= SEQ16 {
-                    Some(Block::Seq16(Seq16::from(seq)))
+                if mem_in_run16 <= cmp::min(mem_in_arr64, mem_in_seq16) {
+                    Some(Block::Run16(run))
+                } else if arr.weight as usize <= SEQ16 {
+                    Some(Block::Seq16(Seq16::from(arr)))
                 } else {
                     None
                 }
             }
 
-            Block::Rle16(ref rle) => {
-                let mem_in_seq16 = Seq16::size(rle.weight as usize);
-                let mem_in_seq64 = Seq64::size(SEQ64);
-                let mem_in_rle16 = mem_size;
+            Block::Run16(ref run) => {
+                let mem_in_seq16 = size_of_u16 * (run.weight as usize);
+                let mem_in_arr64 = size_of_u64 * SEQ64 + size_of_u32;
+                let mem_in_run16 = size_of_run * run.ranges.len() + size_of_u32;
 
-                if mem_in_rle16 <= ::std::cmp::min(mem_in_seq64, mem_in_seq16) {
+                if mem_in_run16 <= cmp::min(mem_in_arr64, mem_in_seq16) {
                     None
-                } else if rle.weight as usize <= SEQ16 {
-                    Some(Block::Seq16(Seq16::from(rle)))
+                } else if run.weight as usize <= SEQ16 {
+                    Some(Block::Seq16(Seq16::from(run)))
                 } else {
-                    Some(Block::Seq64(Seq64::from(rle)))
+                    Some(Block::Arr64(Arr64::from(run)))
                 }
             }
         };
@@ -207,16 +169,50 @@ impl Block {
             *self = block;
         }
     }
+
+    pub fn stats(&self) -> Stats {
+        let ones = u64::from(self.count1());
+        let size = self.mem_size();
+        Stats { ones, size }
+    }
+
+    pub fn iter(&self) -> iter::Boxed {
+        self.into_iter()
+    }
 }
+
+impl<'a> IntoIterator for &'a Block {
+    type Item = u16;
+    type IntoIter = iter::Boxed<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        match *self {
+            Block::Seq16(ref seq) => seq.into_iter(),
+            Block::Arr64(ref arr) => arr.into_iter(),
+            Block::Run16(ref run) => run.into_iter(),
+        }
+    }
+}
+impl IntoIterator for Block {
+    type Item = u16;
+    type IntoIter = iter::Owned;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Block::Seq16(seq) => seq.into_iter(),
+            Block::Arr64(arr) => arr.into_iter(),
+            Block::Run16(run) => run.into_iter(),
+        }
+    }
+}
+
 
 impl PopCount<u32> for Block {
     const SIZE: u32 = 1 << 16;
 
     fn count1(&self) -> u32 {
         match *self {
-            Block::Seq16(ref seq) => seq.weight,
-            Block::Seq64(ref seq) => seq.weight,
-            Block::Rle16(ref rle) => rle.weight,
+            Block::Seq16(ref seq) => seq.vector.len() as u32,
+            Block::Arr64(ref arr) => arr.weight,
+            Block::Run16(ref run) => run.weight,
         }
     }
 }
@@ -230,10 +226,10 @@ impl Rank<u16> for Block {
                 search!(0, vec.len(), fun) as u16
             }
 
-            Block::Seq64(ref seq) => {
+            Block::Arr64(ref arr) => {
                 let q = (i / 64) as usize;
                 let r = u32::from(i % 64);
-                let vec = &seq.vector;
+                let vec = &arr.vector;
                 let init = vec.iter().take(q).fold(0, |acc, w| {
                     let c1: u16 = w.count1();
                     acc + c1
@@ -242,23 +238,23 @@ impl Rank<u16> for Block {
                 init + last
             }
 
-            Block::Rle16(ref rle) => match rle.search(&i) {
-                Err(n) => if n >= rle.ranges.len() {
-                    rle.weight as u16
+            Block::Run16(ref run) => match run.search(&i) {
+                Err(n) => if n >= run.ranges.len() {
+                    run.weight as u16
                 } else {
-                    rle.ranges
+                    run.ranges
                         .iter()
                         .map(|r| r.end - r.start + 1)
                         .take(n)
                         .sum::<u16>()
                 },
                 Ok(n) => {
-                    let r = rle.ranges
+                    let r = run.ranges
                         .iter()
                         .map(|r| r.end - r.start + 1)
                         .take(n)
                         .sum::<u16>();
-                    i - rle.ranges[n].start + r
+                    i - run.ranges[n].start + r
                 }
             },
         }
@@ -273,9 +269,9 @@ impl Select1<u16> for Block {
         match *self {
             Block::Seq16(ref seq) => seq.vector.get(c as usize).cloned(),
 
-            Block::Seq64(ref seq) => {
+            Block::Arr64(ref arr) => {
                 let mut remain = u32::from(c);
-                for (i, bit) in seq.vector.iter().enumerate().filter(|&(_, v)| *v != 0) {
+                for (i, bit) in arr.vector.iter().enumerate().filter(|&(_, v)| *v != 0) {
                     let ones = bit.count1();
                     if remain < ones {
                         let width = 64;
@@ -287,9 +283,9 @@ impl Select1<u16> for Block {
                 None
             }
 
-            Block::Rle16(ref rle) => {
+            Block::Run16(ref run) => {
                 let mut curr = 0;
-                for range in &rle.ranges {
+                for range in &run.ranges {
                     let next = curr + (range.end - range.start + 1);
                     if next > c {
                         return Some(range.start - curr + c);
@@ -308,11 +304,11 @@ impl Select0<u16> for Block {
             return None;
         }
         match *self {
-            Block::Seq16(_) | Block::Rle16(_) => select_by_rank!(0, self, c, 0u32, 1 << 16, u16),
+            Block::Seq16(_) | Block::Run16(_) => select_by_rank!(0, self, c, 0u32, 1 << 16, u16),
 
-            Block::Seq64(ref seq) => {
+            Block::Arr64(ref arr) => {
                 let mut remain = u32::from(c);
-                for (i, bit) in seq.vector.iter().enumerate() {
+                for (i, bit) in arr.vector.iter().enumerate() {
                     let zeros = bit.count0();
                     if remain < zeros {
                         let width = 64;
@@ -323,6 +319,212 @@ impl Select0<u16> for Block {
                 }
                 None
             }
+        }
+    }
+}
+
+impl<'a> Assign<&'a Block> for Block {
+    fn and_assign(&mut self, block: &Block) {
+        match *block {
+            Block::Seq16(ref seq) => self.and_assign(seq),
+            Block::Arr64(ref arr) => self.and_assign(arr),
+            Block::Run16(ref run) => self.and_assign(run),
+        }
+    }
+
+    fn or_assign(&mut self, block: &Block) {
+        match *block {
+            Block::Seq16(ref seq) => self.or_assign(seq),
+            Block::Arr64(ref arr) => self.or_assign(arr),
+            Block::Run16(ref run) => self.or_assign(run),
+        }
+    }
+
+    fn and_not_assign(&mut self, block: &Block) {
+        match *block {
+            Block::Seq16(ref seq) => self.and_not_assign(seq),
+            Block::Arr64(ref arr) => self.and_not_assign(arr),
+            Block::Run16(ref run) => self.and_not_assign(run),
+        }
+    }
+
+    fn xor_assign(&mut self, block: &Block) {
+        match *block {
+            Block::Seq16(ref seq) => self.xor_assign(seq),
+            Block::Arr64(ref arr) => self.xor_assign(arr),
+            Block::Run16(ref run) => self.xor_assign(run),
+        }
+    }
+}
+
+impl<'a> Assign<&'a Seq16> for Block {
+    fn and_assign(&mut self, target: &'a Seq16) {
+        match self {
+            &mut Block::Seq16(ref mut b) => b.and_assign(target),
+            &mut Block::Arr64(ref mut b) => b.and_assign(&Arr64::from(target)),
+            this @ &mut Block::Run16(_) => {
+                this.as_arr64();
+                this.and_assign(target);
+            }
+        }
+    }
+
+    fn or_assign(&mut self, target: &Seq16) {
+        match self {
+            &mut Block::Seq16(ref mut b) => b.or_assign(target),
+            &mut Block::Arr64(ref mut b) => for &bit in &target.vector {
+                b.insert(bit);
+            },
+            this @ &mut Block::Run16(_) => {
+                this.as_arr64();
+                this.or_assign(target);
+            }
+        }
+    }
+
+    fn and_not_assign(&mut self, target: &Seq16) {
+        match self {
+            &mut Block::Seq16(ref mut b) => b.and_not_assign(target),
+            &mut Block::Arr64(ref mut b) => for &bit in &target.vector {
+                b.remove(bit);
+            },
+            this @ &mut Block::Run16(_) => {
+                this.as_arr64();
+                this.and_not_assign(target);
+            }
+        }
+    }
+
+    fn xor_assign(&mut self, target: &Seq16) {
+        match self {
+            &mut Block::Seq16(ref mut b) => b.xor_assign(target),
+            &mut Block::Arr64(ref mut b) => for &bit in &target.vector {
+                if b.contains(bit) {
+                    b.remove(bit);
+                } else {
+                    b.insert(bit);
+                }
+            },
+            this @ &mut Block::Run16(_) => {
+                this.as_arr64();
+                this.xor_assign(target);
+            }
+        }
+    }
+}
+
+impl<'a> Assign<&'a Arr64> for Block {
+    fn and_assign(&mut self, target: &'a Arr64) {
+        match self {
+            &mut Block::Seq16(ref mut b) => {
+                let mut n = 0;
+                for i in 0..b.vector.len() {
+                    if target.contains(b.vector[i]) {
+                        b.vector[n] = b.vector[i];
+                        n += 1;
+                    }
+                }
+                b.vector.truncate(n);
+            }
+
+            &mut Block::Arr64(ref mut b) => b.and_assign(target),
+
+            this @ &mut Block::Run16(_) => {
+                this.as_arr64();
+                this.and_assign(target);
+            }
+        }
+    }
+
+    fn or_assign(&mut self, target: &Arr64) {
+        match self {
+            &mut Block::Arr64(ref mut b) => b.or_assign(target),
+            this => {
+                this.as_arr64();
+                this.or_assign(target);
+            }
+        }
+    }
+
+    fn and_not_assign(&mut self, target: &Arr64) {
+        match self {
+            &mut Block::Arr64(ref mut b) => b.and_not_assign(target),
+            this => {
+                this.as_arr64();
+                this.and_not_assign(target);
+            }
+        }
+    }
+
+    fn xor_assign(&mut self, target: &Arr64) {
+        match self {
+            &mut Block::Arr64(ref mut b) => b.xor_assign(target),
+            this => {
+                this.as_arr64();
+                this.xor_assign(target);
+            }
+        }
+    }
+}
+
+impl<'a> Assign<&'a Run16> for Block {
+    fn and_assign(&mut self, target: &'a Run16) {
+        match self {
+            this @ &mut Block::Seq16(_) => {
+                this.as_arr64();
+                this.and_assign(target);
+            }
+            &mut Block::Arr64(ref mut b) => b.and_assign(&Arr64::from(target)),
+            &mut Block::Run16(ref mut b) => b.and_assign(target),
+        }
+    }
+
+    fn or_assign(&mut self, target: &Run16) {
+        match self {
+            this @ &mut Block::Seq16(_) => {
+                this.as_arr64();
+                this.or_assign(target);
+            }
+            &mut Block::Arr64(ref mut b) => for range in &target.ranges {
+                for bit in range.start..=range.end {
+                    b.insert(bit);
+                }
+            },
+            &mut Block::Run16(ref mut b) => b.or_assign(target),
+        }
+    }
+
+    fn and_not_assign(&mut self, target: &Run16) {
+        match self {
+            this @ &mut Block::Seq16(_) => {
+                this.as_arr64();
+                this.and_not_assign(target);
+            }
+            &mut Block::Arr64(ref mut b) => for range in &target.ranges {
+                for bit in range.start..=range.end {
+                    b.remove(bit);
+                }
+            },
+            &mut Block::Run16(ref mut b) => b.and_not_assign(target),
+        }
+    }
+
+    fn xor_assign(&mut self, target: &Run16) {
+        match self {
+            this @ &mut Block::Seq16(_) => {
+                this.as_arr64();
+                this.xor_assign(target);
+            }
+            &mut Block::Arr64(ref mut b) => for range in &target.ranges {
+                for bit in range.start..=range.end {
+                    if b.contains(bit) {
+                        b.remove(bit);
+                    } else {
+                        b.insert(bit);
+                    }
+                }
+            },
+            &mut Block::Run16(ref mut b) => b.xor_assign(target),
         }
     }
 }
@@ -339,6 +541,7 @@ impl FromIterator<u16> for Block {
         block
     }
 }
+
 impl<'a> FromIterator<&'a u16> for Block {
     fn from_iter<I>(iterable: I) -> Self
     where
@@ -346,241 +549,5 @@ impl<'a> FromIterator<&'a u16> for Block {
     {
         let iter = iterable.into_iter();
         iter.cloned().collect::<Self>()
-    }
-}
-
-impl<'a> Iterator for Iter<'a> {
-    type Item = u16;
-    fn next(&mut self) -> Option<Self::Item> {
-        match *self {
-            Iter::Seq16(ref mut it) => it.next(),
-            Iter::Seq64(ref mut it) => it.next(),
-            Iter::Rle16(ref mut it) => it.next(),
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match *self {
-            Iter::Seq16(ref it) => it.size_hint(),
-            Iter::Seq64(ref it) => it.size_hint(),
-            Iter::Rle16(ref it) => it.size_hint(),
-        }
-    }
-}
-
-impl<'a> ExactSizeIterator for Iter<'a> {
-    fn len(&self) -> usize {
-        match *self {
-            Iter::Seq16(ref it) => it.len(),
-            Iter::Seq64(ref it) => it.len(),
-            Iter::Rle16(ref it) => it.len(),
-        }
-    }
-}
-
-impl<'a> From<Seq16Iter<'a>> for Iter<'a> {
-    fn from(iter: Seq16Iter<'a>) -> Self {
-        Iter::Seq16(iter)
-    }
-}
-
-impl<'a> From<Seq64Iter<'a>> for Iter<'a> {
-    fn from(iter: Seq64Iter<'a>) -> Self {
-        Iter::Seq64(iter)
-    }
-}
-
-impl<'a> From<Rle16Iter<'a>> for Iter<'a> {
-    fn from(iter: Rle16Iter<'a>) -> Self {
-        Iter::Rle16(iter)
-    }
-}
-
-macro_rules! impl_Pairwise {
-    ( $( ( $op:ident, $fn:ident, $fn_with:ident ) ),* ) => ($(
-        impl $op<Block> for Block {
-            type Output = Block;
-            fn $fn(self, that: Block) -> Self::Output {
-                let mut this = self;
-                this.$fn_with(&that);
-                this
-            }
-        }
-
-        impl<'a> $op<&'a Block> for Block {
-            type Output = Block;
-            fn $fn(self, that: &Block) -> Self::Output {
-                let mut this = self;
-                this.$fn_with(that);
-                this
-            }
-        }
-
-        impl<'a, 'b> $op<&'b Block> for &'a Block {
-            type Output = Block;
-            fn $fn(self, that: &Block) -> Self::Output {
-                match (self, that) {
-                    (this @ &Block::Seq16(..), that @ &Block::Seq16(..)) => {
-                        ::bits::pair::$fn(this.iter(), that.iter()).collect()
-                    }
-
-                    (&Block::Rle16(ref b1), &Block::Rle16(ref b2)) => Block::Rle16(b1.$fn(b2)),
-
-                    (this, that) => {
-                        let mut this = this.clone();
-                        this.$fn_with(that);
-                        this
-                    }
-                }
-            }
-        }
-    )*)
-}
-
-impl_Pairwise!(
-    (Intersection, intersection, intersection_with),
-    (Union, union, union_with),
-    (Difference, difference, difference_with),
-    (
-        SymmetricDifference,
-        symmetric_difference,
-        symmetric_difference_with
-    )
-);
-
-impl<'a> IntersectionWith<&'a Block> for Block {
-    fn intersection_with(&mut self, target: &Block) {
-        match (self, target) {
-            (&mut Block::Seq16(ref mut b1), &Block::Seq16(ref b2)) => b1.intersection_with(b2),
-
-            (&mut Block::Seq16(ref mut b1), &Block::Seq64(ref b2)) => {
-                let weight = {
-                    let mut new = 0;
-                    for i in 0..b1.vector.len() {
-                        if b2.contains(b1.vector[i]) {
-                            b1.vector[new] = b1.vector[i];
-                            new += 1;
-                        }
-                    }
-                    new
-                };
-                b1.vector.truncate(weight);
-                b1.weight = weight as u32;
-            }
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq64(ref b2)) => b1.intersection_with(b2),
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq16(ref b2)) => {
-                let new = Seq64::from(b2);
-                b1.intersection_with(&new);
-            }
-
-            (&mut Block::Seq64(ref mut b1), &Block::Rle16(ref b2)) => {
-                let new = Seq64::from(b2);
-                b1.intersection_with(&new);
-            }
-
-            (&mut Block::Rle16(ref mut b1), &Block::Rle16(ref b2)) => b1.intersection_with(b2),
-
-            (this, that) => {
-                this.as_seq64();
-                this.intersection_with(that);
-            }
-        }
-    }
-}
-
-impl<'a> UnionWith<&'a Block> for Block {
-    fn union_with(&mut self, target: &Block) {
-        match (self, target) {
-            (&mut Block::Seq16(ref mut b1), &Block::Seq16(ref b2)) => b1.union_with(b2),
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq64(ref b2)) => b1.union_with(b2),
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq16(ref b2)) => for &bit in &b2.vector {
-                b1.insert(bit);
-            },
-
-            (&mut Block::Seq64(ref mut b1), &Block::Rle16(ref b2)) => for range in &b2.ranges {
-                for bit in range.start...range.end {
-                    b1.insert(bit);
-                }
-            },
-
-            (&mut Block::Rle16(ref mut b1), &Block::Rle16(ref b2)) => b1.union_with(b2),
-
-            (this, that) => {
-                this.as_seq64();
-                this.union_with(that);
-            }
-        }
-    }
-}
-
-impl<'a> DifferenceWith<&'a Block> for Block {
-    fn difference_with(&mut self, target: &Block) {
-        match (self, target) {
-            (&mut Block::Seq16(ref mut b1), &Block::Seq16(ref b2)) => b1.difference_with(b2),
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq64(ref b2)) => b1.difference_with(b2),
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq16(ref b2)) => for &bit in &b2.vector {
-                b1.remove(bit);
-            },
-
-            (&mut Block::Seq64(ref mut b1), &Block::Rle16(ref b2)) => for range in &b2.ranges {
-                for bit in range.start...range.end {
-                    b1.remove(bit);
-                }
-            },
-
-            (&mut Block::Rle16(ref mut b1), &Block::Rle16(ref b2)) => b1.difference_with(b2),
-
-            (this, that) => {
-                this.as_seq64();
-                this.difference_with(that);
-            }
-        }
-    }
-}
-
-impl<'a> SymmetricDifferenceWith<&'a Block> for Block {
-    fn symmetric_difference_with(&mut self, target: &Block) {
-        match (self, target) {
-            (&mut Block::Seq16(ref mut b1), &Block::Seq16(ref b2)) => {
-                b1.symmetric_difference_with(b2)
-            }
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq64(ref b2)) => {
-                b1.symmetric_difference_with(b2)
-            }
-
-            (&mut Block::Seq64(ref mut b1), &Block::Seq16(ref b2)) => for &bit in &b2.vector {
-                if b1.contains(bit) {
-                    b1.remove(bit);
-                } else {
-                    b1.insert(bit);
-                }
-            },
-
-            (&mut Block::Seq64(ref mut b1), &Block::Rle16(ref b2)) => for range in &b2.ranges {
-                for bit in range.start...range.end {
-                    if b1.contains(bit) {
-                        b1.remove(bit);
-                    } else {
-                        b1.insert(bit);
-                    }
-                }
-            },
-
-            (&mut Block::Rle16(ref mut b1), &Block::Rle16(ref b2)) => {
-                b1.symmetric_difference_with(b2)
-            }
-
-            (this, that) => {
-                this.as_seq64();
-                this.symmetric_difference_with(that);
-            }
-        }
     }
 }
