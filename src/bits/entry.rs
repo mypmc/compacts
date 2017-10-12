@@ -4,13 +4,11 @@ use std::cmp::Ordering;
 use bits;
 use super::Assign;
 
+/// A part of `Map`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry<'a> {
     pub(crate) key: u16,
     pub(crate) cow: Cow<'a, bits::Block>,
-}
-pub struct Entries<'a> {
-    pub(crate) entries: Box<Iterator<Item = Entry<'a>> + 'a>,
 }
 
 impl<'a> PartialOrd for Entry<'a> {
@@ -25,26 +23,12 @@ impl<'a> Ord for Entry<'a> {
 }
 
 impl<'a> Entry<'a> {
-    // fn iter<'r>(&'r self) -> impl Iterator<Item = u32> + 'r {
-    //     let key = self.key;
-    //     self.cow
-    //         .iter()
-    //         .map(move |low| <u32 as bits::Merge>::merge((key, low)))
-    // }
-
     pub fn bits(self) -> impl Iterator<Item = u32> + 'a {
         let key = self.key;
         self.cow
             .into_owned()
             .into_iter()
             .map(move |low| <u32 as bits::Merge>::merge((key, low)))
-    }
-}
-
-impl<'a> Iterator for Entries<'a> {
-    type Item = Entry<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.entries.next()
     }
 }
 

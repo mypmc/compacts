@@ -1,8 +1,6 @@
-#![feature(integer_atomics)]
 #![feature(conservative_impl_trait)]
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
-#![feature(fnbox)]
 #![cfg_attr(test, feature(plugin))]
 
 // #![deny(warnings)]

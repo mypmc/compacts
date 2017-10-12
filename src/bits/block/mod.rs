@@ -11,6 +11,7 @@ use bits::pair::Assign;
 pub(crate) use self::seq16::Seq16;
 pub(crate) use self::arr64::Arr64;
 pub(crate) use self::run16::Run16;
+// pub(crate) use self::iter::{Boxed as BoxedIter, Owned as OwnedIter};
 
 /// Internal representaions of a bits block.
 #[derive(Clone, PartialEq, Eq)]

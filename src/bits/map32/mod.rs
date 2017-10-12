@@ -2,12 +2,11 @@
 
 use std::{iter, ops};
 use std::fmt::{self, Debug, Formatter};
-use std::collections::BTreeMap;
+use std::collections::{btree_map, BTreeMap};
 use std::borrow::Cow;
 use std::iter::IntoIterator;
 
-use bits::{self, block};
-use bits::{Block, Merge, Split};
+use bits::{self, Block, Merge, Split};
 use bits::{PopCount, Rank, Select0, Select1};
 
 /// Map of deffered `Block`s.
@@ -117,10 +116,6 @@ impl Map {
         }
     }
 
-    pub fn mem_size(&self) -> usize {
-        self.blocks.values().map(|b| b.mem_size()).sum()
-    }
-
     /// Optimize innternal data representaions.
     pub fn optimize(&mut self) {
         let mut remove_keys = Vec::new();
@@ -135,16 +130,16 @@ impl Map {
         }
     }
 
-    pub fn stats<'a>(&'a self) -> impl Iterator<Item = block::Stats> + 'a {
-        self.blocks.values().map(|v16| v16.stats())
+    pub fn mem_size(&self) -> usize {
+        self.blocks.values().map(|b| b.mem_size()).sum()
     }
 
-    fn entries(&self) -> bits::Entries {
-        let entries = Box::new(self.blocks.iter().map(|(&key, block)| {
-            let cow = Cow::Borrowed(block);
-            bits::Entry { key, cow }
-        }));
-        bits::Entries { entries }
+    // pub fn stats<'a>(&'a self) -> impl Iterator<Item = block::Stats> + 'a {
+    //     self.blocks.values().map(|b| b.stats())
+    // }
+
+    pub fn entries<'a>(&'a self) -> Entries<'a> {
+        Entries(self.blocks.iter().map(to_entry))
     }
 
     pub fn bits<'a>(&'a self) -> impl Iterator<Item = u32> + 'a {
@@ -153,6 +148,64 @@ impl Map {
                 .iter()
                 .map(move |val| <u32 as Merge>::merge((key, val)))
         })
+    }
+}
+
+pub struct Entries<'a>(
+    iter::Map<
+        btree_map::Iter<'a, u16, bits::Block>,
+        for<'x> fn((&'x u16, &'x bits::Block)) -> bits::Entry<'x>,
+    >,
+);
+
+fn to_entry<'a>(tuple: (&'a u16, &'a bits::Block)) -> bits::Entry<'a> {
+    let (&key, block) = tuple;
+    let cow = Cow::Borrowed(block);
+    bits::Entry { key, cow }
+}
+
+impl<'a> IntoIterator for &'a bits::Map {
+    type Item = bits::Entry<'a>;
+    type IntoIter = Entries<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries()
+    }
+}
+
+impl<'a> Iterator for Entries<'a> {
+    type Item = bits::Entry<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+impl Map {
+    pub fn and<'a, T>(&'a self, that: T) -> bits::And<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::and(self, that)
+    }
+
+    pub fn or<'a, T>(&'a self, that: T) -> bits::Or<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::or(self, that)
+    }
+
+    pub fn and_not<'a, T>(&'a self, that: T) -> bits::AndNot<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::and_not(self, that)
+    }
+
+    pub fn xor<'a, T>(&'a self, that: T) -> bits::Xor<impl Iterator<Item = bits::Entry<'a>>>
+    where
+        T: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        bits::xor(self, that)
     }
 }
 
@@ -209,6 +262,21 @@ impl<'a> iter::FromIterator<&'a u32> for Map {
         }
         map.optimize();
         map
+    }
+}
+
+impl<'a> iter::FromIterator<bits::Entry<'a>> for Map {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = bits::Entry<'a>>,
+    {
+        let mut blocks = BTreeMap::new();
+        for e in iter {
+            let mut b = e.cow.into_owned();
+            b.optimize();
+            blocks.insert(e.key, b);
+        }
+        Map { blocks }
     }
 }
 
@@ -303,43 +371,5 @@ impl Select0<u32> for Map {
             return None;
         }
         select_by_rank!(0, self, c, 0u64, 1 << 32, u32)
-    }
-}
-
-impl<'a> IntoIterator for &'a bits::Map {
-    type Item = bits::Entry<'a>;
-    type IntoIter = bits::Entries<'a>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.entries()
-    }
-}
-
-impl Map {
-    pub fn and<'a, T>(&'a self, that: T) -> bits::And<impl Iterator<Item = bits::Entry<'a>>>
-    where
-        T: IntoIterator<Item = bits::Entry<'a>>,
-    {
-        bits::and(self, that)
-    }
-
-    pub fn or<'a, T>(&'a self, that: T) -> bits::Or<impl Iterator<Item = bits::Entry<'a>>>
-    where
-        T: IntoIterator<Item = bits::Entry<'a>>,
-    {
-        bits::or(self, that)
-    }
-
-    pub fn and_not<'a, T>(&'a self, that: T) -> bits::AndNot<impl Iterator<Item = bits::Entry<'a>>>
-    where
-        T: IntoIterator<Item = bits::Entry<'a>>,
-    {
-        bits::and_not(self, that)
-    }
-
-    pub fn xor<'a, T>(&'a self, that: T) -> bits::Xor<impl Iterator<Item = bits::Entry<'a>>>
-    where
-        T: IntoIterator<Item = bits::Entry<'a>>,
-    {
-        bits::xor(self, that)
     }
 }
