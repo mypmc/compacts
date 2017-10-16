@@ -1,4 +1,4 @@
-// mod io;
+mod io;
 
 use std::{iter, ops};
 use std::fmt::{self, Debug, Formatter};
@@ -138,7 +138,7 @@ impl Map {
     //     self.blocks.values().map(|b| b.stats())
     // }
 
-    pub fn entries<'a>(&'a self) -> Entries<'a> {
+    pub fn entries(&self) -> Entries {
         Entries(self.blocks.iter().map(to_entry))
     }
 
@@ -151,12 +151,9 @@ impl Map {
     }
 }
 
-pub struct Entries<'a>(
-    iter::Map<
-        btree_map::Iter<'a, u16, bits::Block>,
-        for<'x> fn((&'x u16, &'x bits::Block)) -> bits::Entry<'x>,
-    >,
-);
+type ToEntry = for<'x> fn((&'x u16, &'x bits::Block)) -> bits::Entry<'x>;
+
+pub struct Entries<'a>(iter::Map<btree_map::Iter<'a, u16, bits::Block>, ToEntry>);
 
 fn to_entry<'a>(tuple: (&'a u16, &'a bits::Block)) -> bits::Entry<'a> {
     let (&key, block) = tuple;

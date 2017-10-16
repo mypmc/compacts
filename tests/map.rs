@@ -1,31 +1,61 @@
-// extern crate compacts;
-// extern crate rand;
-// extern crate env_logger;
-// #[macro_use]
-// extern crate log;
+extern crate compacts;
 
-// use rand::Rng;
-// use compacts::bits::*;
+use std::{fs, io};
+use compacts::{bits, ReadFrom, WriteTo};
+use self::bits::PopCount;
 
-// macro_rules! bit_vec {
-//     ( $size:expr, $end:expr, $rng:expr ) => {
-//         {
-//             bit_vec!($size, 0, $end, $rng)
-//         }
-//     };
+// https://github.com/RoaringBitmap/RoaringFormatSpec
 
-//     ( $size:expr, $start:expr, $end:expr, $rng:expr ) => {
-//         {
-//             let mut vec = Map::new();
-//             for _ in 0..$size {
-//                 let gen = $rng.gen_range($start, $end);
-//                 vec.insert(gen);
-//             }
-//             vec.optimize();
-//             vec
-//         }
-//     };
-// }
+#[test]
+fn read_from_file() {
+    let m1 = {
+        let file = fs::File::open("./tests/bitmapwithruns.bin").unwrap();
+        let mut map = bits::Map::new();
+        map.read_from(&mut io::BufReader::new(file)).unwrap();
+        map.optimize();
+        map
+    };
+    let m2 = {
+        let file = fs::File::open("./tests/bitmapwithoutruns.bin").unwrap();
+        let mut map = bits::Map::new();
+        map.read_from(&mut io::BufReader::new(file)).unwrap();
+        map.optimize();
+        map
+    };
+
+    for i in 0..100000 {
+        if i % 1000 == 0 {
+            assert!(m1[i] && m2[i]);
+        } else {
+            assert!(!m1[i] && !m2[i]);
+        }
+    }
+    for i in 100000..200000 {
+        assert!(m1[i * 3] && m2[i * 3]);
+    }
+    for i in 700000..800000 {
+        assert!(m1[i] && m2[i]);
+    }
+
+    assert_eq!(m1.count1(), m2.count1());
+    assert_eq!(m1.count0(), m2.count0());
+    for (b1, b2) in m1.bits().zip(m2.bits()) {
+        assert_eq!(b1, b2);
+    }
+
+    let body = {
+        let mut file = fs::File::open("./tests/bitmapwithruns.bin").unwrap();
+        let mut body = Vec::with_capacity(8192);
+        io::copy(&mut file, &mut body).unwrap();
+        body
+    };
+    let buff = {
+        let mut buff = Vec::with_capacity(8192);
+        m1.write_to(&mut buff).unwrap();
+        buff
+    };
+    assert_eq!(body, buff);
+}
 
 // #[test]
 // fn similarity() {

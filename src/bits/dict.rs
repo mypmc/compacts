@@ -209,33 +209,3 @@ where
 //         }
 //     }
 // }
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use quickcheck::TestResult;
-
-    quickcheck!{
-        fn prop_u64_pop_count(word: u64) -> TestResult {
-            let c1: u32 = word.count1();
-            let c0: u32 = word.count0();
-            TestResult::from_bool(c1 + c0 == <u64 as PopCount<u32>>::SIZE)
-        }
-        fn prop_u64_rank0_rank1(word: u64, i: u32) -> TestResult {
-            TestResult::from_bool(word.rank1(i) + word.rank0(i) == i)
-        }
-        fn prop_u64_rank0_select0(word: u64, i: u32) -> bool {
-            if let Some(p) = word.select0(i) {
-                return word.rank0(p) == i;
-            }
-            true
-        }
-        fn prop_u64_rank1_select1(word: u64, i: u32) -> bool {
-            if let Some(p) = word.select1(i) {
-                return word.rank1(p) == i;
-            }
-            true
-        }
-    }
-}

@@ -23,9 +23,9 @@ pub(crate) enum Block {
 impl fmt::Debug for Block {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Block::Seq16(_) => write!(f, "Seq16({})", self.count1()),
-            Block::Arr64(_) => write!(f, "Arr64({})", self.count1()),
-            Block::Run16(_) => write!(f, "Run16({})", self.count1()),
+            Block::Seq16(ref b) => b.fmt(f),
+            Block::Arr64(ref b) => b.fmt(f),
+            Block::Run16(ref b) => b.fmt(f),
         }
     }
 }
@@ -45,8 +45,24 @@ impl Default for Block {
     }
 }
 
+impl From<Seq16> for Block {
+    fn from(seq16: Seq16) -> Self {
+        Block::Seq16(seq16)
+    }
+}
+impl From<Arr64> for Block {
+    fn from(arr64: Arr64) -> Self {
+        Block::Arr64(arr64)
+    }
+}
+impl From<Run16> for Block {
+    fn from(run16: Run16) -> Self {
+        Block::Run16(run16)
+    }
+}
+
 impl Block {
-    const CAPACITY: usize = 1 << 16;
+    pub const CAPACITY: usize = 1 << 16;
 
     pub fn new() -> Self {
         Self::default()
@@ -101,7 +117,7 @@ impl Block {
 
         match *self {
             Block::Seq16(ref seq) => size_of_u16 * seq.vector.len(),
-            Block::Arr64(ref arr) => size_of_u32 + size_of_u64 * arr.vector.len(),
+            Block::Arr64(ref arr) => size_of_u32 + size_of_u64 * arr.boxarr.len(),
             Block::Run16(ref run) => size_of_u32 + size_of_run * run.ranges.len(),
         }
     }
@@ -230,7 +246,7 @@ impl Rank<u16> for Block {
             Block::Arr64(ref arr) => {
                 let q = (i / 64) as usize;
                 let r = u32::from(i % 64);
-                let vec = &arr.vector;
+                let vec = &arr.boxarr;
                 let init = vec.iter().take(q).fold(0, |acc, w| {
                     let c1: u16 = w.count1();
                     acc + c1
@@ -272,7 +288,7 @@ impl Select1<u16> for Block {
 
             Block::Arr64(ref arr) => {
                 let mut remain = u32::from(c);
-                for (i, bit) in arr.vector.iter().enumerate().filter(|&(_, v)| *v != 0) {
+                for (i, bit) in arr.boxarr.iter().enumerate().filter(|&(_, v)| *v != 0) {
                     let ones = bit.count1();
                     if remain < ones {
                         let width = 64;
@@ -309,7 +325,7 @@ impl Select0<u16> for Block {
 
             Block::Arr64(ref arr) => {
                 let mut remain = u32::from(c);
-                for (i, bit) in arr.vector.iter().enumerate() {
+                for (i, bit) in arr.boxarr.iter().enumerate() {
                     let zeros = bit.count0();
                     if remain < zeros {
                         let width = 64;

@@ -75,7 +75,7 @@ impl<'a> IntoIterator for &'a Arr64 {
     type IntoIter = Boxed<'a>;
     fn into_iter(self) -> Self::IntoIter {
         let rest = self.weight;
-        let iter = self.vector
+        let iter = self.boxarr
             .iter()
             .enumerate()
             .flat_map(|(index, &packed)| Packed::new(index, packed));
@@ -88,7 +88,7 @@ impl IntoIterator for Arr64 {
     type IntoIter = Owned;
     fn into_iter(self) -> Self::IntoIter {
         let rest = self.weight;
-        let iter = (self.vector as Box<[_]>)
+        let iter = (self.boxarr as Box<[_]>)
             .into_vec()
             .into_iter()
             .enumerate()

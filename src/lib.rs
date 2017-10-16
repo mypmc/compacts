@@ -11,4 +11,8 @@ extern crate itertools;
 #[macro_use]
 extern crate quickcheck;
 
+mod io;
+
 pub mod bits;
+
+pub use io::{ReadFrom, WriteTo};

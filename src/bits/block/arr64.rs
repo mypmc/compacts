@@ -1,23 +1,29 @@
-use std::ops;
+use std::{fmt, io, ops};
 use std::iter::FromIterator;
-use super::{Run16, Seq16};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use {ReadFrom, WriteTo};
+use bits::{self, Run16, Seq16};
 
 #[derive(Clone)]
 pub(crate) struct Arr64 {
     pub weight: u32,
-    // pub vector: Vec<u64>,
-    pub vector: Box<[u64; 1024]>,
+    pub boxarr: Box<[u64; 1024]>,
+}
+impl fmt::Debug for Arr64 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Arr64({:?})", self.weight)
+    }
 }
 
 impl PartialEq for Arr64 {
     fn eq(&self, that: &Arr64) -> bool {
-        let length_test = self.vector.len() == that.vector.len();
+        let length_test = self.boxarr.len() == that.boxarr.len();
         let weight_test = self.weight == that.weight;
-        let vector_test = self.vector
+        let boxarr_test = self.boxarr
             .iter()
-            .zip(that.vector.iter())
+            .zip(that.boxarr.iter())
             .all(|(v1, v2)| v1 == v2);
-        length_test && weight_test && vector_test
+        length_test && weight_test && boxarr_test
     }
 }
 impl Eq for Arr64 {}
@@ -25,9 +31,9 @@ impl Eq for Arr64 {}
 impl Default for Arr64 {
     fn default() -> Self {
         let weight = 0;
-        // let vector = vec![0; 1024];
-        let vector = Box::new([0; 1024]);
-        Arr64 { weight, vector }
+        // let boxarr = vec![0; 1024];
+        let boxarr = Box::new([0; 1024]);
+        Arr64 { weight, boxarr }
     }
 }
 
@@ -38,7 +44,7 @@ impl Arr64 {
 
     #[inline]
     fn check(&self, key: usize, mask: u64) -> Option<bool> {
-        self.vector.get(key).map(|&bit| bit & mask != 0)
+        self.boxarr.get(key).map(|&bit| bit & mask != 0)
     }
 
     #[inline]
@@ -53,7 +59,7 @@ impl Arr64 {
         if self.check(key, mask).unwrap_or_default() {
             false
         } else {
-            self.vector[key] |= mask;
+            self.boxarr[key] |= mask;
             self.weight += 1;
             true
         }
@@ -69,12 +75,12 @@ impl Arr64 {
         let (head, last) = range_of(s, e + 1);
 
         if sw == ew {
-            self.vector[sw] |= head & last;
+            self.boxarr[sw] |= head & last;
         } else {
-            self.vector[sw] |= head;
-            self.vector[ew] |= last;
+            self.boxarr[sw] |= head;
+            self.boxarr[ew] |= last;
             for i in (sw + 1)..ew {
-                self.vector[i] = !0;
+                self.boxarr[i] = !0;
             }
         }
     }
@@ -83,7 +89,7 @@ impl Arr64 {
     pub fn remove(&mut self, bit: u16) -> bool {
         bitmask!(bit, key, mask);
         if self.check(key, mask).unwrap_or_default() {
-            self.vector[key] &= !mask;
+            self.boxarr[key] &= !mask;
             self.weight -= 1;
             true
         } else {
@@ -149,12 +155,12 @@ impl FromIterator<u16> for Arr64 {
     }
 }
 
-impl<'a> ::bits::Assign<&'a Arr64> for Arr64 {
+impl<'a> bits::Assign<&'a Arr64> for Arr64 {
     fn and_assign(&mut self, arr64: &'a Arr64) {
-        assert_eq!(self.vector.len(), arr64.vector.len());
+        assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;
-            for (x, y) in self.vector.iter_mut().zip(arr64.vector.iter()) {
+            for (x, y) in self.boxarr.iter_mut().zip(arr64.boxarr.iter()) {
                 *x &= *y;
                 new += x.count_ones();
             }
@@ -163,10 +169,10 @@ impl<'a> ::bits::Assign<&'a Arr64> for Arr64 {
     }
 
     fn or_assign(&mut self, arr64: &'a Arr64) {
-        assert_eq!(self.vector.len(), arr64.vector.len());
+        assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;
-            for (x, y) in self.vector.iter_mut().zip(arr64.vector.iter()) {
+            for (x, y) in self.boxarr.iter_mut().zip(arr64.boxarr.iter()) {
                 *x |= *y;
                 new += x.count_ones();
             }
@@ -175,10 +181,10 @@ impl<'a> ::bits::Assign<&'a Arr64> for Arr64 {
     }
 
     fn and_not_assign(&mut self, arr64: &'a Arr64) {
-        assert_eq!(self.vector.len(), arr64.vector.len());
+        assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;
-            for (x, y) in self.vector.iter_mut().zip(arr64.vector.iter()) {
+            for (x, y) in self.boxarr.iter_mut().zip(arr64.boxarr.iter()) {
                 *x &= !*y;
                 new += x.count_ones();
             }
@@ -187,14 +193,36 @@ impl<'a> ::bits::Assign<&'a Arr64> for Arr64 {
     }
 
     fn xor_assign(&mut self, arr64: &'a Arr64) {
-        assert_eq!(self.vector.len(), arr64.vector.len());
+        assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;
-            for (x, y) in self.vector.iter_mut().zip(arr64.vector.iter()) {
+            for (x, y) in self.boxarr.iter_mut().zip(arr64.boxarr.iter()) {
                 *x ^= *y;
                 new += x.count_ones();
             }
             new
         };
+    }
+}
+
+impl<W: io::Write> WriteTo<W> for Arr64 {
+    fn write_to(&self, w: &mut W) -> io::Result<()> {
+        for &bit in self.boxarr.iter() {
+            w.write_u64::<LittleEndian>(bit)?;
+        }
+        Ok(())
+    }
+}
+
+impl<R: io::Read> ReadFrom<R> for Arr64 {
+    fn read_from(&mut self, r: &mut R) -> io::Result<()> {
+        use bits::PopCount;
+        self.weight = 0;
+
+        for bit in self.boxarr.iter_mut() {
+            *bit = r.read_u64::<LittleEndian>()?;
+            self.weight += <u64 as PopCount<u32>>::count1(bit);
+        }
+        Ok(())
     }
 }

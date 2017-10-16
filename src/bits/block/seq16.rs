@@ -1,14 +1,21 @@
-use std::cmp;
-use bits::Compare;
-use super::{Arr64, Block, Run16};
+use std::{cmp, fmt, io};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use {ReadFrom, WriteTo};
+use bits::{self, Compare};
+use bits::{Arr64, Block, Run16};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct Seq16 {
     pub vector: Vec<u16>,
 }
+impl fmt::Debug for Seq16 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Seq16({:?})", self.vector.len())
+    }
+}
 
 impl Seq16 {
-    const THRESHOLD: usize = 4096;
+    pub const THRESHOLD: usize = 4096;
 
     pub fn new() -> Self {
         Self::default()
@@ -56,7 +63,7 @@ impl<'r> From<&'r Arr64> for Seq16 {
     fn from(that: &Arr64) -> Self {
         use std::u16;
         let mut vec16 = Seq16::with_capacity(that.weight as usize);
-        let iter = that.vector.iter();
+        let iter = that.boxarr.iter();
         for (i, w) in iter.cloned().enumerate().filter(|&(_, v)| v != 0) {
             for p in 0..64 {
                 if w & (1 << p) != 0 {
@@ -95,11 +102,11 @@ impl From<Vec<u16>> for Seq16 {
     }
 }
 
-impl<'a> ::bits::Assign<&'a Seq16> for Seq16 {
+impl<'a> bits::Assign<&'a Seq16> for Seq16 {
     fn and_assign(&mut self, seq16: &'a Seq16) {
         *self = {
             let data = Compare::and(&*self, seq16).filter_map(|tup| match tup {
-                (Some(l), Some(_)) => Some(l),
+                (Some(l), Some(r)) if l == r => Some(l),
                 _ => None,
             });
             let mut seq16 = Seq16::with_capacity(cmp::min(self.vector.len(), seq16.vector.len()));
@@ -144,5 +151,24 @@ impl<'a> ::bits::Assign<&'a Seq16> for Seq16 {
         //         self.insert(bit);
         //     }
         // }
+    }
+}
+
+impl<W: io::Write> WriteTo<W> for Seq16 {
+    fn write_to(&self, w: &mut W) -> io::Result<()> {
+        for &bit in &self.vector {
+            w.write_u16::<LittleEndian>(bit)?;
+        }
+        Ok(())
+    }
+}
+
+impl<R: io::Read> ReadFrom<R> for Seq16 {
+    // `self.vector` must have an enough length.
+    fn read_from(&mut self, r: &mut R) -> io::Result<()> {
+        for bit in &mut self.vector {
+            *bit = r.read_u16::<LittleEndian>()?;
+        }
+        Ok(())
     }
 }

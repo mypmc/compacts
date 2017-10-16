@@ -4,9 +4,11 @@ extern crate compacts;
 extern crate rand;
 extern crate test;
 
+use std::{fs, io};
 use test::Bencher;
 use rand::Rng;
 use compacts::bits::*;
+use compacts::{ReadFrom, WriteTo};
 
 macro_rules! bit_vec {
     ( 0, 1, $rng:expr ) => {
@@ -113,4 +115,63 @@ fn rank_large(bench: &mut Bencher) {
     let v1 = bit_vec!(SIZE, RANGE2, rng);
     let i = rng.gen();
     bench.iter(|| v1.rank1(i));
+}
+
+#[bench]
+fn read_from_file_withruns(bench: &mut Bencher) {
+    bench.iter(|| {
+        let mut file = fs::File::open("./tests/bitmapwithruns.bin").unwrap();
+        let mut bits = Map::new();
+        bits.read_from(&mut file).unwrap()
+    });
+}
+
+#[bench]
+fn read_from_buff_withruns(bench: &mut Bencher) {
+    bench.iter(|| {
+        let file = fs::File::open("./tests/bitmapwithruns.bin").unwrap();
+        let mut bits = Map::new();
+        bits.read_from(&mut io::BufReader::new(file)).unwrap()
+    });
+}
+
+#[bench]
+fn read_from_file_withoutruns(bench: &mut Bencher) {
+    bench.iter(|| {
+        let mut file = fs::File::open("./tests/bitmapwithoutruns.bin").unwrap();
+        let mut bits = Map::new();
+        bits.read_from(&mut file).unwrap()
+    });
+}
+
+#[bench]
+fn read_from_buff_withoutruns(bench: &mut Bencher) {
+    bench.iter(|| {
+        let file = fs::File::open("./tests/bitmapwithoutruns.bin").unwrap();
+        let mut bits = Map::new();
+        bits.read_from(&mut io::BufReader::new(file)).unwrap()
+    });
+}
+
+#[bench]
+fn write_to_buff(bench: &mut Bencher) {
+    let map = {
+        let mut map = Map::new();
+        for i in 0..100000 {
+            if i % 1000 == 0 {
+                map.insert(i);
+            }
+        }
+        for i in 100000..200000 {
+            map.insert(i * 3);
+        }
+        for i in 700000..800000 {
+            map.insert(i);
+        }
+        map.optimize();
+        map
+    };
+    let mut buf = Vec::with_capacity(8192);
+
+    bench.iter(|| map.write_to(&mut buf).unwrap());
 }
