@@ -17,3 +17,6 @@ itertools   = "0.7"
 [dev-dependencies]
 rand = "0.3"
 quickcheck = "0.4"
+
+snap = "0.2"
+zstd = "0.4"

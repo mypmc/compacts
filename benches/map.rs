@@ -3,6 +3,8 @@
 extern crate compacts;
 extern crate rand;
 extern crate test;
+extern crate snap;
+extern crate zstd;
 
 use std::{fs, io};
 use test::Bencher;
@@ -153,25 +155,66 @@ fn read_from_buff_withoutruns(bench: &mut Bencher) {
     });
 }
 
-#[bench]
-fn write_to_buff(bench: &mut Bencher) {
-    let map = {
-        let mut map = Map::new();
-        for i in 0..100000 {
-            if i % 1000 == 0 {
-                map.insert(i);
-            }
-        }
-        for i in 100000..200000 {
-            map.insert(i * 3);
-        }
-        for i in 700000..800000 {
+fn test_map() -> Map {
+    let mut map = Map::new();
+    for i in 0..100000 {
+        if i % 1000 == 0 {
             map.insert(i);
         }
-        map.optimize();
-        map
-    };
-    let mut buf = Vec::with_capacity(8192);
+    }
+    for i in 100000..200000 {
+        map.insert(i * 3);
+    }
+    for i in 700000..800000 {
+        map.insert(i);
+    }
+    map.optimize();
+    map
+}
 
-    bench.iter(|| map.write_to(&mut buf).unwrap());
+#[bench]
+fn write_to_buff(bench: &mut Bencher) {
+    let map = test_map();
+    let mut n = 0;
+    let mut w = Vec::with_capacity(1 << 16);
+    bench.iter(|| {
+        map.write_to(&mut w).unwrap();
+        n += 1;
+    });
+
+    print!("{:>8} {:>12} ", n, w.len())
+}
+
+#[bench]
+fn write_to_buff_snap(bench: &mut Bencher) {
+    use std::io::Write;
+
+    let map = test_map();
+    let mut n = 0;
+    let mut w = Vec::with_capacity(1 << 16);
+    {
+        let mut buf = snap::Writer::new(&mut w);
+        bench.iter(|| {
+            map.write_to(&mut buf).unwrap();
+            n += 1;
+        });
+        buf.flush().unwrap();
+    }
+    print!("{:>8} {:>12} ", n, w.len())
+}
+
+#[bench]
+fn write_to_buff_zstd(bench: &mut Bencher) {
+    let map = test_map();
+    let mut n = 0;
+    let mut w = Vec::with_capacity(1 << 16);
+    {
+        let mut buf = zstd::Encoder::new(&mut w, 0).unwrap();
+        bench.iter(|| {
+            map.write_to(&mut buf).unwrap();
+            n += 1;
+        });
+        buf.finish().unwrap();
+    }
+    print!("{:>8} {:>12} ", n, w.len())
 }
