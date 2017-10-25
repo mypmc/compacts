@@ -1,3 +1,5 @@
+#[macro_use]
+mod macros;
 mod seq16;
 mod arr64;
 mod run16;
