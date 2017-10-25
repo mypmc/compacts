@@ -65,6 +65,53 @@ impl Set {
     /// let mut bits = Set::new();
     /// assert_eq!(bits.count0(), 1 << 32);
     /// bits.insert(1);
+    /// assert!(!bits.get(0));
+    /// assert!(bits.get(1));
+    /// assert!(!bits.get(2));
+    /// assert_eq!(bits.count1(), 1);
+    /// ```
+    pub fn get(&self, i: u32) -> bool {
+        let (key, bit) = i.split();
+        self.search(key)
+            .map(|j| self.entries[j].block.contains(bit))
+            .unwrap_or(false)
+    }
+
+    /// Set bit at `i`, and return a **previous** value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #[macro_use]
+    /// extern crate compacts;
+    /// fn main() {
+    ///     use compacts::bits::PopCount;
+    ///     let mut bits = bitset![1, 2, 8];
+    ///     assert!(!bits.set(0, false));
+    ///     assert!(bits.set(1, false));
+    ///     assert!(!bits.set(1, true));
+    ///     assert!(bits.set(1, true));
+    ///     assert_eq!(bits.count1(), 3);
+    /// }
+    /// ```
+    pub fn set(&mut self, i: u32, flag: bool) -> bool {
+        if flag {
+            !self.insert(i)
+        } else {
+            self.remove(i)
+        }
+    }
+
+    /// Return `true` if the value exists.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use compacts::bits::{Set, PopCount};
+    ///
+    /// let mut bits = Set::new();
+    /// assert_eq!(bits.count0(), 1 << 32);
+    /// bits.insert(1);
     /// assert!(!bits.contains(0));
     /// assert!(bits.contains(1));
     /// assert!(!bits.contains(2));
@@ -77,7 +124,7 @@ impl Set {
             .unwrap_or(false)
     }
 
-    /// Return `true` if the value doesn't exists and inserted successfuly.
+    /// Return `true` if the value doesn't exists (false) and inserted successfuly.
     ///
     /// # Examples
     ///
@@ -107,7 +154,7 @@ impl Set {
         }
     }
 
-    /// Return `true` if the value exists and removed successfuly.
+    /// Return `true` if the value exists (true) and removed successfuly.
     ///
     /// # Examples
     ///
