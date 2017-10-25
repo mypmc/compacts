@@ -9,7 +9,7 @@ use self::bits::PopCount;
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 
 #[test]
-fn read_from_file() {
+fn read_write_from_file() {
     let m1 = bitmapwithruns();
     let m2 = bitmapwithoutruns();
 
@@ -41,7 +41,10 @@ fn read_from_file() {
     };
     let buff = {
         let mut buff = Vec::with_capacity(8192);
-        m1.write_to(&mut buff).unwrap();
+        {
+            m1.write_to(&mut buff).unwrap();
+        }
+        println!("no-compress {}", buff.len());
         buff
     };
     assert_eq!(body, buff);
@@ -58,6 +61,7 @@ fn read_write_snappy() {
         m1.write_to(&mut buf).unwrap();
         buf.flush().unwrap();
     }
+    println!("snappy {}", w.len());
 
     let mut r = snap::Reader::new(io::Cursor::new(w));
     let mut m2 = bits::Map::new();
@@ -72,8 +76,6 @@ fn read_write_snappy() {
 
 #[test]
 fn read_write_zstd() {
-    use std::io::Write;
-
     let m1 = bitmapwithruns();
     let mut w = Vec::with_capacity(8192);
     {
@@ -81,6 +83,7 @@ fn read_write_zstd() {
         m1.write_to(&mut enc).unwrap();
         enc.finish().unwrap();
     }
+    println!("zstd {}", w.len());
 
     let mut r = zstd::Decoder::new(io::Cursor::new(w)).unwrap();
     let mut m2 = bits::Map::new();
@@ -112,28 +115,28 @@ fn bitmapwithoutruns() -> bits::Map {
 // fn similarity() {
 //     let _ = env_logger::init();
 //     let mut rng = rand::thread_rng();
-
+//
 //     let size = (1 << 15) * 7;
 //     let maxn = (1 << 16) * 2;
-
-//     let p = &(bit_vec!(size, maxn, rng));
-//     let q = &(bit_vec!(size, maxn, rng));
-
+//
+//     let p = &gen_bitmap!(size, maxn, rng);
+//     let q = &gen_bitmap!(size, maxn, rng);
+//
 //     let jaccard = {
 //         let r = p.intersection(q);
 //         r.count_ones() as f64 / (p.count_ones() + q.count_ones() - r.count_ones()) as f64
 //     };
-
+//
 //     let dice = {
 //         let r = p.intersection(q);
 //         (2.0 * (r.count_ones() as f64)) / (p.count_ones() + q.count_ones()) as f64
 //     };
-
+//
 //     let simpson = {
 //         let r = p.intersection(q);
 //         (r.count_ones() as f64) / (p.count_ones() as f64).min(q.count_ones() as f64)
 //     };
-
+//
 //     info!("Jaccard  = {:.5?}", jaccard);
 //     info!("Dice     = {:.5?}", dice);
 //     info!("Simpson  = {:.5?}", simpson);

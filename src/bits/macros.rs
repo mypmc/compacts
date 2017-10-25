@@ -1,3 +1,16 @@
+#[macro_export]
+macro_rules! bitmap {
+    ( $( $bit:expr ),* ) => {
+        {
+            let mut bits = $crate::bits::Map::new();
+            $(
+                bits.insert( $bit );
+            )*
+            bits
+        }
+    }
+}
+
 macro_rules! keypos {
     ( $bit:expr, $key:ident, $pos:ident ) => (
         let key  = $bit / 64;

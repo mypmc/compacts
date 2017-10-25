@@ -43,13 +43,15 @@ impl Map {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::{Map, PopCount};
-    ///
-    /// let mut bits = Map::new();
-    /// bits.insert(0);
-    /// assert!(bits.count1() == 1);
-    /// bits.clear();
-    /// assert!(bits.count1() == 0);
+    /// #[macro_use]
+    /// extern crate compacts;
+    /// fn main() {
+    ///     use compacts::bits::PopCount;
+    ///     let mut bits = bitmap!(0);
+    ///     assert!(bits.count1() == 1);
+    ///     bits.clear();
+    ///     assert!(bits.count1() == 0);
+    /// }
     /// ```
     pub fn clear(&mut self) {
         self.blocks.clear();
@@ -212,12 +214,15 @@ impl ops::Index<u32> for Map {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::Map;
-    /// let bits = Map::from(vec![0, 1 << 30]);
-    /// assert!(bits[0]);
-    /// assert!(!bits[1 << 10]);
-    /// assert!(!bits[1 << 20]);
-    /// assert!(bits[1 << 30]);
+    /// #[macro_use]
+    /// extern crate compacts;
+    /// fn main() {
+    ///     let bits = bitmap!(0, 1 << 30);
+    ///     assert!(bits[0]);
+    ///     assert!(!bits[1 << 10]);
+    ///     assert!(!bits[1 << 20]);
+    ///     assert!(bits[1 << 30]);
+    /// }
     /// ```
     fn index(&self, i: u32) -> &Self::Output {
         if self.contains(i) {
@@ -326,12 +331,16 @@ impl Select1<u32> for Map {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::{Map, Select1};
-    /// let bits = Map::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
-    /// assert_eq!(bits.select1(0), Some(0));
-    /// assert_eq!(bits.select1(1), Some(1));
-    /// assert_eq!(bits.select1(2), Some(4));
-    /// assert_eq!(bits.select1(3), Some(1 << 8));
+    /// #[macro_use]
+    /// extern crate compacts;
+    /// fn main() {
+    ///     use compacts::bits::Select1;
+    ///     let bits = bitmap![0, 1, 4, 1 << 8, 1 << 16];
+    ///     assert_eq!(bits.select1(0), Some(0));
+    ///     assert_eq!(bits.select1(1), Some(1));
+    ///     assert_eq!(bits.select1(2), Some(4));
+    ///     assert_eq!(bits.select1(3), Some(1 << 8));
+    /// }
     /// ```
     fn select1(&self, c: u32) -> Option<u32> {
         if self.count1() <= u64::from(c) {
@@ -356,12 +365,16 @@ impl Select0<u32> for Map {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::{Map, Select0};
-    /// let bits = Map::from(vec![0, 1, 4, 1 << 8, 1 << 16]);
-    /// assert_eq!(bits.select0(0), Some(2));
-    /// assert_eq!(bits.select0(1), Some(3));
-    /// assert_eq!(bits.select0(2), Some(5));
-    /// assert_eq!(bits.select0(3), Some(6));
+    /// #[macro_use]
+    /// extern crate compacts;
+    /// fn main() {
+    ///     use compacts::bits::Select0;
+    ///     let bits = bitmap![0, 1, 4, 1 << 8, 1 << 16];
+    ///     assert_eq!(bits.select0(0), Some(2));
+    ///     assert_eq!(bits.select0(1), Some(3));
+    ///     assert_eq!(bits.select0(2), Some(5));
+    ///     assert_eq!(bits.select0(3), Some(6));
+    /// }
     /// ```
     fn select0(&self, c: u32) -> Option<u32> {
         if self.count0() <= u64::from(c) {

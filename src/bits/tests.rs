@@ -221,98 +221,32 @@ quickcheck!{
 
 #[test]
 fn and() {
-    let b1 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 16);
-        vec.insert(1 << 20);
-        vec
-    };
-    let b2 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 10);
-        vec.insert(1 << 11);
-        vec.insert(1 << 20);
-        vec
-    };
-
+    let b1 = bitmap!(1 << 16, 1 << 20);
+    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20);
     let bits = b1.and(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 1);
 }
 
 #[test]
 fn or() {
-    let b1 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 16);
-        vec.insert(1 << 20);
-        vec
-    };
-
-    let b2 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 10);
-        vec.insert(1 << 11);
-        vec.insert(1 << 20);
-        vec
-    };
-
+    let b1 = bitmap!(1 << 16, 1 << 20);
+    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20);
     let bits = b1.or(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 4);
 }
 
 #[test]
 fn and_not() {
-    let b1 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 10);
-        vec.insert(1 << 11);
-        vec.insert(1 << 12);
-        vec.insert(1 << 16);
-        vec.insert(1 << 20);
-        vec
-    };
-    let b2 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 10);
-        vec.insert(1 << 11);
-        vec.insert(1 << 20);
-        vec
-    };
-
+    let b1 = bitmap!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
+    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20);
     let bits = b1.and_not(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 2);
 }
 
 #[test]
 fn xor() {
-    let b1 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 10); // 1024
-        vec.insert(1 << 11); // 2048
-        vec.insert(1 << 12); // 4096
-        vec.insert(1 << 16); // 65536
-        vec.insert(1 << 20); // 1048576
-        vec
-    };
-    let b2 = {
-        let mut vec = Map::new();
-        vec.insert(1 << 10); // 1024
-        vec.insert(1 << 11); // 2048
-        vec.insert(1 << 20); // 1048576
-        vec.insert(1 << 26); // 67108864
-        vec.insert(1 << 30); // 1073741824
-        vec
-    };
-
-    for b in b1.bits() {
-        println!("b1 {:?}", b);
-    }
-    for b in b2.bits() {
-        println!("b2 {:?}", b);
-    }
-
-    // 10 11 12 16 20
-    // 10 11       20 26 30
+    let b1 = bitmap!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
+    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20, 1 << 26, 1 << 30);
     let bits = b1.xor(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 4);
 }
@@ -325,7 +259,6 @@ where
 {
     let mut buf: Vec<u8> = Vec::with_capacity(2048);
     assert!(w.write_to(&mut buf).is_ok());
-    println!("{:?}", buf);
     assert!(r.read_from(&mut io::Cursor::new(buf)).is_ok());
 }
 
