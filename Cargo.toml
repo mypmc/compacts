@@ -1,6 +1,6 @@
 [package]
 name    = "compacts"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "Unlicense/MIT"

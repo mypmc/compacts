@@ -103,19 +103,17 @@ quickcheck!{
 }
 
 quickcheck!{
-    fn prop_map32_rank0_rank1(vec: Vec<u32>, i: u32) -> TestResult {
-        let b = bits::Map::from(vec);
+    fn prop_set_rank0_rank1(vec: Vec<u32>, i: u32) -> TestResult {
+        let b = bits::Set::from(vec);
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
-
-    fn prop_map32_rank0_select0(vec: Vec<u32>, i: u32) -> bool {
-        let b = bits::Map::from(vec);
+    fn prop_set_rank0_select0(vec: Vec<u32>, i: u32) -> bool {
+        let b = bits::Set::from(vec);
         check_rank_select!(0, b, i);
         true
     }
-
-    fn prop_map32_rank1_select1(vec: Vec<u32>, i: u32) -> bool {
-        let b = bits::Map::from(vec);
+    fn prop_set_rank1_select1(vec: Vec<u32>, i: u32) -> bool {
+        let b = bits::Set::from(vec);
         check_rank_select!(1, b, i);
         true
     }
@@ -199,19 +197,18 @@ macro_rules! commutative {
 }
 
 quickcheck!{
-    fn prop_associativity(vec1: Vec<u32>, vec2: Vec<u32>, vec3: Vec<u32>) -> bool {
-        let b1 = &bits::Map::from(vec1);
-        let b2 = &bits::Map::from(vec2);
-        let b3 = &bits::Map::from(vec3);
+    fn prop_set_associativity(vec1: Vec<u32>, vec2: Vec<u32>, vec3: Vec<u32>) -> bool {
+        let b1 = &bits::Set::from(vec1);
+        let b2 = &bits::Set::from(vec2);
+        let b3 = &bits::Set::from(vec3);
         let r1 = associative!(b1, b2, b3, and);
         let r2 = associative!(b1, b2, b3, or);
         let r3 = associative!(b1, b2, b3, xor);
         r1 && r2 && r3
     }
-
-    fn prop_commutativity(vec1: Vec<u32>, vec2: Vec<u32>) -> bool {
-        let b1 = &bits::Map::from(vec1);
-        let b2 = &bits::Map::from(vec2);
+    fn prop_set_commutativity(vec1: Vec<u32>, vec2: Vec<u32>) -> bool {
+        let b1 = &bits::Set::from(vec1);
+        let b2 = &bits::Set::from(vec2);
         let r1 = commutative!(b1, b2, and);
         let r2 = commutative!(b1, b2, or);
         let r3 = commutative!(b1, b2, xor);
@@ -220,33 +217,33 @@ quickcheck!{
 }
 
 #[test]
-fn and() {
-    let b1 = bitmap!(1 << 16, 1 << 20);
-    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20);
+fn set_and() {
+    let b1 = bitset!(1 << 16, 1 << 20);
+    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20);
     let bits = b1.and(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 1);
 }
 
 #[test]
-fn or() {
-    let b1 = bitmap!(1 << 16, 1 << 20);
-    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20);
+fn set_or() {
+    let b1 = bitset!(1 << 16, 1 << 20);
+    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20);
     let bits = b1.or(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 4);
 }
 
 #[test]
-fn and_not() {
-    let b1 = bitmap!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
-    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20);
+fn set_and_not() {
+    let b1 = bitset!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
+    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20);
     let bits = b1.and_not(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 2);
 }
 
 #[test]
-fn xor() {
-    let b1 = bitmap!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
-    let b2 = bitmap!(1 << 10, 1 << 11, 1 << 20, 1 << 26, 1 << 30);
+fn set_xor() {
+    let b1 = bitset!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
+    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20, 1 << 26, 1 << 30);
     let bits = b1.xor(&b2).bits().collect::<Vec<u32>>();
     assert_eq!(bits.len(), 4);
 }
@@ -299,20 +296,20 @@ fn block_io() {
 }
 
 quickcheck!{
-    fn prop_read_write_identity(vec: Vec<u32>) -> bool {
+    fn prop_set_read_write_identity(vec: Vec<u32>) -> bool {
         use std::iter::FromIterator;
-        let map1 = Map::from_iter(vec);
+        let set1 = Set::from_iter(vec);
         let mut buf = Vec::with_capacity(2048);
-        if let Err(_) = map1.write_to(&mut buf) {
+        if let Err(_) = set1.write_to(&mut buf) {
             return false
         }
-        let mut map2 = Map::new();
-        if let Err(_) = map2.read_from(&mut io::Cursor::new(&buf)) {
+        let mut set2 = Set::new();
+        if let Err(_) = set2.read_from(&mut io::Cursor::new(&buf)) {
             return false
         }
 
-        let pop_test = map1.count1() == map2.count1();
-        let bit_test = map1.bits().zip(map2.bits()).all(|(a, b)| a == b);
+        let pop_test = set1.count1() == set2.count1();
+        let bit_test = set1.bits().zip(set2.bits()).all(|(a, b)| a == b);
         pop_test && bit_test
     }
 }

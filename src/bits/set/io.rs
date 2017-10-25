@@ -59,16 +59,16 @@ impl RunIndex {
     }
 }
 
-impl bits::Map {
+impl bits::Set {
     fn sizeof_run_index(&self) -> usize {
-        (self.blocks.len() + 7) / 8
+        (self.entries.len() + 7) / 8
     }
 
     fn run_index(&self) -> RunIndex {
         let mut hasrun = false;
         let mut bitmap = vec![0u8; self.sizeof_run_index()];
-        for (i, b) in self.blocks.values().enumerate() {
-            if let bits::Block::Run16(_) = *b {
+        for (i, e) in self.entries.iter().enumerate() {
+            if let bits::Block::Run16(_) = e.block {
                 hasrun = true;
                 bitmap[i / 8] |= 1 << (i % 8);
             }
@@ -77,7 +77,7 @@ impl bits::Map {
     }
 }
 
-impl<W: io::Write> WriteTo<W> for bits::Map {
+impl<W: io::Write> WriteTo<W> for bits::Set {
     fn write_to(&self, w: &mut W) -> io::Result<()> {
         let runidx = self.run_index();
 
@@ -87,34 +87,34 @@ impl<W: io::Write> WriteTo<W> for bits::Map {
             (2 * mem::size_of::<u16>(), runidx.bytes().len())
         };
 
-        let sizeof_header = 2 * mem::size_of::<u16>() * self.blocks.len();
+        let sizeof_header = 2 * mem::size_of::<u16>() * self.entries.len();
         let sum_sizeof = sizeof_cookie + sizeof_runidx + sizeof_header;
 
         // serial cookie
         if runidx.empty() {
             SERIAL_NO_RUN.write_to(w)?;
-            (self.blocks.len() as u32).write_to(w)?;
+            (self.entries.len() as u32).write_to(w)?;
         } else {
             SERIAL_COOKIE.write_to(w)?;
-            ((self.blocks.len() - 1) as u16).write_to(w)?;
+            ((self.entries.len() - 1) as u16).write_to(w)?;
 
             w.write_all(runidx.bytes())?;
         };
 
         // header
-        for (&key, block) in &self.blocks {
-            let pop_decr = (block.count1() - 1) as u16;
-            key.write_to(w)?;
+        for e in &self.entries {
+            let pop_decr = (e.block.count1() - 1) as u16;
+            e.key.write_to(w)?;
             pop_decr.write_to(w)?;
         }
 
-        if runidx.empty() || self.blocks.len() >= NO_OFFSET_THRESHOLD as usize {
+        if runidx.empty() || self.entries.len() >= NO_OFFSET_THRESHOLD as usize {
             // offset
-            let mut offset = sum_sizeof + 2 * mem::size_of::<u16>() * self.blocks.len();
-            for b in self.blocks.values() {
+            let mut offset = sum_sizeof + 2 * mem::size_of::<u16>() * self.entries.len();
+            for e in &self.entries {
                 (offset as u32).write_to(w)?;
-                let pop = b.count1();
-                match *b {
+                let pop = e.block.count1();
+                match e.block {
                     bits::Block::Seq16(_) => {
                         assert!(pop as usize <= bits::Seq16::THRESHOLD);
                         offset += mem::size_of::<u16>() * pop as usize;
@@ -135,8 +135,8 @@ impl<W: io::Write> WriteTo<W> for bits::Map {
         // Write an optimized block (clone if it should do so),
         // so that the above assertions can be removed.
 
-        for b in self.blocks.values() {
-            match *b {
+        for e in &self.entries {
+            match e.block {
                 bits::Block::Seq16(ref seq) => seq.write_to(w)?,
                 bits::Block::Arr64(ref arr) => arr.write_to(w)?,
                 bits::Block::Run16(ref run) => run.write_to(w)?,
@@ -166,7 +166,7 @@ fn discard_offset<R: io::Read>(r: &mut R, size: usize) -> io::Result<()> {
     Ok(())
 }
 
-impl<R: io::Read> ReadFrom<R> for bits::Map {
+impl<R: io::Read> ReadFrom<R> for bits::Set {
     fn read_from(&mut self, r: &mut R) -> io::Result<()> {
         self.clear();
 
@@ -193,7 +193,7 @@ impl<R: io::Read> ReadFrom<R> for bits::Map {
                         block.read_from(r)?;
                         bits::Block::from(block)
                     };
-                    self.blocks.insert(key, block);
+                    self.entries.push(super::Keyed { key, block });
                 }
                 Ok(())
             }
@@ -236,7 +236,7 @@ impl<R: io::Read> ReadFrom<R> for bits::Map {
                         block.read_from(r)?;
                         bits::Block::from(block)
                     };
-                    self.blocks.insert(key, block);
+                    self.entries.push(super::Keyed { key, block });
                 }
                 Ok(())
             }

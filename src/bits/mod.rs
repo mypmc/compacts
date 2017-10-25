@@ -5,7 +5,7 @@ mod dict;
 mod pair;
 mod entry;
 mod block;
-mod map32;
+mod set;
 #[cfg(test)]
 mod tests;
 
@@ -21,4 +21,4 @@ pub use self::entry::Entry;
 pub use self::pair::{And, AndNot, Or, Xor};
 pub use self::pair::{and, and_not, or, xor};
 pub use self::dict::{PopCount, Rank, Select0, Select1};
-pub use self::map32::{Entries, Map};
+pub use self::set::Set;

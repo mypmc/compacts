@@ -1,11 +1,9 @@
 #[macro_export]
-macro_rules! bitmap {
+macro_rules! bitset {
     ( $( $bit:expr ),* ) => {
         {
-            let mut bits = $crate::bits::Map::new();
-            $(
-                bits.insert( $bit );
-            )*
+            let mut bits = $crate::bits::Set::new();
+            $( bits.insert( $bit ); )*
             bits
         }
     }

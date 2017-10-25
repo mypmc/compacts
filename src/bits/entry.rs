@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use bits;
 use super::Assign;
 
-/// A part of `Map`.
+/// An internal component of `bits::Set`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry<'a> {
     pub(crate) key: u16,

@@ -98,10 +98,10 @@ fn read_write_set_zstd() {
 
 fn must_open_bitset(p: &str) -> bits::Set {
     let file = fs::File::open(p).unwrap();
-    let mut map = bits::Set::new();
-    map.read_from(&mut io::BufReader::new(file)).unwrap();
-    map.optimize();
-    map
+    let mut set = bits::Set::new();
+    set.read_from(&mut io::BufReader::new(file)).unwrap();
+    set.optimize();
+    set
 }
 
 fn bitsetwithruns() -> bits::Set {
@@ -119,8 +119,8 @@ fn bitsetwithoutruns() -> bits::Set {
 //     let size = (1 << 15) * 7;
 //     let maxn = (1 << 16) * 2;
 //
-//     let p = &gen_bitmap!(size, maxn, rng);
-//     let q = &gen_bitmap!(size, maxn, rng);
+//     let p = &gen_bitset!(size, maxn, rng);
+//     let q = &gen_bitset!(size, maxn, rng);
 //
 //     let jaccard = {
 //         let r = p.intersection(q);
