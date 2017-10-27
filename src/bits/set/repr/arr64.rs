@@ -1,8 +1,10 @@
 use std::{fmt, io, ops};
 use std::iter::FromIterator;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use {ReadFrom, WriteTo};
-use bits::{self, Run16, Seq16};
+
+use bits;
+use io::{ReadFrom, WriteTo};
+use super::{Run16, Seq16};
 
 #[derive(Clone)]
 pub(crate) struct Arr64 {
@@ -66,11 +68,10 @@ impl Arr64 {
     }
 
     fn insert_range(&mut self, range: &ops::RangeInclusive<u16>) {
-        const WIDTH: usize = 64;
         let s = range.start as usize;
         let e = range.end as usize;
-        let sw = s / WIDTH;
-        let ew = e / WIDTH;
+        let sw = s / bits::U64_BITSIZE;
+        let ew = e / bits::U64_BITSIZE;
 
         let (head, last) = range_of(s, e + 1);
 
@@ -155,7 +156,7 @@ impl FromIterator<u16> for Arr64 {
     }
 }
 
-impl<'a> bits::Assign<&'a Arr64> for Arr64 {
+impl<'a> super::Assign<&'a Arr64> for Arr64 {
     fn and_assign(&mut self, arr64: &'a Arr64) {
         assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {

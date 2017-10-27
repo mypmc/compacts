@@ -13,17 +13,17 @@ fn read_write_set_from_file() {
     let m1 = bitsetwithruns();
     let m2 = bitsetwithoutruns();
 
-    for i in 0..100000 {
+    for i in 0..100_000 {
         if i % 1000 == 0 {
             assert!(m1[i] && m2[i]);
         } else {
             assert!(!m1[i] && !m2[i]);
         }
     }
-    for i in 100000..200000 {
+    for i in 100_000..200_000 {
         assert!(m1[i * 3] && m2[i * 3]);
     }
-    for i in 700000..800000 {
+    for i in 700_000..800_000 {
         assert!(m1[i] && m2[i]);
     }
 

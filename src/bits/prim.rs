@@ -30,4 +30,4 @@ macro_rules! impl_SplitMerge {
         }
     )*)
 }
-impl_SplitMerge!((u64, u32, 64), (u32, u16, 32), (u16, u8, 16));
+impl_SplitMerge!((u64, u32, 64), (u32, u16, 32));

@@ -2,9 +2,10 @@ use std::ops::{Range, RangeInclusive};
 use std::{cmp, fmt, io, u16};
 use itertools;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use {ReadFrom, WriteTo};
-use bits::pair::*;
-use bits::{Arr64, Seq16};
+
+use bits;
+use io::{ReadFrom, WriteTo};
+use super::{Arr64, Seq16};
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct Run16 {
@@ -24,8 +25,8 @@ impl Run16 {
 
     pub fn search(&self, x: &u16) -> Result<usize, usize> {
         use std::cmp::Ordering;
-        self.ranges
-            .binary_search_by(|range| if range.start <= *x && *x <= range.end {
+        self.ranges.binary_search_by(|range| {
+            if range.start <= *x && *x <= range.end {
                 Ordering::Equal
             } else if *x < range.start {
                 Ordering::Greater
@@ -33,7 +34,8 @@ impl Run16 {
                 Ordering::Less
             } else {
                 unreachable!()
-            })
+            }
+        })
     }
 
     fn index_to_insert(&self, x: &u16) -> Option<usize> {
@@ -137,7 +139,7 @@ impl From<Arr64> for Run16 {
 }
 impl<'a> From<&'a Arr64> for Run16 {
     fn from(arr64: &'a Arr64) -> Self {
-        const WIDTH: u16 = 64;
+        const WIDTH: u16 = bits::U64_BITSIZE as u16;
         let mut run = Run16::new();
         let enumerate = arr64.boxarr.iter().enumerate();
         for (i, &bit) in enumerate.filter(|&(_, &v)| v != 0) {
@@ -200,7 +202,7 @@ macro_rules! do_pair {
     }
 }
 
-impl<'a> Assign<&'a Run16> for Run16 {
+impl<'a> super::Assign<&'a Run16> for Run16 {
     fn and_assign(&mut self, rle16: &'a Run16) {
         *self = do_pair!(self, rle16, intersection);
     }

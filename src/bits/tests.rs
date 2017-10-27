@@ -1,10 +1,8 @@
 use std::{io, u16};
 use quickcheck::TestResult;
 
-use {ReadFrom, WriteTo};
-use bits;
-use self::bits::*;
-use self::bits::block::*;
+use io::{ReadFrom, WriteTo};
+use bits::*;
 
 fn to_seq16(vec: &Vec<u16>) -> Seq16 {
     Seq16::from(vec.clone())
@@ -16,16 +14,16 @@ fn to_rle16(vec: &Vec<u16>) -> Run16 {
     vec.iter().collect()
 }
 
-fn all_kind_block(vec: &Vec<u16>) -> (Block, Block, Block) {
-    let b1 = Block::Seq16(to_seq16(vec));
-    let b2 = Block::Arr64(to_arr64(vec));
-    let b3 = Block::Run16(to_rle16(vec));
+fn all_kind_block(vec: &Vec<u16>) -> (Repr, Repr, Repr) {
+    let b1 = Repr::Seq(to_seq16(vec));
+    let b2 = Repr::Arr(to_arr64(vec));
+    let b3 = Repr::Run(to_rle16(vec));
     (b1, b2, b3)
 }
 
 quickcheck!{
     fn prop_u64_split_merge_identity(w: u64) -> bool {
-        w == <u64 as ::bits::prim::Merge>::merge(w.split())
+        w == <u64 as Merge>::merge(w.split())
     }
     fn prop_u64_pop_count(word: u64) -> TestResult {
         let c1: u32 = word.count1();
@@ -104,16 +102,16 @@ quickcheck!{
 
 quickcheck!{
     fn prop_set_rank0_rank1(vec: Vec<u32>, i: u32) -> TestResult {
-        let b = bits::Set::from(vec);
+        let b = Set::from(vec);
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
     fn prop_set_rank0_select0(vec: Vec<u32>, i: u32) -> bool {
-        let b = bits::Set::from(vec);
+        let b = Set::from(vec);
         check_rank_select!(0, b, i);
         true
     }
     fn prop_set_rank1_select1(vec: Vec<u32>, i: u32) -> bool {
-        let b = bits::Set::from(vec);
+        let b = Set::from(vec);
         check_rank_select!(1, b, i);
         true
     }
@@ -121,18 +119,18 @@ quickcheck!{
 
 quickcheck!{
     fn prop_block_seq16_rank0_rank1(vec: Vec<u16>, i: u16) -> TestResult {
-        let b = Block::Seq16(to_seq16(&vec));
+        let b = Repr::Seq(to_seq16(&vec));
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
 
     fn prop_block_seq16_rank0_select0(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Seq16(to_seq16(&vec));
+        let b = Repr::Seq(to_seq16(&vec));
         check_rank_select!(0, b, i);
         true
     }
 
     fn prop_block_seq16_rank1_select1(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Seq16(to_seq16(&vec));
+        let b = Repr::Seq(to_seq16(&vec));
         check_rank_select!(1, b, i);
         true
     }
@@ -140,16 +138,16 @@ quickcheck!{
 
 quickcheck!{
     fn prop_block_arr64_rank0_rank1(vec: Vec<u16>, i: u16) -> TestResult {
-        let b = Block::Arr64(to_arr64(&vec));
+        let b = Repr::Arr(to_arr64(&vec));
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
     fn prop_block_arr64_rank0_select0(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Arr64(to_arr64(&vec));
+        let b = Repr::Arr(to_arr64(&vec));
         check_rank_select!(0, b, i);
         true
     }
     fn prop_block_arr64_rank1_select1(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Arr64(to_arr64(&vec));
+        let b = Repr::Arr(to_arr64(&vec));
         check_rank_select!(1, b, i);
         true
     }
@@ -157,18 +155,18 @@ quickcheck!{
 
 quickcheck!{
     fn prop_block_rle16_rank0_rank1(vec: Vec<u16>, i: u16) -> TestResult {
-        let b = Block::Run16(to_rle16(&vec));
+        let b = Repr::Run(to_rle16(&vec));
         TestResult::from_bool(b.rank1(i) + b.rank0(i) == i)
     }
 
     fn prop_block_rle16_rank0_select0(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Run16(to_rle16(&vec));
+        let b = Repr::Run(to_rle16(&vec));
         check_rank_select!(0, b, i);
         true
     }
 
     fn prop_block_rle16_rank1_select1(vec: Vec<u16>, i: u16) -> bool {
-        let b = Block::Run16(to_rle16(&vec));
+        let b = Repr::Run(to_rle16(&vec));
         check_rank_select!(1, b, i);
         true
     }
@@ -198,17 +196,17 @@ macro_rules! commutative {
 
 quickcheck!{
     fn prop_set_associativity(vec1: Vec<u32>, vec2: Vec<u32>, vec3: Vec<u32>) -> bool {
-        let b1 = &bits::Set::from(vec1);
-        let b2 = &bits::Set::from(vec2);
-        let b3 = &bits::Set::from(vec3);
+        let b1 = &Set::from(vec1);
+        let b2 = &Set::from(vec2);
+        let b3 = &Set::from(vec3);
         let r1 = associative!(b1, b2, b3, and);
         let r2 = associative!(b1, b2, b3, or);
         let r3 = associative!(b1, b2, b3, xor);
         r1 && r2 && r3
     }
     fn prop_set_commutativity(vec1: Vec<u32>, vec2: Vec<u32>) -> bool {
-        let b1 = &bits::Set::from(vec1);
-        let b2 = &bits::Set::from(vec2);
+        let b1 = &Set::from(vec1);
+        let b2 = &Set::from(vec2);
         let r1 = commutative!(b1, b2, and);
         let r2 = commutative!(b1, b2, or);
         let r3 = commutative!(b1, b2, xor);

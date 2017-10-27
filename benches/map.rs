@@ -172,15 +172,15 @@ fn set_read_from_buff_withoutruns(bench: &mut Bencher) {
 
 fn test_set() -> Set {
     let mut set = Set::new();
-    for i in 0..100000 {
+    for i in 0..100_000 {
         if i % 1000 == 0 {
             set.insert(i);
         }
     }
-    for i in 100000..200000 {
+    for i in 100_000..200_000 {
         set.insert(i * 3);
     }
-    for i in 700000..800000 {
+    for i in 700_000..800_000 {
         set.insert(i);
     }
     set.optimize();

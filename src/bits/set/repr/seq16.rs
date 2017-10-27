@@ -1,8 +1,9 @@
 use std::{cmp, fmt, io};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use {ReadFrom, WriteTo};
-use bits::{self, Compare};
-use bits::{Arr64, Block, Run16};
+
+use bits;
+use io::{ReadFrom, WriteTo};
+use super::{Arr64, Compare, Run16};
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct Seq16 {
@@ -15,17 +16,15 @@ impl fmt::Debug for Seq16 {
 }
 
 impl Seq16 {
-    pub const THRESHOLD: usize = 4096;
-
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn with_capacity(cap: usize) -> Self {
-        let bounded = if cap <= Self::THRESHOLD {
+        let bounded = if cap <= bits::SEQ_MAX_LEN {
             cap
         } else {
-            Self::THRESHOLD
+            bits::SEQ_MAX_LEN
         };
         let vector = Vec::with_capacity(bounded);
         Seq16 { vector }
@@ -97,12 +96,12 @@ impl From<Vec<u16>> for Seq16 {
         let mut vector = vector;
         vector.sort();
         vector.dedup();
-        assert!(vector.len() <= Block::CAPACITY);
+        assert!(vector.len() <= bits::SEQ_MAX_LEN);
         Seq16 { vector }
     }
 }
 
-impl<'a> bits::Assign<&'a Seq16> for Seq16 {
+impl<'a> super::Assign<&'a Seq16> for Seq16 {
     fn and_assign(&mut self, seq16: &'a Seq16) {
         *self = {
             let data = Compare::and(&*self, seq16).filter_map(|tup| match tup {

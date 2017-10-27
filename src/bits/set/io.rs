@@ -4,6 +4,7 @@ use std::{fmt, io, mem};
 
 use bits::{self, PopCount};
 use io::{read_from, ReadFrom, WriteTo};
+use super::{Arr64, Run16, Seq16};
 
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 
@@ -33,6 +34,8 @@ const SERIAL_NO_RUN: u32 = 12_346; // `Seq16` and `Arr64`
 //
 // After scanning the cookie header, we know how many containers are present in the bitmap.
 
+
+const REPR16_CAPACITY: usize = 1 << 16;
 const NO_OFFSET_THRESHOLD: u8 = 4;
 
 struct RunIndex {
@@ -59,16 +62,16 @@ impl RunIndex {
     }
 }
 
-impl bits::Set {
+impl super::Set {
     fn sizeof_run_index(&self) -> usize {
-        (self.entries.len() + 7) / 8
+        (self.blocks.len() + 7) / 8
     }
 
     fn run_index(&self) -> RunIndex {
         let mut hasrun = false;
         let mut bitmap = vec![0u8; self.sizeof_run_index()];
-        for (i, e) in self.entries.iter().enumerate() {
-            if let bits::Block::Run16(_) = e.block {
+        for (i, b) in self.blocks.iter().enumerate() {
+            if let super::Repr::Run(_) = b.repr {
                 hasrun = true;
                 bitmap[i / 8] |= 1 << (i % 8);
             }
@@ -87,43 +90,43 @@ impl<W: io::Write> WriteTo<W> for bits::Set {
             (2 * mem::size_of::<u16>(), runidx.bytes().len())
         };
 
-        let sizeof_header = 2 * mem::size_of::<u16>() * self.entries.len();
+        let sizeof_header = 2 * mem::size_of::<u16>() * self.blocks.len();
         let sum_sizeof = sizeof_cookie + sizeof_runidx + sizeof_header;
 
         // serial cookie
         if runidx.empty() {
             SERIAL_NO_RUN.write_to(w)?;
-            (self.entries.len() as u32).write_to(w)?;
+            (self.blocks.len() as u32).write_to(w)?;
         } else {
             SERIAL_COOKIE.write_to(w)?;
-            ((self.entries.len() - 1) as u16).write_to(w)?;
+            ((self.blocks.len() - 1) as u16).write_to(w)?;
 
             w.write_all(runidx.bytes())?;
         };
 
         // header
-        for e in &self.entries {
-            let pop_decr = (e.block.count1() - 1) as u16;
-            e.key.write_to(w)?;
-            pop_decr.write_to(w)?;
+        for b in &self.blocks {
+            let weight = (b.repr.count1() - 1) as u16;
+            b.slot.write_to(w)?;
+            weight.write_to(w)?;
         }
 
-        if runidx.empty() || self.entries.len() >= NO_OFFSET_THRESHOLD as usize {
+        if runidx.empty() || self.blocks.len() >= NO_OFFSET_THRESHOLD as usize {
             // offset
-            let mut offset = sum_sizeof + 2 * mem::size_of::<u16>() * self.entries.len();
-            for e in &self.entries {
+            let mut offset = sum_sizeof + 2 * mem::size_of::<u16>() * self.blocks.len();
+            for b in &self.blocks {
                 (offset as u32).write_to(w)?;
-                let pop = e.block.count1();
-                match e.block {
-                    bits::Block::Seq16(_) => {
-                        assert!(pop as usize <= bits::Seq16::THRESHOLD);
+                let pop = b.repr.count1();
+                match b.repr {
+                    super::Repr::Seq(_) => {
+                        assert!(pop as usize <= bits::SEQ_MAX_LEN);
                         offset += mem::size_of::<u16>() * pop as usize;
                     }
-                    bits::Block::Arr64(_) => {
-                        assert!(pop as usize > bits::Seq16::THRESHOLD);
-                        offset += bits::Block::CAPACITY / 8;
+                    super::Repr::Arr(_) => {
+                        assert!(pop as usize > bits::SEQ_MAX_LEN);
+                        offset += REPR16_CAPACITY / 8;
                     }
-                    bits::Block::Run16(ref run) => {
+                    super::Repr::Run(ref run) => {
                         offset += mem::size_of::<u16>();
                         offset += 2 * mem::size_of::<u16>() * run.ranges.len();
                     }
@@ -135,11 +138,11 @@ impl<W: io::Write> WriteTo<W> for bits::Set {
         // Write an optimized block (clone if it should do so),
         // so that the above assertions can be removed.
 
-        for e in &self.entries {
-            match e.block {
-                bits::Block::Seq16(ref seq) => seq.write_to(w)?,
-                bits::Block::Arr64(ref arr) => arr.write_to(w)?,
-                bits::Block::Run16(ref run) => run.write_to(w)?,
+        for b in &self.blocks {
+            match b.repr {
+                super::Repr::Seq(ref seq) => seq.write_to(w)?,
+                super::Repr::Arr(ref arr) => arr.write_to(w)?,
+                super::Repr::Run(ref run) => run.write_to(w)?,
             }
         }
 
@@ -180,25 +183,24 @@ impl<R: io::Read> ReadFrom<R> for bits::Set {
                 discard_offset(r, block_len)?;
 
                 for i in 0..block_len {
-                    let key = header[i].0;
+                    let slot = header[i].0;
                     let pop = header[i].1 as usize;
-
-                    let block = if pop > bits::Seq16::THRESHOLD {
-                        let block = read_from::<R, bits::Arr64>(r)?;
-                        bits::Block::from(block)
+                    let repr = if pop > bits::SEQ_MAX_LEN {
+                        let block = read_from::<R, Arr64>(r)?;
+                        super::Repr::from(block)
                     } else {
-                        let mut block = bits::Seq16 {
+                        let mut seq = Seq16 {
                             vector: vec![0; pop],
                         };
-                        block.read_from(r)?;
-                        bits::Block::from(block)
+                        seq.read_from(r)?;
+                        super::Repr::from(seq)
                     };
-                    self.entries.push(super::Keyed { key, block });
+                    self.blocks.push(super::Block { slot, repr });
                 }
                 Ok(())
             }
 
-            cookie if cookie & 0x0000FFFF == u32::from(SERIAL_COOKIE) => {
+            cookie if cookie & 0x_0000_FFFF == u32::from(SERIAL_COOKIE) => {
                 let block_len = (cookie.wrapping_shr(16) + 1) as usize;
                 let bytes_len = (block_len + 7) / 8;
 
@@ -220,23 +222,23 @@ impl<R: io::Read> ReadFrom<R> for bits::Set {
                 }
 
                 for i in 0..block_len {
-                    let key = header[i].0;
+                    let slot = header[i].0;
                     let pop = header[i].1 as usize;
 
-                    let block = if runidx.bitmap[i / 8] & (1 << (i % 8)) > 0 {
-                        let block = read_from::<R, bits::Run16>(r)?;
-                        bits::Block::from(block)
-                    } else if pop > bits::Seq16::THRESHOLD {
-                        let block = read_from::<R, bits::Arr64>(r)?;
-                        bits::Block::from(block)
+                    let repr = if runidx.bitmap[i / 8] & (1 << (i % 8)) > 0 {
+                        let run16 = read_from::<R, Run16>(r)?;
+                        super::Repr::from(run16)
+                    } else if pop > bits::SEQ_MAX_LEN {
+                        let arr64 = read_from::<R, Arr64>(r)?;
+                        super::Repr::from(arr64)
                     } else {
-                        let mut block = bits::Seq16 {
+                        let mut seq16 = Seq16 {
                             vector: vec![0; pop],
                         };
-                        block.read_from(r)?;
-                        bits::Block::from(block)
+                        seq16.read_from(r)?;
+                        super::Repr::from(seq16)
                     };
-                    self.entries.push(super::Keyed { key, block });
+                    self.blocks.push(super::Block { slot, repr });
                 }
                 Ok(())
             }

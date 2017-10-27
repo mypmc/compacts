@@ -2,7 +2,7 @@ use std::iter::Peekable;
 use std::cmp::{self, Ordering};
 use std::marker::PhantomData;
 
-use super::sealed;
+use bits::sealed;
 use self::Ordering::{Equal as EQ, Greater as GT, Less as LT};
 
 pub struct Comparing<L, R, T, O>

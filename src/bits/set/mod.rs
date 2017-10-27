@@ -1,42 +1,50 @@
 mod io;
+mod repr;
+mod pair;
 
 use std::{iter, ops, slice};
 use std::fmt::{self, Debug, Formatter};
 use std::borrow::Cow;
-
-use bits::{self, Block, Merge, Split};
+use bits::{self, Merge, Split};
 use bits::{PopCount, Rank, Select0, Select1};
 
-/// Set of `Block`s.
+use self::pair::{Assign, Compare};
+
+pub use self::pair::{Entry, Pair};
+pub use self::pair::{And, AndNot, Or, Xor};
+pub use self::pair::{and, and_not, or, xor};
+pub(crate) use self::repr::Repr;
+pub(crate) use self::repr::{Arr64, Run16, Seq16};
+
+/// Set of u32.
 #[derive(Clone, Default)]
 pub struct Set {
-    entries: Vec<Keyed>,
+    blocks: Vec<Block>,
 }
 #[derive(Clone, Default)]
-pub struct Keyed {
-    key: u16,
-    block: Block,
+struct Block {
+    slot: u16,
+    repr: Repr,
 }
 
 impl Debug for Set {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let b = self.entries.len();
+        let b = self.blocks.len();
         write!(f, "Set {{ {:?} }}", b)
     }
 }
 
 impl Set {
+    /// Return new Set.
     pub fn new() -> Self {
-        Set {
-            entries: Vec::new(),
-        }
+        Set { blocks: Vec::new() }
     }
 
     fn search(&self, key: u16) -> Result<usize, usize> {
-        self.entries.binary_search_by_key(&key, |ref e| e.key)
+        self.blocks.binary_search_by_key(&key, |block| block.slot)
     }
 
-    /// Clear contents.
+    /// Clear contents from set.
     ///
     /// # Examples
     ///
@@ -52,32 +60,10 @@ impl Set {
     /// }
     /// ```
     pub fn clear(&mut self) {
-        self.entries.clear();
+        self.blocks.clear();
     }
 
-    /// Return `true` if the value exists.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use compacts::bits::{Set, PopCount};
-    ///
-    /// let mut bits = Set::new();
-    /// assert_eq!(bits.count0(), 1 << 32);
-    /// bits.insert(1);
-    /// assert!(!bits.get(0));
-    /// assert!(bits.get(1));
-    /// assert!(!bits.get(2));
-    /// assert_eq!(bits.count1(), 1);
-    /// ```
-    pub fn get(&self, i: u32) -> bool {
-        let (key, bit) = i.split();
-        self.search(key)
-            .map(|j| self.entries[j].block.contains(bit))
-            .unwrap_or(false)
-    }
-
-    /// Set bit at `i`, and return a **previous** value.
+    /// Set flag at `x`, and return a **previous** value.
     ///
     /// # Examples
     ///
@@ -85,24 +71,22 @@ impl Set {
     /// #[macro_use]
     /// extern crate compacts;
     /// fn main() {
-    ///     use compacts::bits::PopCount;
     ///     let mut bits = bitset![1, 2, 8];
     ///     assert!(!bits.set(0, false));
     ///     assert!(bits.set(1, false));
     ///     assert!(!bits.set(1, true));
     ///     assert!(bits.set(1, true));
-    ///     assert_eq!(bits.count1(), 3);
     /// }
     /// ```
-    pub fn set(&mut self, i: u32, flag: bool) -> bool {
+    pub fn set(&mut self, x: u32, flag: bool) -> bool {
         if flag {
-            !self.insert(i)
+            !self.insert(x)
         } else {
-            self.remove(i)
+            self.remove(x)
         }
     }
 
-    /// Return `true` if the value exists.
+    /// Return `true` if `x` exists.
     ///
     /// # Examples
     ///
@@ -118,13 +102,13 @@ impl Set {
     /// assert_eq!(bits.count1(), 1);
     /// ```
     pub fn contains(&self, x: u32) -> bool {
-        let (key, bit) = x.split();
-        self.search(key)
-            .map(|i| self.entries[i].block.contains(bit))
+        let (slot, bit) = x.split();
+        self.search(slot)
+            .map(|i| self.blocks[i].repr.contains(bit))
             .unwrap_or(false)
     }
 
-    /// Return `true` if the value doesn't exists (false) and inserted successfuly.
+    /// Equivalent to `!set(x, true)`
     ///
     /// # Examples
     ///
@@ -138,23 +122,23 @@ impl Set {
     /// assert_eq!(bits.count1(), 1);
     /// ```
     pub fn insert(&mut self, x: u32) -> bool {
-        let (key, bit) = x.split();
-        let pos = self.search(key);
+        let (slot, bit) = x.split();
+        let pos = self.search(slot);
         match pos {
             Ok(i) => {
-                let mut e = self.entries.get_mut(i).unwrap();
-                e.block.insert(bit)
+                let block = &mut self.blocks[i];
+                block.repr.insert(bit)
             }
             Err(i) => {
-                let mut block = Block::new();
-                block.insert(bit);
-                self.entries.insert(i, Keyed { key, block });
+                let mut repr = Repr::new();
+                repr.insert(bit);
+                self.blocks.insert(i, Block { slot, repr });
                 true
             }
         }
     }
 
-    /// Return `true` if the value exists (true) and removed successfuly.
+    /// Equivalent to `set(x, false)`
     ///
     /// # Examples
     ///
@@ -168,12 +152,12 @@ impl Set {
     /// assert_eq!(bits.count1(), 0);
     /// ```
     pub fn remove(&mut self, x: u32) -> bool {
-        let (key, bit) = x.split();
-        let pos = self.search(key);
+        let (slot, bit) = x.split();
+        let pos = self.search(slot);
         match pos {
             Ok(i) => {
-                let mut e = self.entries.get_mut(i).unwrap();
-                e.block.remove(bit)
+                let block = &mut self.blocks[i];
+                block.repr.remove(bit)
             }
             Err(_) => false,
         }
@@ -181,55 +165,51 @@ impl Set {
 
     /// Optimize innternal data representaions.
     pub fn optimize(&mut self) {
-        for keyed in &mut self.entries {
-            keyed.block.optimize();
+        for block in &mut self.blocks {
+            block.repr.optimize();
         }
-        self.entries.retain(|ref e| e.block.count1() > 0);
-        self.entries.shrink_to_fit();
+        self.blocks.retain(|block| block.repr.count1() > 0);
+        self.blocks.shrink_to_fit();
     }
 
     // pub fn mem_size(&self) -> usize {
-    //     self.blocks.values().map(|b| b.mem_size()).sum()
+    //     self.dat.values().map(|b| b.mem_size()).sum()
     // }
 
-    // // pub fn stats<'a>(&'a self) -> impl Iterator<Item = block::Stats> + 'a {
-    // //     self.blocks.values().map(|b| b.stats())
-    // // }
-
-    pub fn entries(&self) -> Entries {
-        Entries(self.entries.iter().map(to_entry))
+    fn blocks(&self) -> Blocks {
+        Blocks(self.blocks.iter().map(to_entry))
     }
 
     pub fn bits<'a>(&'a self) -> impl Iterator<Item = u32> + 'a {
-        self.entries.iter().flat_map(|ref keyed| {
-            let key = keyed.key;
-            keyed
-                .block
+        self.blocks.iter().flat_map(|block| {
+            let slot = block.slot;
+            block
+                .repr
                 .iter()
-                .map(move |val| <u32 as Merge>::merge((key, val)))
+                .map(move |val| <u32 as Merge>::merge((slot, val)))
         })
     }
 }
 
-type ToEntry = for<'x> fn(&'x Keyed) -> bits::Entry<'x>;
+type ToEntry = for<'x> fn(&'x Block) -> bits::Entry<'x>;
 
-pub struct Entries<'a>(iter::Map<slice::Iter<'a, Keyed>, ToEntry>);
+pub struct Blocks<'a>(iter::Map<slice::Iter<'a, Block>, ToEntry>);
 
-fn to_entry<'a>(keyed: &'a Keyed) -> bits::Entry<'a> {
-    let key = keyed.key;
-    let cow = Cow::Borrowed(&keyed.block);
+fn to_entry(block: &Block) -> bits::Entry {
+    let key = block.slot;
+    let cow = Cow::Borrowed(&block.repr);
     bits::Entry { key, cow }
 }
 
 impl<'a> IntoIterator for &'a Set {
     type Item = bits::Entry<'a>;
-    type IntoIter = Entries<'a>;
+    type IntoIter = Blocks<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        self.entries()
+        self.blocks()
     }
 }
 
-impl<'a> Iterator for Entries<'a> {
+impl<'a> Iterator for Blocks<'a> {
     type Item = bits::Entry<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -330,20 +310,20 @@ impl<'a> iter::FromIterator<bits::Entry<'a>> for Set {
     where
         I: IntoIterator<Item = bits::Entry<'a>>,
     {
-        let mut entries = Vec::new();
+        let mut blocks = Vec::new();
         for e in iter {
-            let key = e.key;
-            let block = {
-                let mut block = e.cow.into_owned();
-                block.optimize();
-                block
+            let slot = e.key;
+            let repr = {
+                let mut repr = e.cow.into_owned();
+                repr.optimize();
+                repr
             };
-            entries.push(Keyed { key, block });
+            blocks.push(Block { slot, repr });
         }
 
         // assume I is sorted by key and all keys are unique.
 
-        Set { entries }
+        Set { blocks }
     }
 }
 
@@ -362,10 +342,7 @@ impl PopCount<u64> for Set {
     /// }
     /// ```
     fn count1(&self) -> u64 {
-        self.entries
-            .iter()
-            .map(|e| u64::from(e.block.count1()))
-            .sum()
+        self.blocks.iter().map(|b| u64::from(b.repr.count1())).sum()
     }
 }
 
@@ -389,14 +366,14 @@ impl Rank<u32> for Set {
     fn rank1(&self, i: u32) -> u32 {
         let (hi, lo) = i.split();
         let mut rank = 0;
-        for e in &self.entries {
-            if e.key > hi {
+        for block in &self.blocks {
+            if block.slot > hi {
                 break;
-            } else if e.key == hi {
-                rank += u32::from(e.block.rank1(lo));
+            } else if block.slot == hi {
+                rank += u32::from(block.repr.rank1(lo));
                 break;
             } else {
-                rank += u32::from(e.block.count1());
+                rank += block.repr.count1();
             }
         }
         rank
@@ -423,13 +400,13 @@ impl Select1<u32> for Set {
             return None;
         }
         let mut remain = c;
-        for e in &self.entries {
-            let w = e.block.count1();
+        for block in &self.blocks {
+            let w = block.repr.count1();
             if remain >= w {
                 remain -= w;
             } else {
-                let s = u32::from(e.block.select1(remain as u16).unwrap());
-                let k = u32::from(e.key) << 16;
+                let s = u32::from(block.repr.select1(remain as u16).unwrap());
+                let k = u32::from(block.slot) << 16;
                 return Some(s + k);
             }
         }
