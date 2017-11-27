@@ -4,6 +4,7 @@ macro_rules! bitset {
         {
             let mut bits = $crate::bits::Set::new();
             $( bits.insert( $bit ); )*
+            bits.optimize();
             bits
         }
     }

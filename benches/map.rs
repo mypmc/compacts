@@ -71,11 +71,18 @@ fn set_bits(bench: &mut Bencher) {
 }
 
 #[bench]
-fn set_clone(bench: &mut Bencher) {
+fn set_clone_small(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let mut v1 = gen_bitset!(SIZE, RANGE1, rng);
     bench.iter(|| v1 = v1.clone());
 }
+#[bench]
+fn set_clone_large(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let mut v1 = gen_bitset!(SIZE, RANGE2, rng);
+    bench.iter(|| v1 = v1.clone());
+}
+
 
 #[bench]
 fn set_and(bench: &mut Bencher) {

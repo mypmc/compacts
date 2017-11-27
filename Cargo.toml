@@ -1,6 +1,6 @@
 [package]
 name    = "compacts"
-version = "0.6.3"
+version = "0.6.4"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "Unlicense/MIT"
@@ -15,8 +15,7 @@ byteorder   = "1"
 itertools   = "0.7"
 
 [dev-dependencies]
-rand = "0.3"
-quickcheck = "0.4"
-
 snap = "0.2"
 zstd = "0.4"
+rand = "0.3"
+quickcheck = "0.4"

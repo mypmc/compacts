@@ -18,7 +18,7 @@ pub(crate) static TRUE: &bool = &true;
 pub(crate) static FALSE: &bool = &false;
 
 pub use self::dict::{PopCount, Rank, Select0, Select1};
-pub use self::set::{Entry, Pair, Set};
+pub use self::set::{Entries, Entry, Pair, Set};
 pub use self::set::{And, AndNot, Or, Xor};
 pub use self::set::{and, and_not, or, xor};
 

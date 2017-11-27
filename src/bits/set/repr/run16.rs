@@ -227,10 +227,10 @@ pub(crate) enum BelongTo<T> {
 impl<T: Copy> BelongTo<T> {
     pub fn range(&self) -> Range<T> {
         match *self {
-            BelongTo::None(ref r) |
-            BelongTo::Lhs(ref r) |
-            BelongTo::Rhs(ref r) |
-            BelongTo::Both(ref r) => r.start..r.end,
+            BelongTo::None(ref r)
+            | BelongTo::Lhs(ref r)
+            | BelongTo::Rhs(ref r)
+            | BelongTo::Both(ref r) => r.start..r.end,
         }
     }
 }

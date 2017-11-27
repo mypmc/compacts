@@ -40,7 +40,7 @@ fn read_write_set_from_file() {
         body
     };
     let buff = {
-        let mut buff = Vec::with_capacity(8192);
+        let mut buff = Vec::with_capacity(0);
         {
             m1.write_to(&mut buff).unwrap();
         }

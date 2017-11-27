@@ -3,7 +3,6 @@ mod repr;
 mod pair;
 
 use std::{iter, ops, slice};
-use std::fmt::{self, Debug, Formatter};
 use std::borrow::Cow;
 use bits::{self, Merge, Split};
 use bits::{PopCount, Rank, Select0, Select1};
@@ -17,22 +16,22 @@ pub(crate) use self::repr::Repr;
 pub(crate) use self::repr::{Arr64, Run16, Seq16};
 
 /// Set of u32.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Set {
     blocks: Vec<Block>,
 }
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct Block {
     slot: u16,
     repr: Repr,
 }
 
-impl Debug for Set {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let b = self.blocks.len();
-        write!(f, "Set {{ {:?} }}", b)
-    }
-}
+// impl Debug for Set {
+//     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+//         let b = self.blocks.len();
+//         write!(f, "Set {{ {:?} }}", b)
+//     }
+// }
 
 impl Set {
     /// Return new Set.
@@ -176,8 +175,8 @@ impl Set {
     //     self.dat.values().map(|b| b.mem_size()).sum()
     // }
 
-    fn blocks(&self) -> Blocks {
-        Blocks(self.blocks.iter().map(to_entry))
+    fn entries(&self) -> Entries {
+        Entries(self.blocks.iter().map(to_entry))
     }
 
     pub fn bits<'a>(&'a self) -> impl Iterator<Item = u32> + 'a {
@@ -193,7 +192,7 @@ impl Set {
 
 type ToEntry = for<'x> fn(&'x Block) -> bits::Entry<'x>;
 
-pub struct Blocks<'a>(iter::Map<slice::Iter<'a, Block>, ToEntry>);
+pub struct Entries<'a>(iter::Map<slice::Iter<'a, Block>, ToEntry>);
 
 fn to_entry(block: &Block) -> bits::Entry {
     let key = block.slot;
@@ -203,13 +202,13 @@ fn to_entry(block: &Block) -> bits::Entry {
 
 impl<'a> IntoIterator for &'a Set {
     type Item = bits::Entry<'a>;
-    type IntoIter = Blocks<'a>;
+    type IntoIter = Entries<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        self.blocks()
+        self.entries()
     }
 }
 
-impl<'a> Iterator for Blocks<'a> {
+impl<'a> Iterator for Entries<'a> {
     type Item = bits::Entry<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
