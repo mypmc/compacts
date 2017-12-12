@@ -156,8 +156,8 @@ impl FromIterator<u16> for Arr64 {
     }
 }
 
-impl<'a> super::Assign<&'a Arr64> for Arr64 {
-    fn and_assign(&mut self, arr64: &'a Arr64) {
+impl<'a> bits::BitAndAssign<&'a Arr64> for Arr64 {
+    fn bitand_assign(&mut self, arr64: &'a Arr64) {
         assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;
@@ -168,8 +168,10 @@ impl<'a> super::Assign<&'a Arr64> for Arr64 {
             new
         };
     }
+}
 
-    fn or_assign(&mut self, arr64: &'a Arr64) {
+impl<'a> bits::BitOrAssign<&'a Arr64> for Arr64 {
+    fn bitor_assign(&mut self, arr64: &'a Arr64) {
         assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;
@@ -180,8 +182,10 @@ impl<'a> super::Assign<&'a Arr64> for Arr64 {
             new
         };
     }
+}
 
-    fn and_not_assign(&mut self, arr64: &'a Arr64) {
+impl<'a> bits::BitAndNotAssign<&'a Arr64> for Arr64 {
+    fn bitandnot_assign(&mut self, arr64: &'a Arr64) {
         assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;
@@ -192,8 +196,10 @@ impl<'a> super::Assign<&'a Arr64> for Arr64 {
             new
         };
     }
+}
 
-    fn xor_assign(&mut self, arr64: &'a Arr64) {
+impl<'a> bits::BitXorAssign<&'a Arr64> for Arr64 {
+    fn bitxor_assign(&mut self, arr64: &'a Arr64) {
         assert_eq!(self.boxarr.len(), arr64.boxarr.len());
         self.weight = {
             let mut new = 0;

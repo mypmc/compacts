@@ -203,8 +203,7 @@ fn set_write_to_buff(bench: &mut Bencher) {
         set.write_to(&mut w).unwrap();
         n += 1;
     });
-
-    print!("{:>8} {:>12} ", n, w.len())
+    // print!("{:>8} {:>12} ", n, w.len())
 }
 
 #[bench]
@@ -222,7 +221,7 @@ fn set_write_to_buff_snap(bench: &mut Bencher) {
         });
         buf.flush().unwrap();
     }
-    print!("{:>8} {:>12} ", n, w.len())
+    // print!("{:>8} {:>12} ", n, w.len())
 }
 
 #[bench]
@@ -238,5 +237,5 @@ fn set_write_to_buff_zstd(bench: &mut Bencher) {
         });
         buf.finish().unwrap();
     }
-    print!("{:>8} {:>12} ", n, w.len())
+    // print!("{:>8} {:>12} ", n, w.len())
 }

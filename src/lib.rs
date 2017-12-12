@@ -4,7 +4,6 @@
 // #![deny(warnings)]
 
 extern crate byteorder;
-extern crate itertools;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;

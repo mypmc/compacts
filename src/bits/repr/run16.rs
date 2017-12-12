@@ -1,9 +1,10 @@
-use std::ops::{Range, RangeInclusive};
-use std::{cmp, fmt, io, u16};
-use itertools;
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+#![cfg_attr(feature = "cargo-clippy", allow(range_minus_one))]
+#![cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 
-use bits;
+use std::ops::{Range, RangeInclusive};
+use std::{cmp, fmt, io, iter, u16};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use bits::{self, pair};
 use io::{ReadFrom, WriteTo};
 use super::{Arr64, Seq16};
 
@@ -24,16 +25,15 @@ impl Run16 {
     }
 
     pub fn search(&self, x: &u16) -> Result<usize, usize> {
-        use std::cmp::Ordering;
+        let n = *x;
         self.ranges.binary_search_by(|range| {
-            if range.start <= *x && *x <= range.end {
-                Ordering::Equal
-            } else if *x < range.start {
-                Ordering::Greater
-            } else if range.end < *x {
-                Ordering::Less
+            if range.start <= n && n <= range.end {
+                cmp::Ordering::Equal
+            } else if n < range.start {
+                cmp::Ordering::Greater
             } else {
-                unreachable!()
+                // range.end < n
+                cmp::Ordering::Less
             }
         })
     }
@@ -41,7 +41,6 @@ impl Run16 {
     fn index_to_insert(&self, x: &u16) -> Option<usize> {
         self.search(x).err()
     }
-
     fn index_to_remove(&self, x: &u16) -> Option<usize> {
         self.search(x).ok()
     }
@@ -51,57 +50,62 @@ impl Run16 {
     }
 
     pub fn insert(&mut self, x: u16) -> bool {
+        let mut inserted = false;
         if let Some(pos) = self.index_to_insert(&x) {
             self.weight += 1;
+            inserted = true;
 
-            let lhs = if pos > 0 && pos <= self.ranges.len() {
+            let lhs_bound = if pos != 0 {
                 Some(self.ranges[pos - 1].end)
             } else {
                 None
             };
-            let rhs = if pos < (::std::u16::MAX as usize) && pos < self.ranges.len() {
+            let rhs_bound = if pos < self.ranges.len() {
                 Some(self.ranges[pos].start)
             } else {
                 None
             };
 
-            match (lhs, rhs) {
-                (None, Some(rhs)) if x == rhs - 1 => {
-                    self.ranges[pos] = (self.ranges[pos].start - 1)..=self.ranges[pos].end;
-                }
+            match (lhs_bound, rhs_bound) {
+                // connect lhs and rhs
                 (Some(lhs), Some(rhs)) if lhs + 1 == x && x == rhs - 1 => {
-                    let i = pos - 1;
-                    self.ranges[i] = self.ranges[i].start..=self.ranges[pos].end;
+                    let start = self.ranges[pos - 1].start;
+                    let end = self.ranges[pos].end;
+                    self.ranges[pos - 1] = start..=end;
                     self.ranges.remove(pos);
                 }
-                (Some(lhs), _) if lhs + 1 == x => {
-                    let i = pos - 1;
-                    self.ranges[i] = self.ranges[i].start..=(self.ranges[i].end + 1);
+                // extend lhs
+                (Some(lhs), None) if lhs + 1 == x => {
+                    let start = self.ranges[pos - 1].start;
+                    let end = self.ranges[pos - 1].end + 1;
+                    self.ranges[pos - 1] = start..=end;
                 }
-                (_, Some(rhs)) if x == rhs - 1 => {
-                    self.ranges[pos] = (self.ranges[pos].start - 1)..=self.ranges[pos].end;
+                // extend rhs
+                (None, Some(rhs)) if x == rhs - 1 => {
+                    let start = self.ranges[pos].start - 1;
+                    let end = self.ranges[pos].end;
+                    self.ranges[pos] = start..=end;
                 }
                 _ => {
                     self.ranges.insert(pos, x..=x);
                 }
             }
-            true
-        } else {
-            false
         }
+        inserted
     }
 
     pub fn remove(&mut self, x: u16) -> bool {
+        let mut removed = false;
         if let Some(pos) = self.index_to_remove(&x) {
             self.weight -= 1;
+            removed = true;
 
             match (self.ranges[pos].start, self.ranges[pos].end) {
                 (i, j) if i == j => {
                     self.ranges.remove(pos);
                 }
                 (i, j) if i < x && x < j => {
-                    self.ranges.remove(pos);
-                    self.ranges.insert(pos, i..=(x - 1));
+                    self.ranges[pos] = i..=(x - 1);
                     self.ranges.insert(pos + 1, (x + 1)..=j);
                 }
                 (i, j) if i == x => {
@@ -114,10 +118,8 @@ impl Run16 {
                 }
                 _ => unreachable!(),
             };
-            true
-        } else {
-            false
         }
+        removed
     }
 }
 
@@ -141,14 +143,13 @@ impl<'a> From<&'a Arr64> for Run16 {
     fn from(arr64: &'a Arr64) -> Self {
         const WIDTH: u16 = bits::U64_BITSIZE as u16;
         let mut run = Run16::new();
-        let enumerate = arr64.boxarr.iter().enumerate();
-        for (i, &bit) in enumerate.filter(|&(_, &v)| v != 0) {
-            let mut word = bit;
+        for (i, &bit) in arr64.boxarr.iter().enumerate().filter(|&(_, &v)| v != 0) {
+            let mut bit = bit;
             for pos in 0..WIDTH {
-                if word & (1 << pos) != 0 {
+                if bit & (1 << pos) != 0 {
                     let x = (i as u16 * WIDTH) + pos;
                     run.insert(x);
-                    word &= !(1 << pos);
+                    bit &= !(1 << pos);
                 }
             }
         }
@@ -156,7 +157,7 @@ impl<'a> From<&'a Arr64> for Run16 {
     }
 }
 
-impl<'a> ::std::iter::FromIterator<u16> for Run16 {
+impl<'a> iter::FromIterator<u16> for Run16 {
     fn from_iter<I>(iterable: I) -> Self
     where
         I: IntoIterator<Item = u16>,
@@ -168,12 +169,16 @@ impl<'a> ::std::iter::FromIterator<u16> for Run16 {
         run
     }
 }
-impl<'a> ::std::iter::FromIterator<&'a u16> for Run16 {
+impl<'a> iter::FromIterator<&'a u16> for Run16 {
     fn from_iter<I>(iterable: I) -> Self
     where
         I: IntoIterator<Item = &'a u16>,
     {
-        iterable.into_iter().cloned().collect()
+        let mut run = Run16::new();
+        for bit in iterable {
+            run.insert(*bit);
+        }
+        run
     }
 }
 
@@ -192,110 +197,118 @@ impl<'a> From<&'a [RangeInclusive<u16>]> for Run16 {
     }
 }
 
-macro_rules! do_pair {
+macro_rules! twofold_filter {
     ( $this:expr, $that:expr, $fn:ident ) => {
         {
-            let fold = TwoFold::new(&$this.ranges, &$that.ranges).$fn();
-            let (weight, ranges) = repair(fold);
+            let fold = TwoFold::new(&$this.ranges, &$that.ranges);
+            let iter = fold.filter_map($fn);
+            let (weight, ranges) = repair(iter);
             Run16 { weight, ranges }
         }
     }
 }
 
-impl<'a> super::Assign<&'a Run16> for Run16 {
-    fn and_assign(&mut self, rle16: &'a Run16) {
-        *self = do_pair!(self, rle16, intersection);
+impl<'a> bits::BitAndAssign<&'a Run16> for Run16 {
+    fn bitand_assign(&mut self, rle16: &'a Run16) {
+        *self = twofold_filter!(self, rle16, filter_and);
     }
-    fn or_assign(&mut self, rle16: &'a Run16) {
-        *self = do_pair!(self, rle16, union);
+}
+impl<'a> bits::BitOrAssign<&'a Run16> for Run16 {
+    fn bitor_assign(&mut self, rle16: &'a Run16) {
+        *self = twofold_filter!(self, rle16, filter_or);
     }
-    fn and_not_assign(&mut self, rle16: &'a Run16) {
-        *self = do_pair!(self, rle16, difference);
+}
+impl<'a> bits::BitAndNotAssign<&'a Run16> for Run16 {
+    fn bitandnot_assign(&mut self, rle16: &'a Run16) {
+        *self = twofold_filter!(self, rle16, filter_and_not);
     }
-    fn xor_assign(&mut self, rle16: &'a Run16) {
-        *self = do_pair!(self, rle16, symmetric_difference);
+}
+impl<'a> bits::BitXorAssign<&'a Run16> for Run16 {
+    fn bitxor_assign(&mut self, rle16: &'a Run16) {
+        *self = twofold_filter!(self, rle16, filter_xor);
     }
 }
 
+struct TwoFold<'r, T> {
+    lhs_ck: bool, // track whether last lhs section is open
+    rhs_ck: bool, // track whether last rhs section is open
+    tuples: Box<Iterator<Item = (Boundary<T>, Boundary<T>)> + 'r>,
+}
+struct Tuples<I: Iterator> {
+    iter: I,
+    last: Option<I::Item>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum BelongTo<T> {
-    None(Range<T>),
+enum BelongTo<T> {
     Lhs(Range<T>),
     Rhs(Range<T>),
     Both(Range<T>),
 }
-impl<T: Copy> BelongTo<T> {
-    pub fn range(&self) -> Range<T> {
-        match *self {
-            BelongTo::None(ref r)
-            | BelongTo::Lhs(ref r)
-            | BelongTo::Rhs(ref r)
-            | BelongTo::Both(ref r) => r.start..r.end,
-        }
-    }
-}
 
-pub(crate) struct TwoFold<'r, T> {
-    lhs: Option<State<T>>,
-    rhs: Option<State<T>>,
-    window: Box<Iterator<Item = (Boundary<T>, Boundary<T>)> + 'r>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum State<T> {
-    Open(T),
-    Close(T),
-}
-use self::State::*;
-
-impl<T> State<T> {
-    fn is_open(&self) -> bool {
-        match *self {
-            Open(_) => true,
-            Close(_) => false,
-        }
-    }
-}
-
-// half open
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Boundary<T> {
-    Lhs(State<T>),
-    Rhs(State<T>),
+    Lhs(Section<T>),
+    Rhs(Section<T>),
 }
-use self::Boundary::*;
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Section<T> {
+    Start(T),
+    End(T),
+}
+
+impl<T: Copy> BelongTo<T> {
+    fn inner(&self) -> &Range<T> {
+        match *self {
+            BelongTo::Both(ref r) | BelongTo::Lhs(ref r) | BelongTo::Rhs(ref r) => r,
+        }
+    }
+    fn range(&self) -> Range<T> {
+        self.inner().clone()
+    }
+}
+
+impl<I: Iterator> Tuples<I> {
+    fn new(mut iter: I) -> Self {
+        let last = iter.next();
+        Tuples { iter, last }
+    }
+}
+impl<I> Iterator for Tuples<I>
+where
+    I: Iterator,
+    I::Item: Clone,
+{
+    type Item = (I::Item, I::Item);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(last) = self.last.clone() {
+            self.last = self.iter.next();
+            if let Some(next) = self.last.clone() {
+                return Some((last, next));
+            }
+        }
+        None
+    }
+}
 
 impl<T: Copy> Boundary<T> {
     fn value(&self) -> T {
+        use self::Boundary::*;
+        use self::Section::*;
         match *self {
-            Lhs(Open(i)) | Lhs(Close(i)) | Rhs(Open(i)) | Rhs(Close(i)) => i,
+            Lhs(Start(i)) | Lhs(End(i)) | Rhs(Start(i)) | Rhs(End(i)) => i,
         }
     }
 }
 impl<'a, T: Ord + Copy> PartialOrd<Boundary<T>> for Boundary<T> {
     fn partial_cmp(&self, rhs: &Boundary<T>) -> Option<cmp::Ordering> {
-        Some(self.value().cmp(&rhs.value()))
+        self.value().partial_cmp(&rhs.value())
     }
 }
 impl<'a, T: Ord + Copy> Ord for Boundary<T> {
     fn cmp(&self, rhs: &Boundary<T>) -> cmp::Ordering {
         self.value().cmp(&rhs.value())
-    }
-}
-
-impl<'r, T> TwoFold<'r, T> {
-    fn lhs_swap(&mut self, lhs: State<T>) {
-        self.lhs = Some(lhs);
-    }
-    fn rhs_swap(&mut self, rhs: State<T>) {
-        self.rhs = Some(rhs);
-    }
-
-    fn lhs_is_open(&self) -> bool {
-        self.lhs.as_ref().map_or(false, |s| s.is_open())
-    }
-    fn rhs_is_open(&self) -> bool {
-        self.rhs.as_ref().map_or(false, |s| s.is_open())
     }
 }
 
@@ -311,83 +324,78 @@ where
     let lhs_iter = lhs.iter().flat_map(|range| {
         let range = to_exclusive(range);
         vec![
-            Boundary::Lhs(Open(range.start)),
-            Boundary::Lhs(Close(range.end)),
+            Boundary::Lhs(Section::Start(range.start)),
+            Boundary::Lhs(Section::End(range.end)),
         ]
     });
-
     let rhs_iter = rhs.iter().flat_map(|range| {
         let range = to_exclusive(range);
         vec![
-            Boundary::Rhs(Open(range.start)),
-            Boundary::Rhs(Close(range.end)),
+            Boundary::Rhs(Section::Start(range.start)),
+            Boundary::Rhs(Section::End(range.end)),
         ]
     });
-
-    itertools::merge(lhs_iter, rhs_iter)
+    pair::merge(lhs_iter, rhs_iter)
 }
 
 fn to_exclusive(range: &RangeInclusive<u16>) -> Range<u32> {
     let start = u32::from(range.start);
     let end = u32::from(range.end);
-    (start..(end + 1))
+    start..(end + 1)
 }
 
 impl<'r> TwoFold<'r, u32> {
     // assume that each elements (range) has no overlap
     pub fn new<'a, 'b>(
-        l: &'a [RangeInclusive<u16>],
-        r: &'b [RangeInclusive<u16>],
+        lhs: &'a [RangeInclusive<u16>],
+        rhs: &'b [RangeInclusive<u16>],
     ) -> TwoFold<'r, u32>
     where
         'a: 'r,
         'b: 'r,
     {
-        use itertools::Itertools;
-
-        let window = {
-            let merged = merge(l, r);
-            let window = merged.tuple_windows();
-            Box::new(window)
+        let lhs_ck = false;
+        let rhs_ck = false;
+        let tuples = {
+            let merged = merge(lhs, rhs);
+            let tuples = Tuples::new(merged);
+            Box::new(tuples)
         };
-
-        let lhs = None;
-        let rhs = None;
-
-        TwoFold { lhs, rhs, window }
+        TwoFold {
+            lhs_ck,
+            rhs_ck,
+            tuples,
+        }
     }
+}
 
-    pub fn intersection(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter_map(|be| match be {
-            BelongTo::Both(_) => Some(be.range()),
-            _ => None,
-        })
+fn filter_and(be: BelongTo<u32>) -> Option<Range<u32>> {
+    match be {
+        BelongTo::Both(_) => Some(be.range()),
+        _ => None,
     }
+}
 
-    pub fn union(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter_map(|be| match be {
-            BelongTo::None(_) => None,
-            _ => Some(be.range()),
-        })
+fn filter_or(be: BelongTo<u32>) -> Option<Range<u32>> {
+    Some(be.range())
+}
+
+fn filter_and_not(be: BelongTo<u32>) -> Option<Range<u32>> {
+    match be {
+        BelongTo::Lhs(_) => Some(be.range()),
+        _ => None,
     }
+}
 
-    pub fn difference(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter_map(|be| match be {
-            BelongTo::Lhs(_) => Some(be.range()),
-            _ => None,
-        })
-    }
-
-    pub fn symmetric_difference(self) -> impl Iterator<Item = Range<u32>> + 'r {
-        self.filter_map(|be| match be {
-            BelongTo::Lhs(_) | BelongTo::Rhs(_) => Some(be.range()),
-            _ => None,
-        })
+fn filter_xor(be: BelongTo<u32>) -> Option<Range<u32>> {
+    match be {
+        BelongTo::Lhs(_) | BelongTo::Rhs(_) => Some(be.range()),
+        _ => None,
     }
 }
 
 /// Repair broken ranges, and accumulate weight.
-pub fn repair<I>(folded: I) -> (u32, Vec<RangeInclusive<u16>>)
+fn repair<I>(folded: I) -> (u32, Vec<RangeInclusive<u16>>)
 where
     I: IntoIterator<Item = Range<u32>>,
 {
@@ -422,12 +430,12 @@ where
     (w, vec)
 }
 
-macro_rules! filter {
-    ( $i:expr, $j:expr, $r:expr ) => {
+macro_rules! belongck {
+    ( $i:expr, $j:expr, $belong:expr ) => {
         if $i == $j {
             continue;
         } else {
-            return Some($r($i..$j));
+            return Some($belong($i..$j));
         }
     }
 }
@@ -435,100 +443,102 @@ macro_rules! filter {
 impl<'r> Iterator for TwoFold<'r, u32> {
     type Item = BelongTo<u32>;
     fn next(&mut self) -> Option<BelongTo<u32>> {
-        while let Some(next) = self.window.next() {
+        use self::Boundary::*;
+        use self::Section::*;
+
+        while let Some(next) = self.tuples.next() {
             match next {
-                (Lhs(Open(i)), Rhs(Open(j))) => {
-                    self.lhs_swap(Open(i));
-                    self.rhs_swap(Open(j));
-                    filter!(i, j, BelongTo::Lhs)
+                (Lhs(Start(i)), Rhs(Start(j))) => {
+                    self.lhs_ck = true;
+                    self.rhs_ck = true;
+                    belongck!(i, j, BelongTo::Lhs)
                 }
 
-                (Lhs(Open(i)), Lhs(Close(j))) => {
-                    let belong_to = if self.rhs_is_open() {
+                (Lhs(Start(i)), Lhs(End(j))) => {
+                    let belong_to = if self.rhs_ck {
                         BelongTo::Both(i..j)
                     } else {
                         BelongTo::Lhs(i..j)
                     };
-                    self.lhs_swap(Close(j));
+                    self.lhs_ck = false;
                     return Some(belong_to);
                 }
 
-                (Lhs(Open(i)), Rhs(Close(j))) => {
-                    self.lhs_swap(Open(i));
-                    self.rhs_swap(Close(j));
-                    filter!(i, j, BelongTo::Both)
+                (Lhs(Start(i)), Rhs(End(j))) => {
+                    self.lhs_ck = true;
+                    self.rhs_ck = false;
+                    belongck!(i, j, BelongTo::Both)
                 }
 
-                (Lhs(Close(i)), Lhs(Open(j))) => {
-                    let belong_to = if self.rhs_is_open() {
+                (Lhs(End(i)), Lhs(Start(j))) => {
+                    let belong_to = if self.rhs_ck {
                         BelongTo::Rhs(i..j)
                     } else {
-                        BelongTo::None(i..j)
+                        // BelongTo::None(i..j)
+                        continue;
                     };
-                    self.lhs_swap(Open(j));
+                    self.lhs_ck = true;
                     return Some(belong_to);
                 }
 
-                (Lhs(Close(i)), Rhs(Open(j))) => {
-                    self.lhs_swap(Close(i));
-                    self.rhs_swap(Open(j));
-                    filter!(i, j, BelongTo::None)
+                (Lhs(End(_)), Rhs(Start(_))) => {
+                    self.lhs_ck = false;
+                    self.rhs_ck = true;
+                    continue;
                 }
 
-                (Lhs(Close(i)), Rhs(Close(j))) => {
-                    self.lhs_swap(Close(i));
-                    self.rhs_swap(Close(j));
-                    filter!(i, j, BelongTo::Rhs)
+                (Lhs(End(i)), Rhs(End(j))) => {
+                    self.lhs_ck = false;
+                    self.rhs_ck = false;
+                    belongck!(i, j, BelongTo::Rhs)
                 }
 
-                (Rhs(Open(i)), Lhs(Open(j))) => {
-                    self.lhs_swap(Open(j));
-                    self.rhs_swap(Open(i));
-                    filter!(i, j, BelongTo::Rhs)
+                (Rhs(Start(i)), Lhs(Start(j))) => {
+                    self.lhs_ck = true;
+                    self.rhs_ck = true;
+                    belongck!(i, j, BelongTo::Rhs)
                 }
 
-                (Rhs(Open(i)), Lhs(Close(j))) => {
-                    self.lhs_swap(Close(j));
-                    self.rhs_swap(Open(i));
-                    filter!(i, j, BelongTo::Both)
+                (Rhs(Start(i)), Lhs(End(j))) => {
+                    self.lhs_ck = false;
+                    self.rhs_ck = true;
+                    belongck!(i, j, BelongTo::Both)
                 }
 
-                (Rhs(Open(i)), Rhs(Close(j))) => {
-                    let belong_to = if self.lhs_is_open() {
+                (Rhs(Start(i)), Rhs(End(j))) => {
+                    let belong_to = if self.lhs_ck {
                         BelongTo::Both(i..j)
                     } else {
                         BelongTo::Rhs(i..j)
                     };
-                    self.rhs_swap(Close(j));
+                    self.rhs_ck = false;
                     return Some(belong_to);
                 }
 
-                (Rhs(Close(i)), Lhs(Open(j))) => {
-                    self.lhs_swap(Open(j));
-                    self.rhs_swap(Close(i));
-                    filter!(i, j, BelongTo::None)
+                (Rhs(End(_)), Lhs(Start(_))) => {
+                    self.lhs_ck = true;
+                    self.rhs_ck = false;
+                    continue;
                 }
 
-                (Rhs(Close(i)), Lhs(Close(j))) => {
-                    self.lhs_swap(Close(j));
-                    self.rhs_swap(Close(i));
-                    filter!(i, j, BelongTo::Lhs)
+                (Rhs(End(i)), Lhs(End(j))) => {
+                    self.lhs_ck = false;
+                    self.rhs_ck = false;
+                    belongck!(i, j, BelongTo::Lhs)
                 }
 
-                (Rhs(Close(i)), Rhs(Open(j))) => {
-                    let belong_to = if self.lhs_is_open() {
+                (Rhs(End(i)), Rhs(Start(j))) => {
+                    let belong_to = if self.lhs_ck {
                         BelongTo::Lhs(i..j)
                     } else {
-                        BelongTo::None(i..j)
+                        // BelongTo::None(i..j)
+                        continue;
                     };
-                    self.rhs_swap(Open(j));
+                    self.rhs_ck = true;
                     return Some(belong_to);
                 }
 
-                (Lhs(Open(_)), Lhs(Open(_))) => unreachable!(),
-                (Rhs(Open(_)), Rhs(Open(_))) => unreachable!(),
-                (Lhs(Close(_)), Lhs(Close(_))) => unreachable!(),
-                (Rhs(Close(_)), Rhs(Close(_))) => unreachable!(),
+                _ => unreachable!(),
             }
         }
         None
@@ -684,13 +694,10 @@ mod tests {
                 BelongTo::Lhs(10..12),
                 BelongTo::Both(12..14),
                 BelongTo::Rhs(14..15),
-                BelongTo::None(15..17),
                 BelongTo::Rhs(17..18),
                 BelongTo::Both(18..20),
                 BelongTo::Rhs(20..22),
-                BelongTo::None(22..100),
                 BelongTo::Lhs(100..121),
-                BelongTo::None(121..200),
                 BelongTo::Rhs(200..1001),
             ]
         );
@@ -699,13 +706,9 @@ mod tests {
             TwoFold::new(NULL, RHS).collect::<Vec<BelongTo<u32>>>(),
             vec![
                 BelongTo::Rhs(2..4),
-                BelongTo::None(4..6),
                 BelongTo::Rhs(6..10),
-                BelongTo::None(10..12),
                 BelongTo::Rhs(12..15),
-                BelongTo::None(15..17),
                 BelongTo::Rhs(17..22),
-                BelongTo::None(22..200),
                 BelongTo::Rhs(200..1001),
             ]
         );
@@ -714,11 +717,8 @@ mod tests {
             TwoFold::new(LHS, NULL).collect::<Vec<BelongTo<u32>>>(),
             vec![
                 BelongTo::Lhs(3..6),
-                BelongTo::None(6..10),
                 BelongTo::Lhs(10..14),
-                BelongTo::None(14..18),
                 BelongTo::Lhs(18..20),
-                BelongTo::None(20..100),
                 BelongTo::Lhs(100..121),
             ]
         );
@@ -763,16 +763,13 @@ mod tests {
             vec![
                 BelongTo::Both(0..1),
                 BelongTo::Lhs(1..2),
-                BelongTo::None(2..3),
                 BelongTo::Both(3..6),
                 BelongTo::Rhs(6..9),
-                BelongTo::None(9..10),
                 BelongTo::Rhs(10..12),
                 BelongTo::Both(12..14),
                 BelongTo::Lhs(14..15),
                 BelongTo::Both(15..16),
                 BelongTo::Lhs(16..17),
-                BelongTo::None(17..18),
                 BelongTo::Lhs(18..19),
                 BelongTo::Both(19..20),
             ]
@@ -783,16 +780,13 @@ mod tests {
             vec![
                 BelongTo::Both(0..1),
                 BelongTo::Rhs(1..2),
-                BelongTo::None(2..3),
                 BelongTo::Both(3..6),
                 BelongTo::Lhs(6..9),
-                BelongTo::None(9..10),
                 BelongTo::Lhs(10..12),
                 BelongTo::Both(12..14),
                 BelongTo::Rhs(14..15),
                 BelongTo::Both(15..16),
                 BelongTo::Rhs(16..17),
-                BelongTo::None(17..18),
                 BelongTo::Rhs(18..19),
                 BelongTo::Both(19..20),
             ]

@@ -1,9 +1,9 @@
 use std::{cmp, fmt, io};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-use bits;
+use bits::{self, pair};
 use io::{ReadFrom, WriteTo};
-use super::{Arr64, Compare, Run16};
+use super::{Arr64, Run16};
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct Seq16 {
@@ -101,30 +101,35 @@ impl From<Vec<u16>> for Seq16 {
     }
 }
 
-impl<'a> super::Assign<&'a Seq16> for Seq16 {
-    fn and_assign(&mut self, seq16: &'a Seq16) {
+impl<'a> bits::BitAndAssign<&'a Seq16> for Seq16 {
+    fn bitand_assign(&mut self, seq16: &'a Seq16) {
         *self = {
-            let data = Compare::and(&*self, seq16).filter_map(|tup| match tup {
+            let data = pair::and(&*self, seq16).filter_map(|tup| match tup {
                 (Some(l), Some(r)) if l == r => Some(l),
                 _ => None,
             });
-            let mut seq16 = Seq16::with_capacity(cmp::min(self.vector.len(), seq16.vector.len()));
+            let min = cmp::min(self.vector.len(), seq16.vector.len());
+            let mut seq16 = Seq16::with_capacity(min);
             for bit in data {
                 seq16.insert(bit);
             }
             seq16
         };
     }
+}
 
-    fn or_assign(&mut self, seq16: &'a Seq16) {
+impl<'a> bits::BitOrAssign<&'a Seq16> for Seq16 {
+    fn bitor_assign(&mut self, seq16: &'a Seq16) {
         for &bit in &seq16.vector {
             self.insert(bit);
         }
     }
+}
 
-    fn and_not_assign(&mut self, seq16: &'a Seq16) {
+impl<'a> bits::BitAndNotAssign<&'a Seq16> for Seq16 {
+    fn bitandnot_assign(&mut self, seq16: &'a Seq16) {
         *self = {
-            let data = Compare::and_not(&*self, seq16).filter_map(|tup| match tup {
+            let data = pair::and_not(&*self, seq16).filter_map(|tup| match tup {
                 (Some(l), None) => Some(l),
                 _ => None,
             });
@@ -135,8 +140,10 @@ impl<'a> super::Assign<&'a Seq16> for Seq16 {
             seq16
         };
     }
+}
 
-    fn xor_assign(&mut self, seq16: &'a Seq16) {
+impl<'a> bits::BitXorAssign<&'a Seq16> for Seq16 {
+    fn bitxor_assign(&mut self, seq16: &'a Seq16) {
         for &bit in &seq16.vector {
             if !self.insert(bit) {
                 self.remove(bit);

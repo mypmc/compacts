@@ -21,13 +21,13 @@ pub trait Rank<T>
 where
     T: ops::Sub<Output = T> + Copy,
 {
-    /// Returns occurences of non-zero bit in `[0, i)` for `0 < i`.
+    /// Returns occurences of non-zero bit in `[0, i)`.
     /// `rank1(i)` should be equal to `i - self.rank0(i)`.
     fn rank1(&self, i: T) -> T {
         i - self.rank0(i)
     }
 
-    /// Returns occurences of zero bit in `[0, i)` for `0 < i`.
+    /// Returns occurences of zero bit in `[0, i)`.
     /// `rank0(i)` should be equal to `i - self.rank1(i)`.
     fn rank0(&self, i: T) -> T {
         i - self.rank1(i)
@@ -132,25 +132,25 @@ fn lt8(x: u64, y: u64) -> u64 {
     (xs ^ x ^ !y) & x8
 }
 
-pub trait Dict<T>: ops::Index<T>
-where
-    <Self as ops::Index<T>>::Output: PartialEq<Self::Item>,
-{
-    /// Associated items to this dictionary.
-    type Item;
+// pub trait Dict<T>: ops::Index<T>
+// where
+//     <Self as ops::Index<T>>::Output: PartialEq<Self::Item>,
+// {
+//     /// Associated items to this dictionary.
+//     type Item;
 
-    /// Result type of `select`.
-    type Index;
+//     /// Result type of `select`.
+//     type Index;
 
-    /// Result type of `rank`.
-    type Count;
+//     /// Result type of `rank`.
+//     type Count;
 
-    /// Returns count of `Item` in `0..=i`.
-    fn rank(&self, item: &Self::Item, i: Self::Index) -> Self::Count;
+//     /// Returns count of `Item` in `0..=i`.
+//     fn rank(&self, item: &Self::Item, i: Self::Index) -> Self::Count;
 
-    /// Returns the position of the `c+1`-th appearance of `Item`.
-    fn select(&self, item: &Self::Item, c: Self::Count) -> Option<Self::Index>;
-}
+//     /// Returns the position of the `c+1`-th appearance of `Item`.
+//     fn select(&self, item: &Self::Item, c: Self::Count) -> Option<Self::Index>;
+// }
 
 // pub trait BitDict<T: UnsignedInt>
 //     : ops::Index<T, Output = bool> + Rank<T> + Select0<T, Index = T> + Select1<T, Index = T>

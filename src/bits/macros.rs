@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! bitset {
+macro_rules! bits {
     ( $( $bit:expr ),* ) => {
         {
             let mut bits = $crate::bits::Set::new();

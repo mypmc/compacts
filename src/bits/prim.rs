@@ -14,8 +14,8 @@ macro_rules! impl_SplitMerge {
             type Target = $half;
             #[inline] fn split(&self) -> (Self::Target, Self::Target) {
                 let this = *self;
-                let s = $size / 2;
-                ((this >> s) as $half, this as $half)
+                let half = $size / 2;
+                ((this >> half) as $half, this as $half)
             }
         }
         impl Merge for $this {
@@ -24,8 +24,8 @@ macro_rules! impl_SplitMerge {
             #[inline]
             #[cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
             fn merge(parts: (Self::Source, Self::Source)) -> $this {
-                let s = $size / 2;
-                (parts.0 as $this << s) | parts.1 as $this
+                let half = $size / 2;
+                (parts.0 as $this << half) | parts.1 as $this
             }
         }
     )*)

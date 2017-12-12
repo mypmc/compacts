@@ -8,23 +8,12 @@ mod iter;
 use std::{cmp, fmt, mem, ops};
 use std::iter::FromIterator;
 use bits::{self, PopCount, Rank, Select0, Select1};
-
-use super::{Assign, Compare};
 use self::Repr::{Arr, Run, Seq};
 
-pub(crate) use self::iter::{Boxed as ReprBoxedIter, Owned as ReprOwnedIter};
+pub(crate) use self::iter::{Boxed as BoxedIter, Owned as OwnedIter};
 pub(crate) use self::seq16::Seq16;
 pub(crate) use self::arr64::Arr64;
 pub(crate) use self::run16::Run16;
-
-/// Stats of Block.
-/// 'ones' is a count of non-zero bits.
-/// 'size' is an approximate size in bytes.
-// #[derive(Clone, Debug)]
-// pub struct Stats {
-//     pub ones: u64,
-//     pub size: usize,
-// }
 
 /// Internal representaions of a bits block.
 #[derive(Clone, PartialEq, Eq)]
@@ -226,14 +215,14 @@ impl Repr {
     //     Stats { ones, size }
     // }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = u16> + 'a {
+    pub fn iter<'a>(&'a self) -> BoxedIter<'a> {
         self.into_iter()
     }
 }
 
 impl<'a> IntoIterator for &'a Repr {
     type Item = u16;
-    type IntoIter = ReprBoxedIter<'a>;
+    type IntoIter = BoxedIter<'a>;
     fn into_iter(self) -> Self::IntoIter {
         match *self {
             Seq(ref seq) => seq.into_iter(),
@@ -244,7 +233,7 @@ impl<'a> IntoIterator for &'a Repr {
 }
 impl IntoIterator for Repr {
     type Item = u16;
-    type IntoIter = ReprOwnedIter;
+    type IntoIter = OwnedIter;
     fn into_iter(self) -> Self::IntoIter {
         match self {
             Seq(seq) => seq.into_iter(),
@@ -372,81 +361,93 @@ impl Select0<u16> for Repr {
     }
 }
 
-impl<'a> Assign<&'a Repr> for Repr {
-    fn and_assign(&mut self, repr: &Repr) {
+impl<'a> bits::BitAndAssign<&'a Repr> for Repr {
+    fn bitand_assign(&mut self, repr: &Repr) {
         match *repr {
-            Seq(ref b) => self.and_assign(b),
-            Arr(ref b) => self.and_assign(b),
-            Run(ref b) => self.and_assign(b),
-        }
-    }
-
-    fn or_assign(&mut self, repr: &Repr) {
-        match *repr {
-            Seq(ref b) => self.or_assign(b),
-            Arr(ref b) => self.or_assign(b),
-            Run(ref b) => self.or_assign(b),
-        }
-    }
-
-    fn and_not_assign(&mut self, repr: &Repr) {
-        match *repr {
-            Seq(ref b) => self.and_not_assign(b),
-            Arr(ref b) => self.and_not_assign(b),
-            Run(ref b) => self.and_not_assign(b),
-        }
-    }
-
-    fn xor_assign(&mut self, repr: &Repr) {
-        match *repr {
-            Seq(ref b) => self.xor_assign(b),
-            Arr(ref b) => self.xor_assign(b),
-            Run(ref b) => self.xor_assign(b),
+            Seq(ref b) => self.bitand_assign(b),
+            Arr(ref b) => self.bitand_assign(b),
+            Run(ref b) => self.bitand_assign(b),
         }
     }
 }
 
-impl<'a> Assign<&'a Seq16> for Repr {
-    fn and_assign(&mut self, target: &Seq16) {
+impl<'a> bits::BitOrAssign<&'a Repr> for Repr {
+    fn bitor_assign(&mut self, repr: &Repr) {
+        match *repr {
+            Seq(ref b) => self.bitor_assign(b),
+            Arr(ref b) => self.bitor_assign(b),
+            Run(ref b) => self.bitor_assign(b),
+        }
+    }
+}
+
+impl<'a> bits::BitAndNotAssign<&'a Repr> for Repr {
+    fn bitandnot_assign(&mut self, repr: &Repr) {
+        match *repr {
+            Seq(ref b) => self.bitandnot_assign(b),
+            Arr(ref b) => self.bitandnot_assign(b),
+            Run(ref b) => self.bitandnot_assign(b),
+        }
+    }
+}
+
+impl<'a> bits::BitXorAssign<&'a Repr> for Repr {
+    fn bitxor_assign(&mut self, repr: &Repr) {
+        match *repr {
+            Seq(ref b) => self.bitxor_assign(b),
+            Arr(ref b) => self.bitxor_assign(b),
+            Run(ref b) => self.bitxor_assign(b),
+        }
+    }
+}
+
+impl<'a> bits::BitAndAssign<&'a Seq16> for Repr {
+    fn bitand_assign(&mut self, target: &Seq16) {
         match self {
-            &mut Seq(ref mut b) => b.and_assign(target),
-            &mut Arr(ref mut b) => b.and_assign(&Arr64::from(target)),
+            &mut Seq(ref mut b) => b.bitand_assign(target),
+            &mut Arr(ref mut b) => b.bitand_assign(&Arr64::from(target)),
             this @ &mut Run(_) => {
                 this.as_arr();
-                this.and_assign(target);
+                this.bitand_assign(target);
             }
         }
     }
+}
 
-    fn or_assign(&mut self, target: &Seq16) {
+impl<'a> bits::BitOrAssign<&'a Seq16> for Repr {
+    fn bitor_assign(&mut self, target: &Seq16) {
         match self {
-            &mut Seq(ref mut b) => b.or_assign(target),
+            &mut Seq(ref mut b) => b.bitor_assign(target),
             &mut Arr(ref mut b) => for &bit in &target.vector {
                 b.insert(bit);
             },
             this @ &mut Run(_) => {
                 this.as_arr();
-                this.or_assign(target);
+                this.bitor_assign(target);
             }
         }
     }
+}
 
-    fn and_not_assign(&mut self, target: &Seq16) {
+impl<'a> bits::BitAndNotAssign<&'a Seq16> for Repr {
+    fn bitandnot_assign(&mut self, target: &Seq16) {
         match self {
-            &mut Seq(ref mut b) => b.and_not_assign(target),
+            &mut Seq(ref mut b) => b.bitandnot_assign(target),
             &mut Arr(ref mut b) => for &bit in &target.vector {
                 b.remove(bit);
             },
             this @ &mut Run(_) => {
                 this.as_arr();
-                this.and_not_assign(target);
+                this.bitandnot_assign(target);
             }
         }
     }
+}
 
-    fn xor_assign(&mut self, target: &Seq16) {
+impl<'a> bits::BitXorAssign<&'a Seq16> for Repr {
+    fn bitxor_assign(&mut self, target: &Seq16) {
         match self {
-            &mut Seq(ref mut b) => b.xor_assign(target),
+            &mut Seq(ref mut b) => b.bitxor_assign(target),
             &mut Arr(ref mut b) => for &bit in &target.vector {
                 if b.contains(bit) {
                     b.remove(bit);
@@ -456,14 +457,14 @@ impl<'a> Assign<&'a Seq16> for Repr {
             },
             this @ &mut Run(_) => {
                 this.as_arr();
-                this.xor_assign(target);
+                this.bitxor_assign(target);
             }
         }
     }
 }
 
-impl<'a> Assign<&'a Arr64> for Repr {
-    fn and_assign(&mut self, target: &'a Arr64) {
+impl<'a> bits::BitAndAssign<&'a Arr64> for Repr {
+    fn bitand_assign(&mut self, target: &'a Arr64) {
         match self {
             &mut Seq(ref mut b) => {
                 let mut n = 0;
@@ -476,93 +477,105 @@ impl<'a> Assign<&'a Arr64> for Repr {
                 b.vector.truncate(n);
             }
 
-            &mut Arr(ref mut b) => b.and_assign(target),
+            &mut Arr(ref mut b) => b.bitand_assign(target),
 
             this @ &mut Run(_) => {
                 this.as_arr();
-                this.and_assign(target);
-            }
-        }
-    }
-
-    fn or_assign(&mut self, target: &Arr64) {
-        match self {
-            &mut Arr(ref mut b) => b.or_assign(target),
-            this => {
-                this.as_arr();
-                this.or_assign(target);
-            }
-        }
-    }
-
-    fn and_not_assign(&mut self, target: &Arr64) {
-        match self {
-            &mut Arr(ref mut b) => b.and_not_assign(target),
-            this => {
-                this.as_arr();
-                this.and_not_assign(target);
-            }
-        }
-    }
-
-    fn xor_assign(&mut self, target: &Arr64) {
-        match self {
-            &mut Arr(ref mut b) => b.xor_assign(target),
-            this => {
-                this.as_arr();
-                this.xor_assign(target);
+                this.bitand_assign(target);
             }
         }
     }
 }
 
-impl<'a> Assign<&'a Run16> for Repr {
-    fn and_assign(&mut self, target: &Run16) {
+impl<'a> bits::BitOrAssign<&'a Arr64> for Repr {
+    fn bitor_assign(&mut self, target: &Arr64) {
         match self {
-            this @ &mut Seq(_) => {
+            &mut Arr(ref mut b) => b.bitor_assign(target),
+            this => {
                 this.as_arr();
-                this.and_assign(target);
+                this.bitor_assign(target);
             }
-            &mut Arr(ref mut b) => b.and_assign(&Arr64::from(target)),
-            &mut Run(ref mut b) => b.and_assign(target),
         }
     }
+}
 
-    fn or_assign(&mut self, target: &Run16) {
+impl<'a> bits::BitAndNotAssign<&'a Arr64> for Repr {
+    fn bitandnot_assign(&mut self, target: &Arr64) {
+        match self {
+            &mut Arr(ref mut b) => b.bitandnot_assign(target),
+            this => {
+                this.as_arr();
+                this.bitandnot_assign(target);
+            }
+        }
+    }
+}
+
+impl<'a> bits::BitXorAssign<&'a Arr64> for Repr {
+    fn bitxor_assign(&mut self, target: &Arr64) {
+        match self {
+            &mut Arr(ref mut b) => b.bitxor_assign(target),
+            this => {
+                this.as_arr();
+                this.bitxor_assign(target);
+            }
+        }
+    }
+}
+
+impl<'a> bits::BitAndAssign<&'a Run16> for Repr {
+    fn bitand_assign(&mut self, target: &Run16) {
         match self {
             this @ &mut Seq(_) => {
                 this.as_arr();
-                this.or_assign(target);
+                this.bitand_assign(target);
+            }
+            &mut Arr(ref mut b) => b.bitand_assign(&Arr64::from(target)),
+            &mut Run(ref mut b) => b.bitand_assign(target),
+        }
+    }
+}
+
+impl<'a> bits::BitOrAssign<&'a Run16> for Repr {
+    fn bitor_assign(&mut self, target: &Run16) {
+        match self {
+            this @ &mut Seq(_) => {
+                this.as_arr();
+                this.bitor_assign(target);
             }
             &mut Arr(ref mut b) => for range in &target.ranges {
                 for bit in range.start..=range.end {
                     b.insert(bit);
                 }
             },
-            &mut Run(ref mut b) => b.or_assign(target),
+            &mut Run(ref mut b) => b.bitor_assign(target),
         }
     }
+}
 
-    fn and_not_assign(&mut self, target: &Run16) {
+impl<'a> bits::BitAndNotAssign<&'a Run16> for Repr {
+    fn bitandnot_assign(&mut self, target: &Run16) {
         match self {
             this @ &mut Seq(_) => {
                 this.as_arr();
-                this.and_not_assign(target);
+                this.bitandnot_assign(target);
             }
             &mut Arr(ref mut b) => for range in &target.ranges {
                 for bit in range.start..=range.end {
                     b.remove(bit);
                 }
             },
-            &mut Run(ref mut b) => b.and_not_assign(target),
+            &mut Run(ref mut b) => b.bitandnot_assign(target),
         }
     }
+}
 
-    fn xor_assign(&mut self, target: &Run16) {
+impl<'a> bits::BitXorAssign<&'a Run16> for Repr {
+    fn bitxor_assign(&mut self, target: &Run16) {
         match self {
             this @ &mut Seq(_) => {
                 this.as_arr();
-                this.xor_assign(target);
+                this.bitxor_assign(target);
             }
             &mut Arr(ref mut b) => for range in &target.ranges {
                 for bit in range.start..=range.end {
@@ -573,7 +586,7 @@ impl<'a> Assign<&'a Run16> for Repr {
                     }
                 }
             },
-            &mut Run(ref mut b) => b.xor_assign(target),
+            &mut Run(ref mut b) => b.bitxor_assign(target),
         }
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name    = "compacts"
-version = "0.6.4"
+version = "0.6.5"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "Unlicense/MIT"
@@ -11,11 +11,10 @@ description = "succinct data structures"
 exclude = ["tests/*.bin"]
 
 [dependencies]
-byteorder   = "1"
-itertools   = "0.7"
+byteorder = "1"
 
 [dev-dependencies]
+quickcheck = "0.5"
+rand = "0.3"
 snap = "0.2"
 zstd = "0.4"
-rand = "0.3"
-quickcheck = "0.4"

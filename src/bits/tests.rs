@@ -215,35 +215,52 @@ quickcheck!{
 }
 
 #[test]
+fn set_bits() {
+    let bits = &bits!(1, 3, 1 << 16, 1 << 20, 1 << 30);
+    for bit in bits.bits() {
+        println!("{}", bit);
+    }
+    for entry in bits {
+        for bit in entry.bits() {
+            println!("{}", bit);
+        }
+    }
+}
+
+#[test]
 fn set_and() {
-    let b1 = bitset!(1 << 16, 1 << 20);
-    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20);
-    let bits = b1.and(&b2).bits().collect::<Vec<u32>>();
-    assert_eq!(bits.len(), 1);
+    let xs = &bits!(1 << 16, 1 << 20);
+    let ys = &bits!(1 << 10, 1 << 11, 1 << 20);
+    let and = xs.and(ys);
+    let vec = and.bits().collect::<Vec<u32>>();
+    assert_eq!(vec.len(), 1);
 }
 
 #[test]
 fn set_or() {
-    let b1 = bitset!(1 << 16, 1 << 20);
-    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20);
-    let bits = b1.or(&b2).bits().collect::<Vec<u32>>();
-    assert_eq!(bits.len(), 4);
+    let xs = &bits!(1 << 16, 1 << 20);
+    let ys = &bits!(1 << 10, 1 << 11, 1 << 20);
+    let or = xs.or(ys);
+    let vec = or.bits().collect::<Vec<u32>>();
+    assert_eq!(vec.len(), 4);
 }
 
 #[test]
 fn set_and_not() {
-    let b1 = bitset!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
-    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20);
-    let bits = b1.and_not(&b2).bits().collect::<Vec<u32>>();
-    assert_eq!(bits.len(), 2);
+    let xs = &bits!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
+    let ys = &bits!(1 << 10, 1 << 11, 1 << 20);
+    let and_not = xs.and_not(ys);
+    let vec = and_not.bits().collect::<Vec<u32>>();
+    assert_eq!(vec.len(), 2);
 }
 
 #[test]
 fn set_xor() {
-    let b1 = bitset!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
-    let b2 = bitset!(1 << 10, 1 << 11, 1 << 20, 1 << 26, 1 << 30);
-    let bits = b1.xor(&b2).bits().collect::<Vec<u32>>();
-    assert_eq!(bits.len(), 4);
+    let xs = &bits!(1 << 10, 1 << 11, 1 << 12, 1 << 16, 1 << 20);
+    let ys = &bits!(1 << 10, 1 << 11, 1 << 20, 1 << 26, 1 << 30);
+    let xor = xs.xor(ys);
+    let vec = xor.bits().collect::<Vec<u32>>();
+    assert_eq!(vec.len(), 4);
 }
 
 fn check_io<T>(w: &T, r: &mut T)
