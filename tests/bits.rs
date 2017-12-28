@@ -3,7 +3,7 @@ extern crate snap;
 extern crate zstd;
 
 use std::{fs, io};
-use compacts::{bits, ReadFrom, WriteTo};
+use compacts::{bits, BitSet};
 use self::bits::PopCount;
 
 // https://github.com/RoaringBitmap/RoaringFormatSpec
@@ -64,8 +64,7 @@ fn read_write_set_snappy() {
     println!("snappy {}", w.len());
 
     let mut r = snap::Reader::new(io::Cursor::new(w));
-    let mut m2 = bits::Set::new();
-    m2.read_from(&mut r).unwrap();
+    let m2 = BitSet::read_from(&mut r).unwrap();
 
     assert_eq!(m1.count1(), m2.count1());
     assert_eq!(m1.count0(), m2.count0());
@@ -86,8 +85,7 @@ fn read_write_set_zstd() {
     println!("zstd {}", w.len());
 
     let mut r = zstd::Decoder::new(io::Cursor::new(w)).unwrap();
-    let mut m2 = bits::Set::new();
-    m2.read_from(&mut r).unwrap();
+    let m2 = BitSet::read_from(&mut r).unwrap();
 
     assert_eq!(m1.count1(), m2.count1());
     assert_eq!(m1.count0(), m2.count0());
@@ -96,18 +94,17 @@ fn read_write_set_zstd() {
     }
 }
 
-fn must_open_bitset(p: &str) -> bits::Set {
+fn must_open_bitset(p: &str) -> BitSet {
     let file = fs::File::open(p).unwrap();
-    let mut set = bits::Set::new();
-    set.read_from(&mut io::BufReader::new(file)).unwrap();
-    set.optimize();
-    set
+    let mut bits = BitSet::read_from(&mut io::BufReader::new(file)).unwrap();
+    bits.optimize();
+    bits
 }
 
-fn bitsetwithruns() -> bits::Set {
+fn bitsetwithruns() -> BitSet {
     must_open_bitset("./tests/bitmapwithruns.bin")
 }
-fn bitsetwithoutruns() -> bits::Set {
+fn bitsetwithoutruns() -> BitSet {
     must_open_bitset("./tests/bitmapwithoutruns.bin")
 }
 

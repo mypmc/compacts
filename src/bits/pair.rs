@@ -22,15 +22,6 @@ macro_rules! defops {
 }
 defops!((And, and), (Or, or), (AndNot, and_not), (Xor, xor));
 
-pub struct Merge<L, R>
-where
-    L: Iterator,
-    R: Iterator,
-{
-    lhs: Peekable<L>,
-    rhs: Peekable<R>,
-}
-
 /// Compare `a` and `b`, but return `x` if a is None and `y` if b is None
 fn comparing<T: Ord>(
     a: Option<T>,
@@ -141,6 +132,15 @@ where
             GT => self.rhs.next().map(|rhs| (None, Some(rhs))),
         }
     }
+}
+
+pub struct Merge<L, R>
+where
+    L: Iterator,
+    R: Iterator,
+{
+    lhs: Peekable<L>,
+    rhs: Peekable<R>,
 }
 
 impl<L, R, T> Iterator for Merge<L, R>

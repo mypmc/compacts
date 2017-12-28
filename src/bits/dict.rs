@@ -10,7 +10,6 @@ where
     fn count1(&self) -> T {
         Self::SIZE - self.count0()
     }
-
     fn count0(&self) -> T {
         Self::SIZE - self.count1()
     }

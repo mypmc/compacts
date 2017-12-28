@@ -1,14 +1,14 @@
 [package]
 name    = "compacts"
-version = "0.6.5"
+version = "0.7.0"
 authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
 readme  = "README.md"
 license = "Unlicense/MIT"
+exclude = ["tests/*.bin"]
 repository  = "https://github.com/feb29/compacts"
-keywords    = ["succinct", "bitmap", "bitvec"]
+keywords    = ["succinct", "bitmap", "bitvec", "bitset"]
 categories  = ["data-structures"]
 description = "succinct data structures"
-exclude = ["tests/*.bin"]
 
 [dependencies]
 byteorder = "1"

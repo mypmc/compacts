@@ -8,8 +8,5 @@ extern crate byteorder;
 #[macro_use]
 extern crate quickcheck;
 
-mod io;
-
 pub mod bits;
-
-pub use io::{ReadFrom, WriteTo};
+pub use bits::BitSet;

@@ -1,11 +1,21 @@
 #[macro_export]
-macro_rules! bits {
+macro_rules! bitset {
     ( $( $bit:expr ),* ) => {
         {
-            let mut bits = $crate::bits::Set::new();
-            $( bits.insert( $bit ); )*
+            let mut bits = $crate::BitSet::new();
+            $( bits.put( $bit, true ); )*
             bits.optimize();
             bits
+        }
+    }
+}
+
+macro_rules! divrem {
+    ( $bit:expr, $n:expr ) => {
+        {
+            let q = $bit / $n;
+            let r = $bit % $n;
+            (q as usize, r)
         }
     }
 }
