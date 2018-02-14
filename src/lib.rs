@@ -3,6 +3,8 @@
 #![deny(warnings)]
 
 extern crate byteorder;
+#[macro_use]
+extern crate lazy_static;
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;

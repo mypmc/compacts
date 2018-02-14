@@ -16,6 +16,13 @@ use self::Block::{Arr, Run, Seq};
 pub const SEQ_MAX_LEN: usize = 0x1000; // 4096
 pub const ARR_MAX_LEN: usize = 0x0400; // 1024
 
+lazy_static!{
+    static ref SIZEOF_U16: usize = mem::size_of::<u16>();
+    static ref SIZEOF_U32: usize = mem::size_of::<u32>();
+    static ref SIZEOF_U64: usize = mem::size_of::<u64>();
+    static ref SIZEOF_RUN: usize = mem::size_of::<ops::RangeInclusive<u16>>();
+}
+
 /// Internal representaions of a bits block.
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) enum Block {
@@ -23,15 +30,18 @@ pub(crate) enum Block {
     Arr(ArrBlock),
     Run(RunBlock),
 }
+
 #[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct SeqBlock {
     vector: Vec<u16>,
 }
+
 #[derive(Clone)]
 pub(crate) struct ArrBlock {
     weight: u32,
     bitmap: Box<[u64; 1024]>,
 }
+
 #[derive(Clone, Default, PartialEq, Eq)]
 pub(crate) struct RunBlock {
     weight: u32,
@@ -112,26 +122,16 @@ impl Block {
         delegate!(ref mut self, remove, bit)
     }
 
-    fn size_of_units() -> (usize, usize, usize, usize) {
-        let size_of_u16 = mem::size_of::<u16>();
-        let size_of_u32 = mem::size_of::<u32>();
-        let size_of_u64 = mem::size_of::<u64>();
-        let size_of_run = mem::size_of::<ops::RangeInclusive<u16>>();
-        (size_of_u16, size_of_u32, size_of_u64, size_of_run)
-    }
-
     /// Convert to more efficient inner representaions.
     pub fn optimize(&mut self) {
-        let (size_of_u16, size_of_u32, size_of_u64, size_of_run) = Self::size_of_units();
-
         let new_repr = match *self {
             Seq(ref seq) => {
-                let run = RunBlock::from(seq);
-                let mem_in_seq = size_of_u16 * seq.vector.len();
-                let mem_in_arr = size_of_u64 * ARR_MAX_LEN + size_of_u32;
-                let mem_in_run = size_of_run * run.ranges.len() + size_of_u32;
+                let mem_seq = *SIZEOF_U16 * seq.vector.len();
+                let mem_arr = *SIZEOF_U64 * ARR_MAX_LEN + *SIZEOF_U32;
+                let mem_run = *SIZEOF_RUN * seq.number_of_runs() + *SIZEOF_U32;
 
-                if mem_in_run <= cmp::min(mem_in_arr, mem_in_seq) {
+                if mem_run <= cmp::min(mem_arr, mem_seq) {
+                    let run = RunBlock::from(seq);
                     Some(Run(run))
                 } else if self.count1() as usize <= SEQ_MAX_LEN {
                     None
@@ -141,12 +141,12 @@ impl Block {
             }
 
             Arr(ref arr) => {
-                let run = RunBlock::from(arr);
-                let mem_in_seq = size_of_u16 * (arr.weight as usize);
-                let mem_in_arr = size_of_u64 * ARR_MAX_LEN + size_of_u32;
-                let mem_in_run = size_of_run * run.ranges.len() + size_of_u32;
+                let mem_seq = *SIZEOF_U16 * (arr.weight as usize);
+                let mem_arr = *SIZEOF_U64 * ARR_MAX_LEN + *SIZEOF_U32;
+                let mem_run = *SIZEOF_RUN * arr.number_of_runs() + *SIZEOF_U32;
 
-                if mem_in_run <= cmp::min(mem_in_arr, mem_in_seq) {
+                if mem_run <= cmp::min(mem_arr, mem_seq) {
+                    let run = RunBlock::from(arr);
                     Some(Run(run))
                 } else if arr.weight as usize <= SEQ_MAX_LEN {
                     Some(Seq(SeqBlock::from(arr)))
@@ -156,11 +156,11 @@ impl Block {
             }
 
             Run(ref run) => {
-                let mem_in_seq = size_of_u16 * (run.weight as usize);
-                let mem_in_arr = size_of_u64 * ARR_MAX_LEN + size_of_u32;
-                let mem_in_run = size_of_run * run.ranges.len() + size_of_u32;
+                let mem_seq = *SIZEOF_U16 * (run.weight as usize);
+                let mem_arr = *SIZEOF_U64 * ARR_MAX_LEN + *SIZEOF_U32;
+                let mem_run = *SIZEOF_RUN * run.ranges.len() + *SIZEOF_U32;
 
-                if mem_in_run <= cmp::min(mem_in_arr, mem_in_seq) {
+                if mem_run <= cmp::min(mem_arr, mem_seq) {
                     None
                 } else if run.weight as usize <= SEQ_MAX_LEN {
                     Some(Seq(SeqBlock::from(run)))

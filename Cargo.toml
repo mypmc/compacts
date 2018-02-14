@@ -12,9 +12,10 @@ description = "succinct data structures"
 
 [dependencies]
 byteorder = "1"
+lazy_static = "1"
 
 [dev-dependencies]
 quickcheck = "0.5"
-rand = "0.3"
+rand = "0.4"
 snap = "0.2"
 zstd = "0.4"

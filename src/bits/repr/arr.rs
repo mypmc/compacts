@@ -1,4 +1,5 @@
 use super::ArrBlock;
+use super::PopCount;
 
 impl PartialEq for ArrBlock {
     fn eq(&self, that: &ArrBlock) -> bool {
@@ -71,4 +72,54 @@ impl ArrBlock {
             false
         }
     }
+
+    pub fn number_of_runs(&self) -> usize {
+        if self.weight == 0 {
+            0
+        } else {
+            let mut runs = 0;
+            let mut next = self.bitmap[0];
+
+            for i in 0..(self.bitmap.len() - 1) {
+                let word = next;
+                next = self.bitmap[i + 1];
+                let mut rb = !word;
+                rb &= (word << 1) + (word >> 63);
+                rb &= !next;
+                let popc: u64 = rb.count1();
+                runs += popc as usize;
+            }
+
+            let word = next;
+            let popc: u64 = (!word & (word << 1)).count1();
+            runs += popc as usize;
+            if (word & 0x8000_0000_0000_0000) != 0 {
+                runs += 1;
+            }
+
+            runs
+        }
+    }
+}
+
+#[test]
+fn test_number_of_runs() {
+    macro_rules! arrblock {
+        ( $( $bit:expr ),* ) => {
+            {
+                let mut arr = ArrBlock::new();
+                $( arr.insert( $bit ); )*
+                arr
+            }
+        }
+    }
+
+    let arr = arrblock!();
+    assert_eq!(arr.number_of_runs(), 0);
+    let arr = arrblock!(0, 1, 2, 3, 4, 5);
+    assert_eq!(arr.number_of_runs(), 1);
+    let arr = arrblock!(0, 1, 2, 4, 5);
+    assert_eq!(arr.number_of_runs(), 2);
+    let arr = arrblock!(0, 1, 2, 4, 5, 10, 20);
+    assert_eq!(arr.number_of_runs(), 4);
 }
