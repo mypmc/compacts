@@ -9,7 +9,7 @@ extern crate zstd;
 use std::{fs, io};
 use test::Bencher;
 use rand::Rng;
-use compacts::BitSet;
+use compacts::bits::Set as BitSet;
 use compacts::bits::*;
 
 macro_rules! gen_bitset {
@@ -64,9 +64,27 @@ fn bitset_put_false(bench: &mut Bencher) {
 }
 
 #[bench]
-fn bitset_bits(bench: &mut Bencher) {
+fn bitset_bits_65000_150000(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
     let v1 = gen_bitset!(SIZE, RANGE1, rng);
+    bench.iter(|| v1.bits().collect::<Vec<u32>>());
+}
+#[bench]
+fn bitset_bits_65000_100000000(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = gen_bitset!(SIZE, RANGE2, rng);
+    bench.iter(|| v1.bits().collect::<Vec<u32>>());
+}
+#[bench]
+fn bitset_bits_1000000_100000000(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = gen_bitset!(1000000, RANGE2, rng);
+    bench.iter(|| v1.bits().collect::<Vec<u32>>());
+}
+#[bench]
+fn bitset_bits_1000000_u32max(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let v1 = gen_bitset!(1000000, !0, rng);
     bench.iter(|| v1.bits().collect::<Vec<u32>>());
 }
 

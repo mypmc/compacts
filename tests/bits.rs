@@ -3,8 +3,8 @@ extern crate snap;
 extern crate zstd;
 
 use std::{fs, io};
-use compacts::{bits, BitSet};
-use self::bits::PopCount;
+use compacts::bits;
+use self::bits::{PopCount, Set as BitSet};
 
 // https://github.com/RoaringBitmap/RoaringFormatSpec
 
@@ -35,7 +35,7 @@ fn read_write_set_from_file() {
 
     let body = {
         let mut file = fs::File::open("./tests/bitmapwithruns.bin").unwrap();
-        let mut body = Vec::with_capacity(8192);
+        let mut body = Vec::with_capacity(0x2000);
         io::copy(&mut file, &mut body).unwrap();
         body
     };
@@ -55,7 +55,7 @@ fn read_write_set_snappy() {
     use std::io::Write;
 
     let m1 = bitsetwithruns();
-    let mut w = Vec::with_capacity(8192);
+    let mut w = Vec::with_capacity(0x2000);
     {
         let mut buf = snap::Writer::new(&mut w);
         m1.write_to(&mut buf).unwrap();
@@ -76,7 +76,7 @@ fn read_write_set_snappy() {
 #[test]
 fn read_write_set_zstd() {
     let m1 = bitsetwithruns();
-    let mut w = Vec::with_capacity(8192);
+    let mut w = Vec::with_capacity(0x2000);
     {
         let mut enc = zstd::Encoder::new(&mut w, 0).unwrap();
         m1.write_to(&mut enc).unwrap();

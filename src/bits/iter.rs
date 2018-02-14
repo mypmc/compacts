@@ -2,49 +2,49 @@ use std::{iter, slice};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use super::{merge, pair, Page};
+use super::{merge, pair, Slot};
 use super::{BitAndAssign, BitAndNotAssign, BitOrAssign, BitXorAssign};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry<'a> {
-    inner: Cow<'a, Page>,
+    inner: Cow<'a, Slot>,
 }
 
 #[derive(Debug)]
-pub struct Entries<'a>(Mapping<'a, Page, ToEntry>);
+pub struct Entries<'a>(Mapping<'a, Slot, ToEntry>);
 
 type Mapping<'a, T, F> = iter::Map<slice::Iter<'a, T>, F>;
 
-type ToEntry = for<'x> fn(&'x Page) -> Entry<'x>;
+type ToEntry = for<'x> fn(&'x Slot) -> Entry<'x>;
 
 impl<'a> PartialOrd for Entry<'a> {
     fn partial_cmp(&self, that: &Self) -> Option<Ordering> {
-        let s1 = self.inner.slot;
-        let s2 = that.inner.slot;
+        let s1 = self.inner.key;
+        let s2 = that.inner.key;
         s1.partial_cmp(&s2)
     }
 }
 impl<'a> Ord for Entry<'a> {
     fn cmp(&self, that: &Self) -> Ordering {
-        let s1 = self.inner.slot;
-        let s2 = that.inner.slot;
+        let s1 = self.inner.key;
+        let s2 = that.inner.key;
         s1.cmp(&s2)
     }
 }
 
 impl<'a> Entry<'a> {
     pub fn bits<'r>(&'r self) -> impl Iterator<Item = u32> + 'r {
-        let slot = self.inner.slot;
-        self.inner.bits.iter().map(move |half| merge(slot, half))
+        let key = self.inner.key;
+        self.inner.bits.iter().map(move |half| merge(key, half))
     }
 
     fn into_bits(self) -> impl Iterator<Item = u32> {
-        let slot = self.inner.slot;
+        let key = self.inner.key;
         self.inner
             .into_owned()
             .bits
             .into_iter()
-            .map(move |half| merge(slot, half))
+            .map(move |half| merge(key, half))
     }
 }
 
@@ -225,18 +225,18 @@ impl<'a> Entries<'a> {
     }
 }
 
-impl<'a> From<&'a Page> for Entry<'a> {
-    fn from(page: &'a Page) -> Entry<'a> {
-        let inner = Cow::Borrowed(page);
+impl<'a> From<&'a Slot> for Entry<'a> {
+    fn from(slot: &'a Slot) -> Entry<'a> {
+        let inner = Cow::Borrowed(slot);
         Entry { inner }
     }
 }
 
-fn to_entry(page: &Page) -> Entry {
-    Entry::from(page)
+fn to_entry(slot: &Slot) -> Entry {
+    Entry::from(slot)
 }
 
-impl super::BitSet {
+impl super::Set {
     pub fn entries(&self) -> Entries {
         self.into_iter()
     }
@@ -270,25 +270,25 @@ impl super::BitSet {
     }
 }
 
-impl<'a> IntoIterator for &'a super::BitSet {
+impl<'a> IntoIterator for &'a super::Set {
     type Item = Entry<'a>;
     type IntoIter = Entries<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        Entries(self.pages.iter().map(to_entry))
+        Entries(self.slots.iter().map(to_entry))
     }
 }
-impl<'a> iter::FromIterator<Entry<'a>> for super::BitSet {
+impl<'a> iter::FromIterator<Entry<'a>> for super::Set {
     // assume I is sorted by key and all keys are unique.
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = Entry<'a>>,
     {
-        let mut pages = Vec::new();
+        let mut slots = Vec::new();
         for e in iter {
-            let mut page = e.inner.into_owned();
-            page.bits.optimize();
-            pages.push(page);
+            let mut slot = e.inner.into_owned();
+            slot.bits.optimize();
+            slots.push(slot);
         }
-        super::BitSet { pages }
+        super::Set { slots }
     }
 }

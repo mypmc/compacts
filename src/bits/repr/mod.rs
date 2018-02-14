@@ -13,8 +13,8 @@ use std::iter::FromIterator;
 use bits::{self, PopCount, Rank, Select0, Select1};
 use self::Block::{Arr, Run, Seq};
 
-pub const SEQ_MAX_LEN: usize = 4096;
-pub const ARR_MAX_LEN: usize = 1024;
+pub const SEQ_MAX_LEN: usize = 0x1000; // 4096
+pub const ARR_MAX_LEN: usize = 0x0400; // 1024
 
 /// Internal representaions of a bits block.
 #[derive(Clone, PartialEq, Eq)]

@@ -86,14 +86,14 @@ macro_rules! impl_Select {
                 let s0 = x - ((x & X55) >> 1);
                 let s1 = (s0 & X33) + ((s0 >> 2) & X33);
                 let s2 = ((s1 + (s1 >> 4)) & X0F).wrapping_mul(X01);
-                let p0 = (le8(s2, (w * X01)) >> 7).wrapping_mul(X01);
+                let p0 = (le8(s2, w * X01) >> 7).wrapping_mul(X01);
                 let p1 = (p0 >> 53) & !0x7;
                 let p2 = p1 as u32;
                 let p3 = (s2 << 8).wrapping_shr(p2);
                 let p4 = w - (p3 & 0xFF);
                 let p5 = lt8(0x0, ((x.wrapping_shr(p2) & 0xFF) * X01) & X8X);
                 let s3 = (p5 >> 0x7).wrapping_mul(X01);
-                let p6 = (le8(s3, (p4 * X01)) >> 7).wrapping_mul(X01) >> 56;
+                let p6 = (le8(s3, p4 * X01) >> 7).wrapping_mul(X01) >> 56;
                 let ix = p1 + p6;
                 if ix >= width as u64 { None } else { Some(ix as $pos) }
             }

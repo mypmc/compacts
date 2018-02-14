@@ -2,7 +2,7 @@
 macro_rules! bitset {
     ( $( $bit:expr ),* ) => {
         {
-            let mut bits = $crate::BitSet::new();
+            let mut bits = $crate::bits::Set::new();
             $( bits.put( $bit, true ); )*
             bits.optimize();
             bits

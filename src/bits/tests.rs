@@ -1,5 +1,6 @@
 use std::{io, u16};
 use quickcheck::TestResult;
+use bits::Set as BitSet;
 use bits::*;
 
 fn to_seq(vec: &Vec<u16>) -> SeqBlock {

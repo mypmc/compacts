@@ -28,36 +28,39 @@ pub use self::iter::{and, and_not, or, xor};
 
 /// Set of bit (2^32).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct BitSet {
-    pages: Vec<Page>,
+pub struct Set {
+    slots: Vec<Slot>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct Page {
-    slot: u16,
+struct Slot {
+    key: u16,
     bits: Block,
 }
 
+#[inline]
 fn split(n: u32) -> (u16, u16) {
     let q = n / (1 << 16);
     let r = n % (1 << 16);
     (q as u16, r as u16)
 }
+
+#[inline]
 fn merge(n: u16, m: u16) -> u32 {
     u32::from(n) * (1 << 16) + u32::from(m)
 }
 
-fn search_page(pages: &[Page], n: u16) -> Result<usize, usize> {
-    pages.binary_search_by_key(&n, |page| page.slot)
+fn search_slot(slots: &[Slot], n: u16) -> Result<usize, usize> {
+    slots.binary_search_by_key(&n, |slot| slot.key)
 }
 
 static TRUE: bool = true;
 static FALSE: bool = false;
 
-impl BitSet {
-    /// Return new BitSet.
+impl Set {
+    /// Return new Set.
     pub fn new() -> Self {
-        BitSet { pages: Vec::new() }
+        Set { slots: Vec::new() }
     }
 
     /// Clear all bits.
@@ -76,7 +79,7 @@ impl BitSet {
     /// }
     /// ```
     pub fn clear(&mut self) {
-        self.pages.clear();
+        self.slots.clear();
     }
 
     /// Return **true** if the bit is enabled, **false** otherwise.
@@ -84,9 +87,9 @@ impl BitSet {
     /// # Examples
     ///
     /// ```rust
-    /// use compacts::bits::{BitSet, PopCount};
+    /// use compacts::bits::{Set, PopCount};
     ///
-    /// let mut bits = BitSet::new();
+    /// let mut bits = Set::new();
     /// assert_eq!(bits.count0(), 1 << 32);
     /// bits.put(1, true);
     /// assert!(!bits.get(0));
@@ -97,8 +100,8 @@ impl BitSet {
     #[inline]
     pub fn get(&self, x: u32) -> bool {
         let (key, bit) = split(x);
-        search_page(&self.pages, key)
-            .map(|i| self.pages[i].bits.contains(bit))
+        search_slot(&self.slots, key)
+            .map(|i| self.slots[i].bits.contains(bit))
             .unwrap_or(false)
     }
 
@@ -129,17 +132,17 @@ impl BitSet {
     /// Enable bit at `x`, return **previous** value.
     #[inline]
     pub fn insert(&mut self, x: u32) -> bool {
-        let (slot, bit) = split(x);
-        let pos = search_page(&self.pages, slot);
+        let (key, bit) = split(x);
+        let pos = search_slot(&self.slots, key);
         match pos {
             Ok(i) => {
-                let page = &mut self.pages[i];
-                page.bits.insert(bit)
+                let slot = &mut self.slots[i];
+                slot.bits.insert(bit)
             }
             Err(i) => {
                 let mut bits = Block::new();
                 bits.insert(bit);
-                self.pages.insert(i, Page { slot, bits });
+                self.slots.insert(i, Slot { key, bits });
                 false
             }
         }
@@ -149,9 +152,9 @@ impl BitSet {
     #[inline]
     pub fn remove(&mut self, x: u32) -> bool {
         let (slot, bit) = split(x);
-        if let Ok(i) = search_page(&self.pages, slot) {
-            let page = &mut self.pages[i];
-            page.bits.remove(bit)
+        if let Ok(i) = search_slot(&self.slots, slot) {
+            let slot = &mut self.slots[i];
+            slot.bits.remove(bit)
         } else {
             false
         }
@@ -159,22 +162,22 @@ impl BitSet {
 
     /// Optimize an innternal representaions.
     pub fn optimize(&mut self) {
-        for page in &mut self.pages {
-            page.bits.optimize();
+        for slot in &mut self.slots {
+            slot.bits.optimize();
         }
-        self.pages.retain(|page| page.bits.count1() > 0);
-        self.pages.shrink_to_fit();
+        self.slots.retain(|slot| slot.bits.count1() > 0);
+        self.slots.shrink_to_fit();
     }
 
     pub fn bits<'a>(&'a self) -> impl Iterator<Item = u32> + 'a {
-        self.pages.iter().flat_map(|page| {
-            let slot = page.slot;
-            page.bits.iter().map(move |r| merge(slot, r))
+        self.slots.iter().flat_map(|slot| {
+            let key = slot.key;
+            slot.bits.iter().map(move |r| merge(key, r))
         })
     }
 }
 
-impl ops::Index<u32> for BitSet {
+impl ops::Index<u32> for Set {
     type Output = bool;
     fn index(&self, i: u32) -> &Self::Output {
         if self.get(i) {
@@ -185,18 +188,18 @@ impl ops::Index<u32> for BitSet {
     }
 }
 
-impl<T: AsRef<[u32]>> From<T> for BitSet {
+impl<T: AsRef<[u32]>> From<T> for Set {
     fn from(v: T) -> Self {
         v.as_ref().iter().collect()
     }
 }
 
-impl<'a> ::std::iter::FromIterator<u32> for BitSet {
+impl<'a> ::std::iter::FromIterator<u32> for Set {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = u32>,
     {
-        let mut bits = BitSet::new();
+        let mut bits = Set::new();
         for bit in iter {
             bits.insert(bit);
         }
@@ -205,12 +208,12 @@ impl<'a> ::std::iter::FromIterator<u32> for BitSet {
     }
 }
 
-impl<'a> ::std::iter::FromIterator<&'a u32> for BitSet {
+impl<'a> ::std::iter::FromIterator<&'a u32> for Set {
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = &'a u32>,
     {
-        let mut bits = BitSet::new();
+        let mut bits = Set::new();
         for &bit in iter {
             bits.insert(bit);
         }
@@ -219,7 +222,7 @@ impl<'a> ::std::iter::FromIterator<&'a u32> for BitSet {
     }
 }
 
-impl PopCount<u64> for BitSet {
+impl PopCount<u64> for Set {
     const SIZE: u64 = 1 << 32;
 
     /// # Examples
@@ -234,11 +237,11 @@ impl PopCount<u64> for BitSet {
     /// }
     /// ```
     fn count1(&self) -> u64 {
-        self.pages.iter().map(|b| u64::from(b.bits.count1())).sum()
+        self.slots.iter().map(|b| u64::from(b.bits.count1())).sum()
     }
 }
 
-impl Rank<u32> for BitSet {
+impl Rank<u32> for Set {
     /// # Examples
     ///
     /// ```rust
@@ -258,21 +261,21 @@ impl Rank<u32> for BitSet {
     fn rank1(&self, i: u32) -> u32 {
         let (hi, lo) = split(i);
         let mut rank = 0;
-        for page in &self.pages {
-            if page.slot > hi {
+        for slot in &self.slots {
+            if slot.key > hi {
                 break;
-            } else if page.slot == hi {
-                rank += u32::from(page.bits.rank1(lo));
+            } else if slot.key == hi {
+                rank += u32::from(slot.bits.rank1(lo));
                 break;
             } else {
-                rank += page.bits.count1();
+                rank += slot.bits.count1();
             }
         }
         rank
     }
 }
 
-impl Select1<u32> for BitSet {
+impl Select1<u32> for Set {
     /// # Examples
     ///
     /// ```rust
@@ -292,13 +295,13 @@ impl Select1<u32> for BitSet {
             return None;
         }
         let mut remain = c;
-        for page in &self.pages {
-            let w = page.bits.count1();
+        for slot in &self.slots {
+            let w = slot.bits.count1();
             if remain >= w {
                 remain -= w;
             } else {
-                let s = u32::from(page.bits.select1(remain as u16).unwrap());
-                let k = u32::from(page.slot) << 16;
+                let s = u32::from(slot.bits.select1(remain as u16).unwrap());
+                let k = u32::from(slot.key) << 16;
                 return Some(s + k);
             }
         }
@@ -306,7 +309,7 @@ impl Select1<u32> for BitSet {
     }
 }
 
-impl Select0<u32> for BitSet {
+impl Select0<u32> for Set {
     /// # Examples
     ///
     /// ```rust
@@ -329,24 +332,24 @@ impl Select0<u32> for BitSet {
     }
 }
 
-impl BitSet {
+impl Set {
     // The cookie header spans either 32 bits or 64 bits.
     //
     // If the first 32 bits have the value `SERIAL_NO_RUN`,
-    // then there is no `RunBlock` page in `Map`.
-    // the next 32 bits are used to store the number of pages.
+    // then there is no `RunBlock` slot in `Map`.
+    // the next 32 bits are used to store the number of slots.
     // If the bitmap is empty (i.e., it has no container),
     // then you should choose this cookie header.
     //
     // If the 16 least significant bits of the 32-bit cookie have the value `SERIAL_COOKIE`,
     // the 16 most significant bits of the 32-bit cookie are used to store
-    // the number of pages minus 1.
-    // That is, if you shift right by 16 the cookie and add 1, you get the number of pages.
+    // the number of slots minus 1.
+    // That is, if you shift right by 16 the cookie and add 1, you get the number of slots.
     //
     // Then we store `RunIndex` following the initial 32 bits,
-    // as a bitset to indicate whether each of the pages is a `RunBlock` or not.
+    // as a bitset to indicate whether each of the slots is a `RunBlock` or not.
     //
-    // The LSB of the first byte corresponds to the first stored pages and so forth.
+    // The LSB of the first byte corresponds to the first stored slots and so forth.
     // Thus if follows that the least significant 16 bits of the first 32 bits
     // of a serialized bitmaps should either have the value `SERIAL_NO_RUN`
     // or the value SERIAL_COOKIE. In other cases, we should abort the decoding.
@@ -354,7 +357,7 @@ impl BitSet {
     // After scanning the cookie header, we know how many containers are present in the bitmap.
 
     pub fn write_to<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
-        let runidx = RunIndex::new(&self.pages);
+        let runidx = RunIndex::new(&self.slots);
 
         let (sizeof_cookie, sizeof_runidx) = if runidx.is_empty() {
             (2 * mem::size_of::<u32>(), 0)
@@ -362,30 +365,30 @@ impl BitSet {
             (2 * mem::size_of::<u16>(), runidx.bytes().len())
         };
 
-        let sizeof_header = 2 * mem::size_of::<u16>() * self.pages.len();
+        let sizeof_header = 2 * mem::size_of::<u16>() * self.slots.len();
         let sum_sizeof = sizeof_cookie + sizeof_runidx + sizeof_header;
 
         // serial cookie
         if runidx.is_empty() {
             w.write_u32::<LittleEndian>(SERIAL_NO_RUN)?;
-            w.write_u32::<LittleEndian>(self.pages.len() as u32)?;
+            w.write_u32::<LittleEndian>(self.slots.len() as u32)?;
         } else {
             w.write_u16::<LittleEndian>(SERIAL_COOKIE)?;
-            w.write_u16::<LittleEndian>((self.pages.len() - 1) as u16)?;
+            w.write_u16::<LittleEndian>((self.slots.len() - 1) as u16)?;
             w.write_all(runidx.bytes())?;
         };
 
         // header
-        for b in &self.pages {
-            let weight = (b.bits.count1() - 1) as u16;
-            w.write_u16::<LittleEndian>(b.slot)?;
+        for slot in &self.slots {
+            let weight = (slot.bits.count1() - 1) as u16;
+            w.write_u16::<LittleEndian>(slot.key)?;
             w.write_u16::<LittleEndian>(weight)?;
         }
 
-        if runidx.is_empty() || self.pages.len() >= NO_OFFSET_THRESHOLD as usize {
+        if runidx.is_empty() || self.slots.len() >= NO_OFFSET_THRESHOLD as usize {
             // offset
-            let mut offset = sum_sizeof + 2 * mem::size_of::<u16>() * self.pages.len();
-            for b in &self.pages {
+            let mut offset = sum_sizeof + 2 * mem::size_of::<u16>() * self.slots.len();
+            for b in &self.slots {
                 w.write_u32::<LittleEndian>(offset as u32)?;
                 let pop = b.bits.count1();
                 match b.bits {
@@ -405,11 +408,11 @@ impl BitSet {
             }
         }
 
-        // TODO: Fix Page's WriteTo implementation
-        // Write an optimized page (clone if it should do so),
+        // TODO: Fix Slot's WriteTo implementation
+        // Write an optimized slot (clone if it should do so),
         // so that the above assertions can be removed.
 
-        for b in &self.pages {
+        for b in &self.slots {
             match b.bits {
                 Block::Seq(ref seq) => seq.write_to(w)?,
                 Block::Arr(ref arr) => arr.write_to(w)?,
@@ -423,16 +426,16 @@ impl BitSet {
     pub fn read_from<R: io::Read>(r: &mut R) -> io::Result<Self> {
         match r.read_u32::<LittleEndian>()? {
             cookie if cookie == SERIAL_NO_RUN => {
-                let page_len = r.read_u32::<LittleEndian>()? as usize;
-                let header = read_header(r, page_len)?;
+                let slot_len = r.read_u32::<LittleEndian>()? as usize;
+                let header = read_header(r, slot_len)?;
 
-                // eprintln!("pages={:?}", page_len);
+                // eprintln!("slots={:?}", slot_len);
                 // eprintln!("header={:?}", header);
-                discard_offset(r, page_len)?;
+                discard_offset(r, slot_len)?;
 
-                let mut pages = Vec::with_capacity(page_len);
+                let mut slots = Vec::with_capacity(slot_len);
 
-                for (slot, pop) in header {
+                for (key, pop) in header {
                     let pop = pop as usize;
                     let bits = if pop > SEQ_MAX_LEN {
                         let arr = ArrBlock::read_from(r)?;
@@ -441,14 +444,14 @@ impl BitSet {
                         let seq = SeqBlock::read_from(r, pop)?;
                         Block::from(seq)
                     };
-                    pages.push(Page { slot, bits });
+                    slots.push(Slot { key, bits });
                 }
-                Ok(BitSet { pages })
+                Ok(Set { slots })
             }
 
             cookie if cookie & 0x_0000_FFFF == u32::from(SERIAL_COOKIE) => {
-                let page_len = (cookie.wrapping_shr(16) + 1) as usize;
-                let bytes_len = (page_len + 7) / 8;
+                let slot_len = (cookie.wrapping_shr(16) + 1) as usize;
+                let bytes_len = (slot_len + 7) / 8;
 
                 let hasrun = true;
                 let bitmap = {
@@ -457,15 +460,15 @@ impl BitSet {
                     buf
                 };
                 let runidx = RunIndex { hasrun, bitmap };
-                let header = read_header(r, page_len)?;
+                let header = read_header(r, slot_len)?;
 
-                if runidx.is_empty() || page_len >= NO_OFFSET_THRESHOLD as usize {
-                    discard_offset(r, page_len)?;
+                if runidx.is_empty() || slot_len >= NO_OFFSET_THRESHOLD as usize {
+                    discard_offset(r, slot_len)?;
                 }
 
-                let mut pages = Vec::with_capacity(page_len);
+                let mut slots = Vec::with_capacity(slot_len);
 
-                for (i, (slot, pop)) in header.into_iter().enumerate() {
+                for (i, (key, pop)) in header.into_iter().enumerate() {
                     let pop = pop as usize;
 
                     let bits = if runidx.bitmap[i / 8] & (1 << (i % 8)) > 0 {
@@ -479,9 +482,9 @@ impl BitSet {
                         Block::from(seq)
                     };
 
-                    pages.push(Page { slot, bits });
+                    slots.push(Slot { key, bits });
                 }
-                Ok(BitSet { pages })
+                Ok(Set { slots })
             }
 
             x => Err(io::Error::new(
@@ -502,10 +505,10 @@ struct RunIndex {
 }
 
 impl RunIndex {
-    fn new(pages: &[Page]) -> Self {
+    fn new(slots: &[Slot]) -> Self {
         let mut hasrun = false;
-        let mut bitmap = vec![0u8; (pages.len() + 7) / 8];
-        for (i, b) in pages.iter().enumerate() {
+        let mut bitmap = vec![0u8; (slots.len() + 7) / 8];
+        for (i, b) in slots.iter().enumerate() {
             if let Block::Run(_) = b.bits {
                 hasrun = true;
                 bitmap[i / 8] |= 1 << (i % 8);
