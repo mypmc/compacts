@@ -250,5 +250,22 @@ fn bitset_write_to_buff_zstd(bench: &mut Bencher) {
         });
         buf.finish().unwrap();
     }
-    // print!("{:>8} {:>12} ", n, w.len())
+}
+
+#[bench]
+#[ignore]
+fn bitset_jaccard_similarity(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let bs1 = gen_bitset!(SIZE, RANGE2, rng);
+    let bs2 = gen_bitset!(SIZE, RANGE2, rng);
+    bench.iter(|| Jaccard::similarity(&bs1, &bs2));
+}
+
+#[bench]
+#[ignore]
+fn bitset_cosine_similarity(bench: &mut Bencher) {
+    let mut rng = rand::thread_rng();
+    let bs1 = gen_bitset!(SIZE, RANGE2, rng);
+    let bs2 = gen_bitset!(SIZE, RANGE2, rng);
+    bench.iter(|| Cosine::similarity(&bs1, &bs2));
 }

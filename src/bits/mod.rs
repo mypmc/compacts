@@ -4,6 +4,7 @@ mod dict;
 mod repr;
 mod pair;
 mod iter;
+mod similarity;
 #[cfg(test)]
 mod tests;
 
@@ -22,6 +23,7 @@ use self::repr::SEQ_MAX_LEN;
 pub use self::dict::{PopCount, Rank, Select0, Select1};
 pub use self::iter::{And, AndNot, Or, Xor};
 pub use self::iter::{and, and_not, or, xor};
+// pub use self::similarity::{Cosine, Jaccard};
 
 // https://www.cs.cmu.edu/~dga/papers/zhou-sea2013.pdf
 
