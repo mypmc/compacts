@@ -6,7 +6,6 @@ use super::{merge, pair, Slot};
 use super::{BitAndAssign, BitAndNotAssign, BitOrAssign, BitXorAssign};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[doc(hidden)]
 pub struct Entry<'a> {
     inner: Cow<'a, Slot>,
 }
