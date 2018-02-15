@@ -78,13 +78,13 @@ fn bitset_bits_65000_100000000(bench: &mut Bencher) {
 #[bench]
 fn bitset_bits_1000000_100000000(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
-    let v1 = gen_bitset!(1000000, RANGE2, rng);
+    let v1 = gen_bitset!(1_000_000, RANGE2, rng);
     bench.iter(|| v1.bits().collect::<Vec<u32>>());
 }
 #[bench]
 fn bitset_bits_1000000_u32max(bench: &mut Bencher) {
     let mut rng = rand::thread_rng();
-    let v1 = gen_bitset!(1000000, !0, rng);
+    let v1 = gen_bitset!(1_000_000, !0, rng);
     bench.iter(|| v1.bits().collect::<Vec<u32>>());
 }
 

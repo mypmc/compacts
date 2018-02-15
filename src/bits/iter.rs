@@ -6,11 +6,13 @@ use super::{merge, pair, Slot};
 use super::{BitAndAssign, BitAndNotAssign, BitOrAssign, BitXorAssign};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[doc(hidden)]
 pub struct Entry<'a> {
     inner: Cow<'a, Slot>,
 }
 
 #[derive(Debug)]
+#[doc(hidden)]
 pub struct Entries<'a>(Mapping<'a, Slot, ToEntry>);
 
 type Mapping<'a, T, F> = iter::Map<slice::Iter<'a, T>, F>;
@@ -237,32 +239,37 @@ fn to_entry(slot: &Slot) -> Entry {
 }
 
 impl super::Set {
-    pub fn entries(&self) -> Entries {
+    pub fn entries(&self) -> impl Iterator<Item = Entry> {
+        // pub fn entries<'a>(&'a self) -> impl Iterator<Item = Entry<'a>> {
+        // pub fn entries(&self) -> Entries {
         self.into_iter()
     }
 
-    pub fn and<'a, T>(&'a self, that: T) -> And<'a, Entries<'a>, T::IntoIter>
+    pub fn and<'a, T>(&'a self, that: T) -> And<'a, impl Iterator<Item = Entry<'a>>, T::IntoIter>
     where
         T: IntoIterator<Item = Entry<'a>>,
     {
         and(self, that)
     }
 
-    pub fn or<'a, T>(&'a self, that: T) -> Or<'a, Entries<'a>, T::IntoIter>
+    pub fn or<'a, T>(&'a self, that: T) -> Or<'a, impl Iterator<Item = Entry<'a>>, T::IntoIter>
     where
         T: IntoIterator<Item = Entry<'a>>,
     {
         or(self, that)
     }
 
-    pub fn and_not<'a, T>(&'a self, that: T) -> AndNot<'a, Entries<'a>, T::IntoIter>
+    pub fn and_not<'a, T>(
+        &'a self,
+        that: T,
+    ) -> AndNot<'a, impl Iterator<Item = Entry<'a>>, T::IntoIter>
     where
         T: IntoIterator<Item = Entry<'a>>,
     {
         and_not(self, that)
     }
 
-    pub fn xor<'a, T>(&'a self, that: T) -> Xor<'a, Entries<'a>, T::IntoIter>
+    pub fn xor<'a, T>(&'a self, that: T) -> Xor<'a, impl Iterator<Item = Entry<'a>>, T::IntoIter>
     where
         T: IntoIterator<Item = Entry<'a>>,
     {
