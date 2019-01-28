@@ -1,0 +1,29 @@
+[package]
+name    = "compacts"
+version = "0.10.0"
+edition = "2018"
+build   = "build.rs"
+authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
+readme  = "README.md"
+license = "Unlicense/MIT"
+repository  = "https://github.com/symplectik/compacts"
+keywords    = ["succinct", "bitvec", "bitmap", "bitset"]
+categories  = ["data-structures"]
+description = """
+compact data structures
+"""
+
+[workspace]
+members = ["compacts_roaring"]
+
+[dependencies]
+# rayon = "1"
+
+[build-dependencies]
+
+# tests, benchmarks and examples
+[dev-dependencies]
+quickcheck = "0.7"
+lazy_static = "1"
+rand = "0.6"
+libc = "*"

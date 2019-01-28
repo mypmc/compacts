@@ -1,0 +1,7 @@
+[package]
+name = "compacts_roaring"
+version = "0.1.0"
+authors = ["Kohei Watanabe <xbeef29@gmail.com>"]
+edition = "2018"
+
+[dependencies]
