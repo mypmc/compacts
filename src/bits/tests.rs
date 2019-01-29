@@ -1,5 +1,28 @@
 use crate::bits::*;
 
+// #[test]
+// fn not() {
+//     let bv = PageMap::<u8, Block<u64>>::new();
+//     for b in bv.not().into_iter().take(3) {
+//         assert_eq!(b.value.count1(), 65536);
+//     }
+//     let bv = Map::<Block<u64>>::new();
+//     for b in bv.not().not().into_iter().take(3) {
+//         assert_eq!(b.count1(), 65536);
+//     }
+// }
+
+// #[test]
+// fn flip() {
+//     let mut u = 0b_0001_1001_u8;
+//     u.flip(1);
+//     assert_eq!(u, 0b_0001_1011_u8);
+//     u.flip(0..5);
+//     assert_eq!(u, 0b_0000_0100_u8);
+//     u.flip(..);
+//     assert_eq!(u, 0b_1111_1011_u8);
+// }
+
 #[test]
 fn set1_range() {
     let mut slice = [0b_00000000_u8, 0b_00000000, 0b_00000000];
@@ -76,59 +99,6 @@ quickcheck! {
     }
 }
 
-macro_rules! associative {
-    ($x: expr,$y: expr,$z: expr,$fn: ident) => {{
-        let r1 = $fn($fn($x, $y), $z).into_iter().collect::<Vec<_>>();
-        let r2 = $fn($x, $fn($y, $z)).into_iter().collect::<Vec<_>>();
-        r1 == r2
-    }};
-}
-
-macro_rules! commutative {
-    ($x: expr,$y: expr,$fn: ident) => {{
-        let r1 = $fn($x, $y).into_iter().collect::<Vec<_>>();
-        let r2 = $fn($y, $x).into_iter().collect::<Vec<_>>();
-        r1 == r2
-    }};
-}
-
-quickcheck! {
-    fn associative(b1: Vec<u64>, b2: Vec<u64>, b3: Vec<u64>) -> bool {
-        associative!(
-            b1.iter().cloned(),
-            b2.iter().cloned(),
-            b3.iter().cloned(),
-            and
-        ) && associative!(
-            b1.iter().cloned(),
-            b2.iter().cloned(),
-            b3.iter().cloned(),
-            or
-        ) && associative!(
-            b1.iter().cloned(),
-            b2.iter().cloned(),
-            b3.iter().cloned(),
-            xor
-        )
-    }
-
-    fn commutative(b1: Vec<u64>, b2: Vec<u64>) -> bool {
-        commutative!(
-            b1.iter().cloned(),
-            b2.iter().cloned(),
-            and
-        ) && commutative!(
-            b1.iter().cloned(),
-            b2.iter().cloned(),
-            or
-        ) && commutative!(
-            b1.iter().cloned(),
-            b2.iter().cloned(),
-            xor
-        )
-    }
-}
-
 #[test]
 fn default_value() {
     let zero = <u64 as UnsignedInt>::ZERO;
@@ -142,6 +112,22 @@ macro_rules! gen {
         use rand::prelude::*;
 
         type Type = $Type;
+
+        macro_rules! associative {
+            ($x: expr,$y: expr,$z: expr,$fn: ident) => {{
+                let r1 = $fn($fn($x, $y), $z).into_iter().collect::<Type>();
+                let r2 = $fn($x, $fn($y, $z)).into_iter().collect::<Type>();
+                r1 == r2
+            }};
+        }
+
+        macro_rules! commutative {
+            ($x: expr,$y: expr,$fn: ident) => {{
+                let r1 = $fn($x, $y).into_iter().collect::<Type>();
+                let r2 = $fn($y, $x).into_iter().collect::<Type>();
+                r1 == r2
+            }};
+        }
 
         macro_rules! bits {
             ($rng: expr) => {{
@@ -191,19 +177,19 @@ mod map {
     const BITSIZE: u64 = 010_000_000;
 
     mod density_00 {
-        gen!(Map<Block<u64>>, BITSIZE / 1000, BITSIZE);
+        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 1000, BITSIZE);
     }
     mod density_05 {
-        gen!(Map<Block<u64>>, BITSIZE / 20, BITSIZE);
+        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 20, BITSIZE);
     }
     mod density_10 {
-        gen!(Map<Block<u64>>, BITSIZE / 10, BITSIZE);
+        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 10, BITSIZE);
     }
     mod density_20 {
-        gen!(Map<Block<u64>>, BITSIZE / 5, BITSIZE);
+        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 5, BITSIZE);
     }
     mod density_50 {
-        gen!(Map<Block<u64>>, BITSIZE / 2, BITSIZE);
+        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 2, BITSIZE);
     }
 }
 
@@ -211,18 +197,18 @@ mod page_map {
     const BITSIZE: u64 = 010_000_000;
 
     mod density_00 {
-        gen!(PageMap<u64, Block<u64>>, BITSIZE/1000, BITSIZE);
+        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/1000, BITSIZE);
     }
     mod density_05 {
-        gen!(PageMap<u64, Block<u64>>, BITSIZE/20, BITSIZE);
+        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/20, BITSIZE);
     }
     mod density_10 {
-        gen!(PageMap<u64, Block<u64>>, BITSIZE/10, BITSIZE);
+        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/10, BITSIZE);
     }
     mod density_20 {
-        gen!(PageMap<u64, Block<u64>>, BITSIZE/5, BITSIZE);
+        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/5, BITSIZE);
     }
     mod density_50 {
-        gen!(PageMap<u64, Block<u64>>, BITSIZE/2, BITSIZE);
+        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/2, BITSIZE);
     }
 }

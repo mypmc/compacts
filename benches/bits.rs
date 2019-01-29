@@ -8,11 +8,12 @@ extern crate rand;
 
 macro_rules! bench {
     ($Repr:ty, $NBITS:expr, $BOUND:expr) => {
-        use compacts::bits::{self, *};
+        use compacts::bits::{self, ops::*, *};
         use rand::prelude::*;
         use test::Bencher;
 
-        type Type = PageMap<u64, $Repr>;
+        // type Type = PageMap<u64, $Repr>;
+        type Type = Map<$Repr>;
 
         macro_rules! bits {
             ($rng: expr) => {{
@@ -129,19 +130,19 @@ macro_rules! genmod {
         // }
 
         mod block_00 {
-            bench!(Block<u64>, $BITSIZE / 1000, $BITSIZE);
+            bench!(Block<[u64; 1024]>, $BITSIZE / 1000, $BITSIZE);
         }
         mod block_01 {
-            bench!(Block<u64>, $BITSIZE / 100, $BITSIZE);
+            bench!(Block<[u64; 1024]>, $BITSIZE / 100, $BITSIZE);
         }
         mod block_05 {
-            bench!(Block<u64>, $BITSIZE / 20, $BITSIZE);
+            bench!(Block<[u64; 1024]>, $BITSIZE / 20, $BITSIZE);
         }
         mod block_10 {
-            bench!(Block<u64>, $BITSIZE / 10, $BITSIZE);
+            bench!(Block<[u64; 1024]>, $BITSIZE / 10, $BITSIZE);
         }
         mod block_50 {
-            bench!(Block<u64>, $BITSIZE / 2, $BITSIZE);
+            bench!(Block<[u64; 1024]>, $BITSIZE / 2, $BITSIZE);
         }
     };
 }
