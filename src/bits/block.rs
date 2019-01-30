@@ -54,12 +54,23 @@ impl<A: BlockArray> PartialEq for Block<A> {
             return false;
         }
 
+        // if both `ones` are zero, we do not care about its data representation
         (self.ones == 0 && that.ones == 0) || self.as_ref() == that.as_ref()
+    }
+}
 
-        // match (self.as_ref(), that.as_ref()) {
-        //     (Some(lhs), Some(rhs)) => lhs == rhs,
-        //     _ => false,
-        // }
+impl<A: BlockArray> From<A> for Block<A> {
+    fn from(array: A) -> Self {
+        let ones = ucast(array.count1());
+        let data = Some(Box::new(array));
+        Block { ones, data }
+    }
+}
+impl<A: BlockArray> From<&'_ A> for Block<A> {
+    fn from(array: &A) -> Self {
+        let ones = ucast(array.count1());
+        let data = Some(Box::new(*array));
+        Block { ones, data }
     }
 }
 
@@ -83,6 +94,13 @@ impl<A: BlockArray> Block<A> {
     }
     pub fn as_mut(&mut self) -> Option<&mut [A::Value]> {
         self.data.as_mut().map(|a| a.as_slice_mut())
+    }
+
+    pub fn copy_from_slice<T: AsRef<[A::Value]>>(&mut self, data: T) {
+        let this = self.alloc().as_slice_mut();
+        let that = data.as_ref();
+        this[..that.len()].copy_from_slice(that);
+        self.ones = ucast(this.count1());
     }
 
     fn alloc(&mut self) -> &mut A {
@@ -433,6 +451,21 @@ macro_rules! implBlockArray {
             fn as_slice(&self) -> &[$Val] { &self[..] }
 
             fn as_slice_mut(&mut self) -> &mut [$Val] { &mut self[..] }
+        }
+
+        impl From<Block<Self>> for [$Val; $LEN] {
+            fn from(block: Block<Self>) -> Self {
+                block.data.map_or_else(Self::empty, |boxed| *boxed)
+            }
+        }
+        impl From<&'_ Block<Self>> for [$Val; $LEN] {
+            fn from(block: &Block<Self>) -> Self {
+                block.data.as_ref().map_or_else(Self::empty, |boxed| {
+                    let mut array = Self::splat(0);
+                    array.copy_from_slice(&boxed[..]);
+                    array
+                })
+            }
         }
 
         impl FiniteBits for [$Val; $LEN] {

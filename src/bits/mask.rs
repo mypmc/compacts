@@ -205,14 +205,14 @@ where
     }
 }
 
-impl<'a, L, R, K, A> Iterator for Iter<L, R, Page<K, Cow<'a, Block<A>>>, sealed::And>
+impl<'a, L, R, K, A> Iterator for Iter<L, R, Entry<K, Cow<'a, Block<A>>>, sealed::And>
 where
-    L: Iterator<Item = Page<K, Cow<'a, Block<A>>>>,
-    R: Iterator<Item = Page<K, Cow<'a, Block<A>>>>,
+    L: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
+    R: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
     K: UnsignedInt,
     A: BlockArray,
 {
-    type Item = Page<K, Cow<'a, Block<A>>>;
+    type Item = Entry<K, Cow<'a, Block<A>>>;
     fn next(&mut self) -> Option<Self::Item> {
         let lhs = &mut self.lhs;
         let rhs = &mut self.rhs;
@@ -240,14 +240,14 @@ where
     }
 }
 
-impl<'a, L, R, K, A> Iterator for Iter<L, R, Page<K, Cow<'a, Block<A>>>, sealed::Or>
+impl<'a, L, R, K, A> Iterator for Iter<L, R, Entry<K, Cow<'a, Block<A>>>, sealed::Or>
 where
-    L: Iterator<Item = Page<K, Cow<'a, Block<A>>>>,
-    R: Iterator<Item = Page<K, Cow<'a, Block<A>>>>,
+    L: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
+    R: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
     K: UnsignedInt,
     A: BlockArray,
 {
-    type Item = Page<K, Cow<'a, Block<A>>>;
+    type Item = Entry<K, Cow<'a, Block<A>>>;
     fn next(&mut self) -> Option<Self::Item> {
         let lhs = &mut self.lhs;
         let rhs = &mut self.rhs;
@@ -270,14 +270,14 @@ where
     }
 }
 
-impl<'a, L, R, K, A> Iterator for Iter<L, R, Page<K, Cow<'a, Block<A>>>, sealed::Xor>
+impl<'a, L, R, K, A> Iterator for Iter<L, R, Entry<K, Cow<'a, Block<A>>>, sealed::Xor>
 where
-    L: Iterator<Item = Page<K, Cow<'a, Block<A>>>>,
-    R: Iterator<Item = Page<K, Cow<'a, Block<A>>>>,
+    L: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
+    R: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
     K: UnsignedInt,
     A: BlockArray,
 {
-    type Item = Page<K, Cow<'a, Block<A>>>;
+    type Item = Entry<K, Cow<'a, Block<A>>>;
     fn next(&mut self) -> Option<Self::Item> {
         let lhs = &mut self.lhs;
         let rhs = &mut self.rhs;

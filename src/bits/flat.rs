@@ -660,7 +660,7 @@ where
     }
 }
 
-impl<'a, K, V, U> std::iter::FromIterator<Page<K, Cow<'a, V>>> for Map<Page<K, U>>
+impl<'a, K, V, U> std::iter::FromIterator<Entry<K, Cow<'a, V>>> for Map<Entry<K, U>>
 where
     K: UnsignedInt,
     V: Clone + Count + 'a,
@@ -668,7 +668,7 @@ where
 {
     fn from_iter<I>(iterable: I) -> Self
     where
-        I: IntoIterator<Item = Page<K, Cow<'a, V>>>,
+        I: IntoIterator<Item = Entry<K, Cow<'a, V>>>,
     {
         let mut ones = 0;
         let mut bits = Vec::with_capacity(1 << 10);
@@ -680,11 +680,11 @@ where
             }
             ones += count;
             let value = entry.value.into_owned().into();
-            bits.push(Page::new(entry.index, value));
+            bits.push(Entry::new(entry.index, value));
         });
 
         bits.shrink_to_fit();
-        PageMap::new_unchecked(ones, bits)
+        EntryMap::new_unchecked(ones, bits)
     }
 }
 
@@ -696,8 +696,17 @@ pub struct Blocks<'a, T> {
     iter: std::slice::Iter<'a, T>,
 }
 
-pub struct Pages<'a, K: UnsignedInt, V> {
-    iter: std::slice::Iter<'a, Page<K, V>>,
+pub struct Entrys<'a, K: UnsignedInt, V> {
+    iter: std::slice::Iter<'a, Entry<K, V>>,
+}
+
+impl<'a, A: BlockArray> IntoIterator for &'a Map<A> {
+    type Item = Cow<'a, Block<A>>;
+    type IntoIter = Blocks<'a, A>;
+    fn into_iter(self) -> Self::IntoIter {
+        let iter = self.data.iter();
+        Blocks { iter }
+    }
 }
 
 impl<'a, A: BlockArray> IntoIterator for &'a Map<Block<A>> {
@@ -709,12 +718,24 @@ impl<'a, A: BlockArray> IntoIterator for &'a Map<Block<A>> {
     }
 }
 
-impl<'a, K: UnsignedInt, A: BlockArray> IntoIterator for &'a Map<Page<K, Block<A>>> {
-    type Item = Page<K, Cow<'a, Block<A>>>;
-    type IntoIter = Pages<'a, K, Block<A>>;
+impl<'a, K: UnsignedInt, A: BlockArray> IntoIterator for &'a Map<Entry<K, Block<A>>> {
+    type Item = Entry<K, Cow<'a, Block<A>>>;
+    type IntoIter = Entrys<'a, K, Block<A>>;
     fn into_iter(self) -> Self::IntoIter {
         let iter = self.data.iter();
-        Pages { iter }
+        Entrys { iter }
+    }
+}
+
+impl<'a, A: BlockArray> Iterator for Blocks<'a, A> {
+    type Item = Cow<'a, Block<A>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(array) = self.iter.next() {
+            if array.count1() > 0 {
+                return Some(Cow::Owned(Block::from(array)));
+            }
+        }
+        None
     }
 }
 
@@ -730,14 +751,14 @@ impl<'a, A: BlockArray> Iterator for Blocks<'a, Block<A>> {
     }
 }
 
-impl<'a, K: UnsignedInt, A: BlockArray> Iterator for Pages<'a, K, Block<A>> {
-    type Item = Page<K, Cow<'a, Block<A>>>;
+impl<'a, K: UnsignedInt, A: BlockArray> Iterator for Entrys<'a, K, Block<A>> {
+    type Item = Entry<K, Cow<'a, Block<A>>>;
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(page) = self.iter.next() {
             if page.value.count1() > 0 {
                 let index = page.index;
                 let value = Cow::Borrowed(&page.value);
-                return Some(Page::new(index, value));
+                return Some(Entry::new(index, value));
             }
         }
         None
@@ -748,7 +769,7 @@ macro_rules! implIntoIteratorForBoxMap {
     ($(($Uint:ty, $LEN:expr)),*) => ($(
 
         impl<'a> IntoIterator for &'a Map<$Uint> {
-            type Item = Cow<'a, [$Uint]>;
+            type Item = Cow<'a, Block<[$Uint; $LEN]>>;
             type IntoIter = Chunks<'a, $Uint>;
             fn into_iter(self) -> Self::IntoIter {
                 let iter = self.data.chunks($LEN);
@@ -757,28 +778,26 @@ macro_rules! implIntoIteratorForBoxMap {
         }
 
         impl<'a> Iterator for Chunks<'a, $Uint> {
-            type Item = Cow<'a, [$Uint]>;
+            type Item = Cow<'a, Block<[$Uint; $LEN]>>;
             fn next(&mut self) -> Option<Self::Item> {
-                self.iter.next().map(|chunk| if chunk.len() < $LEN {
-                    let mut vec = vec![0; $LEN];
-                    vec.copy_from_slice(chunk);
-                    Cow::Owned(vec)
-                } else {
-                    Cow::Borrowed(chunk)
+                self.iter.next().map(|chunk| {
+                    let mut block = Block::splat(0);
+                    block.copy_from_slice(chunk);
+                    Cow::Owned(block)
                 })
             }
         }
 
-        // impl<'a, K: UnsignedInt> IntoIterator for &'a Map<Page<K, $Uint>> {
-        //     type Item = Page<K, Cow<'a, [$Uint]>>;
-        //     type IntoIter = Pages<'a, K, $Uint>;
+        // impl<'a, K: UnsignedInt> IntoIterator for &'a Map<Entry<K, $Uint>> {
+        //     type Item = Entry<K, Cow<'a, [$Uint]>>;
+        //     type IntoIter = Entrys<'a, K, $Uint>;
         //     fn into_iter(self) -> Self::IntoIter {
         //         let iter = self.data.iter();
-        //         Pages { iter }
+        //         Entrys { iter }
         //     }
         // }
-        // impl<'a, K: UnsignedInt> Iterator for Pages<'a, K, $Uint> {
-        //     type Item = Page<K, Cow<'a, [$Uint]>>;
+        // impl<'a, K: UnsignedInt> Iterator for Entrys<'a, K, $Uint> {
+        //     type Item = Entry<K, Cow<'a, [$Uint]>>;
         //     fn next(&mut self) -> Option<Self::Item> {
         //         unimplemented!()
         //     }

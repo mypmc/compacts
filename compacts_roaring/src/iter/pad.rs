@@ -27,13 +27,13 @@ enum Item<K> {
     Empty,
 }
 
-impl<'a, I, K, V> Iterator for PadUsingDefault<I, Page<K, Cow<'a, V>>>
+impl<'a, I, K, V> Iterator for PadUsingDefault<I, Entry<K, Cow<'a, V>>>
 where
     K: UnsignedInt,
     V: FiniteBits + Clone,
-    I: Iterator<Item = Page<K, Cow<'a, V>>>,
+    I: Iterator<Item = Entry<K, Cow<'a, V>>>,
 {
-    type Item = Page<K, Cow<'a, V>>;
+    type Item = Entry<K, Cow<'a, V>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = match (self.range.next(), self.value.peek()) {
@@ -53,7 +53,7 @@ where
         };
 
         match item {
-            Item::Dummy(k) => Some(Page::new(k, Cow::Owned(V::empty()))),
+            Item::Dummy(k) => Some(Entry::new(k, Cow::Owned(V::empty()))),
             Item::Found => self.value.next(),
             Item::Empty => None,
         }

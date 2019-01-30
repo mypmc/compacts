@@ -51,19 +51,19 @@ where
     }
 }
 
-impl<'a, I, K, V> Iterator for Iter<I, Page<K, Cow<'a, V>>>
+impl<'a, I, K, V> Iterator for Iter<I, Entry<K, Cow<'a, V>>>
 where
-    I: Iterator<Item = Page<K, Cow<'a, V>>>,
+    I: Iterator<Item = Entry<K, Cow<'a, V>>>,
     K: UnsignedInt,
     V: FiniteBits + Not<Output = V> + 'a,
 {
-    type Item = Page<K, Cow<'a, V>>;
+    type Item = Entry<K, Cow<'a, V>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.pad.next().map(|page| {
             let index = page.index;
             let owned = page.value.into_owned();
             let value = Cow::Owned(!owned);
-            Page::new(index, value)
+            Entry::new(index, value)
         })
     }
 }
@@ -138,13 +138,13 @@ where
     }
 }
 
-impl<'a, I, K, V> Iterator for PadDefault<I, Page<K, Cow<'a, V>>>
+impl<'a, I, K, V> Iterator for PadDefault<I, Entry<K, Cow<'a, V>>>
 where
     K: UnsignedInt,
     V: FiniteBits,
-    I: Iterator<Item = Page<K, Cow<'a, V>>>,
+    I: Iterator<Item = Entry<K, Cow<'a, V>>>,
 {
-    type Item = Page<K, Cow<'a, V>>;
+    type Item = Entry<K, Cow<'a, V>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use PadItem::*;
@@ -172,7 +172,7 @@ where
         };
 
         match item {
-            Dummy(k) => Some(Page::new(k, Cow::Owned(V::empty()))),
+            Dummy(k) => Some(Entry::new(k, Cow::Owned(V::empty()))),
             Found => self.value.next(),
             Empty => None,
         }

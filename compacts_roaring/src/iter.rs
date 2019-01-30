@@ -24,30 +24,30 @@ mod tuples;
 //    }
 //}
 
-//impl<'a, I, K: UnsignedInt> Iterator for NotIntoIter<I, Page<K, Cow<'a, Array>>>
+//impl<'a, I, K: UnsignedInt> Iterator for NotIntoIter<I, Entry<K, Cow<'a, Array>>>
 //where
-//    I: Iterator<Item = Page<K, Cow<'a, Array>>>,
+//    I: Iterator<Item = Entry<K, Cow<'a, Array>>>,
 //{
-//    type Item = Page<K, Cow<'a, Array>>;
+//    type Item = Entry<K, Cow<'a, Array>>;
 //    fn next(&mut self) -> Option<Self::Item> {
 //        self.pad.next().map(|e| {
 //            let index = e.index;
 //            let value = Array(!&e.value.0);
-//            Page::new(index, Cow::Owned(value))
+//            Entry::new(index, Cow::Owned(value))
 //        })
 //    }
 //}
 
-//impl<'a, I, K: UnsignedInt> Iterator for NotIntoIter<I, Page<K, Cow<'a, RoaringBlock>>>
+//impl<'a, I, K: UnsignedInt> Iterator for NotIntoIter<I, Entry<K, Cow<'a, RoaringBlock>>>
 //where
-//    I: Iterator<Item = Page<K, Cow<'a, RoaringBlock>>>,
+//    I: Iterator<Item = Entry<K, Cow<'a, RoaringBlock>>>,
 //{
-//    type Item = Page<K, Cow<'a, RoaringBlock>>;
+//    type Item = Entry<K, Cow<'a, RoaringBlock>>;
 //    fn next(&mut self) -> Option<Self::Item> {
 //        self.pad.next().map(|e| {
 //            let index = e.index;
 //            let value = RoaringBlock(!&e.value.0);
-//            Page::new(index, Cow::Owned(value))
+//            Entry::new(index, Cow::Owned(value))
 //        })
 //    }
 //}

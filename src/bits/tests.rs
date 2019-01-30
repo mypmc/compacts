@@ -2,7 +2,7 @@ use crate::bits::*;
 
 // #[test]
 // fn not() {
-//     let bv = PageMap::<u8, Block<u64>>::new();
+//     let bv = EntryMap::<u8, Block<u64>>::new();
 //     for b in bv.not().into_iter().take(3) {
 //         assert_eq!(b.value.count1(), 65536);
 //     }
@@ -70,7 +70,7 @@ quickcheck! {
             bytes.set1(i);
         }
 
-        let mut entries = PageMap::<usize, u8>::new();
+        let mut entries = EntryMap::<usize, u8>::new();
         for &i in &vec {
             entries.set1(i);
         }
@@ -111,7 +111,7 @@ macro_rules! gen {
         use crate::bits::*;
         use rand::prelude::*;
 
-        type Type = $Type;
+        type Type = Map<$Type>;
 
         macro_rules! associative {
             ($x: expr,$y: expr,$z: expr,$fn: ident) => {{
@@ -173,42 +173,62 @@ macro_rules! gen {
     };
 }
 
-mod map {
+// mod array {
+//     const BITSIZE: u64 = 010_000_000;
+//
+//     mod density_00 {
+//         gen!([u64; 1024], BITSIZE / 1000, BITSIZE);
+//     }
+//     mod density_05 {
+//         gen!([u64; 1024], BITSIZE / 20, BITSIZE);
+//     }
+//     mod density_10 {
+//         gen!([u64; 1024], BITSIZE / 10, BITSIZE);
+//     }
+//     mod density_20 {
+//         gen!([u64; 1024], BITSIZE / 5, BITSIZE);
+//     }
+//     mod density_50 {
+//         gen!([u64; 1024], BITSIZE / 2, BITSIZE);
+//     }
+// }
+
+mod block {
     const BITSIZE: u64 = 010_000_000;
 
     mod density_00 {
-        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 1000, BITSIZE);
+        gen!(Block<[u64; 1024]>, BITSIZE / 1000, BITSIZE);
     }
     mod density_05 {
-        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 20, BITSIZE);
+        gen!(Block<[u64; 1024]>, BITSIZE / 20, BITSIZE);
     }
     mod density_10 {
-        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 10, BITSIZE);
+        gen!(Block<[u64; 1024]>, BITSIZE / 10, BITSIZE);
     }
     mod density_20 {
-        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 5, BITSIZE);
+        gen!(Block<[u64; 1024]>, BITSIZE / 5, BITSIZE);
     }
     mod density_50 {
-        gen!(Map<Block<[u64; 1024]>>, BITSIZE / 2, BITSIZE);
+        gen!(Block<[u64; 1024]>, BITSIZE / 2, BITSIZE);
     }
 }
 
-mod page_map {
+mod entry {
     const BITSIZE: u64 = 010_000_000;
 
     mod density_00 {
-        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/1000, BITSIZE);
+        gen!(Entry<u64, Block<[u64; 1024]>>, BITSIZE/1000, BITSIZE);
     }
     mod density_05 {
-        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/20, BITSIZE);
+        gen!(Entry<u64, Block<[u64; 1024]>>, BITSIZE/20, BITSIZE);
     }
     mod density_10 {
-        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/10, BITSIZE);
+        gen!(Entry<u64, Block<[u64; 1024]>>, BITSIZE/10, BITSIZE);
     }
     mod density_20 {
-        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/5, BITSIZE);
+        gen!(Entry<u64, Block<[u64; 1024]>>, BITSIZE/5, BITSIZE);
     }
     mod density_50 {
-        gen!(PageMap<u64, Block<[u64; 1024]>>, BITSIZE/2, BITSIZE);
+        gen!(Entry<u64, Block<[u64; 1024]>>, BITSIZE/2, BITSIZE);
     }
 }

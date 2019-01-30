@@ -1,29 +1,29 @@
 use crate::bits::*;
 
-/// `PageMap` is a vector of `Page<K, V>` that are sorted by index `K`.
-/// `PageMap` can be seen as a bits container that filtered out the empty `T` from `[T]`.
+/// `EntryMap` is a vector of `Entry<K, V>` that are sorted by index `K`.
+/// `EntryMap` can be seen as a bits container that filtered out the empty `T` from `[T]`.
 ///
 /// The type parameters `K` specifies the bit size of the vector.
-/// In other words, the smaller of `(1 << K::BITS) * V::BITS` and `MAX_BITS` is the bit size of `PageMap<K, V>`.
+/// In other words, the smaller of `(1 << K::BITS) * V::BITS` and `MAX_BITS` is the bit size of `EntryMap<K, V>`.
 ///
 /// However, there is no guaranteed that the number of bits reach that size.
 /// It can fail to allocate at any point before that size is reached.
-pub type PageMap<K, V> = Map<Page<K, V>>;
+pub type EntryMap<K, V> = Map<Entry<K, V>>;
 
 // #[derive(Clone, Debug, PartialEq, Eq)]
-// pub struct PageMap<K: UnsignedInt, V> {
+// pub struct EntryMap<K: UnsignedInt, V> {
 //     ones: u64,
-//     data: Vec<Page<K, V>>,
+//     data: Vec<Entry<K, V>>,
 // }
 
-/// `Page` holds value `V` and its index `K`.
+/// `Entry` holds value `V` and its index `K`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Page<K: UnsignedInt, V> {
+pub struct Entry<K: UnsignedInt, V> {
     pub(crate) index: K,
     pub(crate) value: V,
 }
 
-impl<K: UnsignedInt, V> Page<K, V> {
+impl<K: UnsignedInt, V> Entry<K, V> {
     pub fn new(index: K, value: V) -> Self {
         Self { index, value }
     }
@@ -50,65 +50,65 @@ impl<K: UnsignedInt, V> Page<K, V> {
     }
 }
 
-// impl<K: UnsignedInt, V> Default for PageMap<K, V> {
+// impl<K: UnsignedInt, V> Default for EntryMap<K, V> {
 //     fn default() -> Self {
 //         let ones = 0;
 //         let data = Vec::new();
-//         PageMap { ones, data }
+//         EntryMap { ones, data }
 //     }
 // }
 
-// impl<K: UnsignedInt, V> AsRef<[Page<K, V>]> for PageMap<K, V> {
-//     fn as_ref(&self) -> &[Page<K, V>] {
+// impl<K: UnsignedInt, V> AsRef<[Entry<K, V>]> for EntryMap<K, V> {
+//     fn as_ref(&self) -> &[Entry<K, V>] {
 //         self.data.as_slice()
 //     }
 // }
 
-impl<K: UnsignedInt, V> PageMap<K, V> {
+impl<K: UnsignedInt, V> EntryMap<K, V> {
     // pub fn new() -> Self {
     //     Default::default()
     // }
 
-    // fn new_unchecked(ones: u64, data: Vec<Page<K, V>>) -> Self {
-    //     PageMap { ones, data }
+    // fn new_unchecked(ones: u64, data: Vec<Entry<K, V>>) -> Self {
+    //     EntryMap { ones, data }
     // }
 
-    // pub fn into_inner(self) -> (u64, Vec<Page<K, V>>) {
+    // pub fn into_inner(self) -> (u64, Vec<Entry<K, V>>) {
     //     (self.ones, self.data)
     // }
 }
 
-impl<K: UnsignedInt, V> Count for PageMap<K, V>
+impl<K: UnsignedInt, V> Count for EntryMap<K, V>
 where
     V: FiniteBits,
 {
     fn bits(&self) -> u64 {
-        Page::<K, V>::potential_bits()
+        Entry::<K, V>::potential_bits()
     }
     fn count1(&self) -> u64 {
         self.ones
     }
 }
-impl<K: UnsignedInt, V> Count for [Page<K, V>]
+impl<K: UnsignedInt, V> Count for [Entry<K, V>]
 where
     V: FiniteBits,
 {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Page, ops::Count};
-    /// let slice = [Page::new(9u8, 0u64)];
+    /// use compacts::bits::{Entry, ops::Count};
+    /// let slice = [Entry::new(9u8, 0u64)];
     /// assert_eq!(slice.bits(), (1 << 8) * 64);
     /// ```
     fn bits(&self) -> u64 {
-        Page::<K, V>::potential_bits()
+        Entry::<K, V>::potential_bits()
     }
 
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Page, ops::Count};
-    /// let slice = [Page::new(9u8, 0b_00001111_11110101u128)];
+    /// use compacts::bits::{Entry, ops::Count};
+    /// let slice = [Entry::new(9u8, 0b_00001111_11110101u128)];
     /// assert_eq!(slice.bits(), (1 << 8) * 128); // 32768
     /// assert_eq!(slice.count1(), 10);
     /// assert_eq!(slice.count0(), 32758);
@@ -118,7 +118,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Access for PageMap<K, V>
+impl<K: UnsignedInt, V> Access for EntryMap<K, V>
 where
     V: FiniteBits + Access,
 {
@@ -129,7 +129,7 @@ where
         self.data.iterate()
     }
 }
-impl<K: UnsignedInt, V> Access for [Page<K, V>]
+impl<K: UnsignedInt, V> Access for [Entry<K, V>]
 where
     V: FiniteBits + Access,
 {
@@ -138,8 +138,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Page, ops::Access};
-    /// let slice = [Page::new(0usize, 1u16), Page::new(5, 1)];
+    /// use compacts::bits::{Entry, ops::Access};
+    /// let slice = [Entry::new(0usize, 1u16), Entry::new(5, 1)];
     /// assert!( slice.access(0));
     /// assert!(!slice.access(1));
     /// assert!( slice.access(80));
@@ -150,9 +150,9 @@ where
     /// We can create a masked bits by slicing entries.
     ///
     /// ```
-    /// # use compacts::bits::{Page, ops::Access};
-    /// # let slice = [Page::new(0usize, 1u16), Page::new(5, 1)];
-    /// let slice = &slice[1..]; // [Page::new(5, 1)]
+    /// # use compacts::bits::{Entry, ops::Access};
+    /// # let slice = [Entry::new(0usize, 1u16), Entry::new(5, 1)];
+    /// let slice = &slice[1..]; // [Entry::new(5, 1)]
     /// assert!(!slice.access(0));
     /// assert!(!slice.access(1));
     /// assert!( slice.access(80));
@@ -174,8 +174,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Page, ops::Access};
-    /// let slice = [Page::new(0usize, 1u16), Page::new(5, 1)];
+    /// use compacts::bits::{Entry, ops::Access};
+    /// let slice = [Entry::new(0usize, 1u16), Entry::new(5, 1)];
     /// let vec = slice.iterate().collect::<Vec<_>>();
     /// assert_eq!(vec, vec![0, 80]);
     /// ```
@@ -188,7 +188,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Assign<u64> for PageMap<K, V>
+impl<K: UnsignedInt, V> Assign<u64> for EntryMap<K, V>
 where
     V: FiniteBits + Access + Assign<u64>,
 {
@@ -196,7 +196,7 @@ where
     fn set1(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), OUT_OF_BOUNDS);
         let (index, offset) = divmod(i, V::BITS);
-        match Page::find(&*self.data, &index) {
+        match Entry::find(&*self.data, &index) {
             Ok(j) => {
                 if !self.data[j].value.access(offset) {
                     self.ones += 1;
@@ -207,7 +207,7 @@ where
                 self.ones += 1;
                 let mut value = V::empty();
                 value.set1(offset);
-                let entry = Page::new(index, value);
+                let entry = Entry::new(index, value);
                 self.data.insert(j, entry);
             }
         }
@@ -216,7 +216,7 @@ where
     fn set0(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), OUT_OF_BOUNDS);
         let (index, offset) = divmod(i, V::BITS);
-        if let Ok(k) = Page::find(&*self.data, &index) {
+        if let Ok(k) = Entry::find(&*self.data, &index) {
             if self.data[k].value.access(offset) {
                 self.ones -= 1;
                 self.data[k].value.set0(offset);
@@ -228,7 +228,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Rank for PageMap<K, V>
+impl<K: UnsignedInt, V> Rank for EntryMap<K, V>
 where
     V: FiniteBits + Rank,
 {
@@ -242,27 +242,27 @@ where
         }
     }
 }
-impl<K: UnsignedInt, V> Rank for [Page<K, V>]
+impl<K: UnsignedInt, V> Rank for [Entry<K, V>]
 where
     V: FiniteBits + Rank,
 {
     /// Return the number of enabled bits in `[0, i)`.
     ///
     /// ```
-    /// use compacts::bits::{Page, ops::{Rank, Count}};
-    /// let slice = [Page::new(0usize, 0b_00001111_11110000u32), Page::new(3, 0b_01100000_01100000)];
+    /// use compacts::bits::{Entry, ops::{Rank, Count}};
+    /// let slice = [Entry::new(0usize, 0b_00001111_11110000u32), Entry::new(3, 0b_01100000_01100000)];
     /// assert_eq!(slice.rank1(10), 6);
     /// assert_eq!(slice.rank1(32), 8);
     /// assert_eq!(slice.rank1(103), 10);
     /// assert_eq!(slice.rank1(slice.bits()), slice.count1());
     /// ```
     ///
-    /// Unlike `[T]`, slicing for `[Page<K, V>]` mask the bits.
+    /// Unlike `[T]`, slicing for `[Entry<K, V>]` mask the bits.
     ///
     /// ```
-    /// # use compacts::bits::{Page, ops::{Rank, Count}};
-    /// # let slice = [Page::new(0usize, 0b_00001111_11110000u32), Page::new(3, 0b_01100000_01100000)];
-    /// let slice = &slice[1..]; // [Page::new(3, 0b_01100000_01100000)]
+    /// # use compacts::bits::{Entry, ops::{Rank, Count}};
+    /// # let slice = [Entry::new(0usize, 0b_00001111_11110000u32), Entry::new(3, 0b_01100000_01100000)];
+    /// let slice = &slice[1..]; // [Entry::new(3, 0b_01100000_01100000)]
     /// assert_eq!(slice.rank1(10), 0);
     /// assert_eq!(slice.rank1(32), 0);
     /// assert_eq!(slice.rank1(103), 2);
@@ -286,7 +286,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Select1 for PageMap<K, V>
+impl<K: UnsignedInt, V> Select1 for EntryMap<K, V>
 where
     V: FiniteBits + Select1,
 {
@@ -298,7 +298,7 @@ where
         }
     }
 }
-impl<K: UnsignedInt, V> Select1 for [Page<K, V>]
+impl<K: UnsignedInt, V> Select1 for [Entry<K, V>]
 where
     V: FiniteBits + Select1,
 {
@@ -316,7 +316,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Select0 for PageMap<K, V>
+impl<K: UnsignedInt, V> Select0 for EntryMap<K, V>
 where
     V: FiniteBits + Select0,
 {
@@ -328,16 +328,16 @@ where
         }
     }
 }
-impl<K: UnsignedInt, V> Select0 for [Page<K, V>]
+impl<K: UnsignedInt, V> Select0 for [Entry<K, V>]
 where
     V: FiniteBits + Select0,
 {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Page, ops::Select0};
+    /// use compacts::bits::{Entry, ops::Select0};
     /// // [T]: 00000000 00000000 11111011 00000000 00000000 00000000 11111011 00000000 ...
-    /// let slice = [Page::new(2usize, 0b_11111011_u8), Page::new(6, 0b_11111011)];
+    /// let slice = [Entry::new(2usize, 0b_11111011_u8), Entry::new(6, 0b_11111011)];
     /// assert_eq!(slice.select0(10), Some(10));
     /// assert_eq!(slice.select0(15), Some(15));
     /// assert_eq!(slice.select0(16), Some(18));
@@ -414,20 +414,20 @@ where
 }
 
 // pub struct Iter<'a, K: UnsignedInt, V> {
-//     iter: std::slice::Iter<'a, Page<K, V>>,
+//     iter: std::slice::Iter<'a, Entry<K, V>>,
 // }
 
 // impl<'a, K: UnsignedInt, V: FiniteBits> Iterator for Iter<'a, K, V> {
-//     type Item = Page<K, Cow<'a, V>>;
+//     type Item = Entry<K, Cow<'a, V>>;
 //     fn next(&mut self) -> Option<Self::Item> {
 //         self.iter
 //             .next()
-//             .map(|p| Page::new(p.index, Cow::Borrowed(&p.value)))
+//             .map(|p| Entry::new(p.index, Cow::Borrowed(&p.value)))
 //     }
 // }
 
-// impl<'a, K: UnsignedInt, V: FiniteBits> IntoIterator for &'a PageMap<K, V> {
-//     type Item = Page<K, Cow<'a, V>>;
+// impl<'a, K: UnsignedInt, V: FiniteBits> IntoIterator for &'a EntryMap<K, V> {
+//     type Item = Entry<K, Cow<'a, V>>;
 //     type IntoIter = Iter<'a, K, V>;
 //     fn into_iter(self) -> Self::IntoIter {
 //         let iter = self.data.iter();

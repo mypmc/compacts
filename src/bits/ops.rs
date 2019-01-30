@@ -5,7 +5,7 @@ use super::{ucast, UnsignedInt, OUT_OF_BOUNDS};
 /// `FiniteBits` denotes types with a finite, fixed number of bits.
 ///
 /// This trait is for types intended to use as a component of the bits container.
-/// e.g.) T of `Map<T>`, V of `PageMap<K, V>`
+/// e.g.) T of `Map<T>`, V of `EntryMap<K, V>`
 pub trait FiniteBits: Clone + Count {
     /// The potential bit size.
     ///

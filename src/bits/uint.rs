@@ -31,12 +31,12 @@ pub trait UnsignedInt:
     + std::ops::BitXorAssign
     + std::ops::Not<Output = Self>
     + std::iter::Sum
-    + TryCastInto<u8>
-    + TryCastInto<u16>
-    + TryCastInto<u32>
-    + TryCastInto<u64>
-    + TryCastInto<u128>
-    + TryCastInto<usize>
+    + TryCast<u8>
+    + TryCast<u16>
+    + TryCast<u32>
+    + TryCast<u64>
+    + TryCast<u128>
+    + TryCast<usize>
     + TryCastFrom<u8>
     + TryCastFrom<u16>
     + TryCastFrom<u32>
@@ -61,13 +61,13 @@ pub trait UnsignedInt:
 }
 
 /// Lossless cast that never fail.
-pub trait CastInto<T>: crate::private::Sealed {
-    fn cast_into(self) -> T;
+pub trait Cast<T>: crate::private::Sealed {
+    fn cast(self) -> T;
 }
 
 /// Lossless cast that may fail.
-pub trait TryCastInto<T>: crate::private::Sealed {
-    fn try_cast_into(self) -> Option<T>;
+pub trait TryCast<T>: crate::private::Sealed {
+    fn try_cast(self) -> Option<T>;
 }
 
 /// Lossless cast that never fail.
@@ -91,14 +91,14 @@ impl<T: UnsignedInt, U: CastFrom<T>> TryCastFrom<T> for U {
     }
 }
 
-impl<T: UnsignedInt, U: CastFrom<T>> CastInto<U> for T {
-    fn cast_into(self) -> U {
+impl<T: UnsignedInt, U: CastFrom<T>> Cast<U> for T {
+    fn cast(self) -> U {
         U::cast_from(self)
     }
 }
 
-impl<T: UnsignedInt, U: TryCastFrom<T>> TryCastInto<U> for T {
-    fn try_cast_into(self) -> Option<U> {
+impl<T: UnsignedInt, U: TryCastFrom<T>> TryCast<U> for T {
+    fn try_cast(self) -> Option<U> {
         U::try_cast_from(self)
     }
 }

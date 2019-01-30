@@ -194,7 +194,7 @@
 // //     }
 // // }
 // // implBitsIndex!(
-// //     [K: UnsignedInt, V: FiniteBits] for bits::PageMap<K, V>;
+// //     [K: UnsignedInt, V: FiniteBits] for bits::EntryMap<K, V>;
 // // );
 
 // impl<'a, T: Access> Access for Range<'a, T> {
@@ -269,11 +269,11 @@
 
 // macro_rules! implIterator {
 //     ($Type:ty, $ctor:path) => {
-//         impl<'a, I, K: UnsignedInt> Iterator for RangeIntoIter<I, Page<K, Cow<'a, $Type>>>
+//         impl<'a, I, K: UnsignedInt> Iterator for RangeIntoIter<I, Entry<K, Cow<'a, $Type>>>
 //         where
-//             I: Iterator<Item = Page<K, Cow<'a, $Type>>>,
+//             I: Iterator<Item = Entry<K, Cow<'a, $Type>>>,
 //         {
-//             type Item = Page<K, Cow<'a, $Type>>;
+//             type Item = Entry<K, Cow<'a, $Type>>;
 //             fn next(&mut self) -> Option<Self::Item> {
 //                 use std::{cmp::Ordering, ops::BitAndAssign};
 
@@ -316,11 +316,11 @@
 // implIterator!(RoaringBlock, to_block);
 
 // pub(crate) struct Entries<K: UnsignedInt, T>(
-//     Option<Box<dyn Iterator<Item = Page<K, Vec<T>>> + 'static>>,
+//     Option<Box<dyn Iterator<Item = Entry<K, Vec<T>>> + 'static>>,
 // );
 
 // impl<K: UnsignedInt, T: UnsignedInt> Iterator for Entries<K, T> {
-//     type Item = Page<K, Vec<T>>;
+//     type Item = Entry<K, Vec<T>>;
 //     fn next(&mut self) -> Option<Self::Item> {
 //         self.0.as_mut().and_then(|i| i.next())
 //     }
@@ -353,22 +353,22 @@
 //             let mut vec = vec![!T::ZERO; vec_len];
 //             vec.set0(0..head_offset);
 //             vec.set0(last_offset..chunk as u64);
-//             Box::new(std::iter::once(Page::new(head_index, vec)))
+//             Box::new(std::iter::once(Entry::new(head_index, vec)))
 //         } else {
 //             let mut head = vec![!T::ZERO; vec_len];
 //             head.set0(0..head_offset);
 //             Box::new(
-//                 std::iter::once(Page::new(ucast(head_index), head))
+//                 std::iter::once(Entry::new(ucast(head_index), head))
 //                     .chain(
 //                         (ucast::<K, usize>(head_index) + 1..ucast(last_index))
-//                             .map(move |i| Page::new(ucast::<usize, K>(i), vec![!T::ZERO; vec_len])),
+//                             .map(move |i| Entry::new(ucast::<usize, K>(i), vec![!T::ZERO; vec_len])),
 //                     )
 //                     .chain({
 //                         // let mut last = vec![!T::ZERO; vec_len];
 //                         // last.remove_range(last_offset, chunk as u64 - last_offset);
 //                         let mut last = vec![T::ZERO; vec_len];
 //                         last.set1(0..last_offset);
-//                         std::iter::once(Page::new(ucast(last_index), last))
+//                         std::iter::once(Entry::new(ucast(last_index), last))
 //                     }),
 //             )
 //         }))
@@ -377,13 +377,13 @@
 
 // // impl<'a, T, U: UnsignedInt> IntoIterator for Range<'a, T>
 // // where
-// //     &'a T: IntoIterator<Item = Cow<'a, Page<U, RoaringBlock>>>,
+// //     &'a T: IntoIterator<Item = Cow<'a, Entry<U, RoaringBlock>>>,
 // // {
 // //     type Item = <&'a T as IntoIterator>::Item;
 // //     type IntoIter = AndIntoIter<
 // //         <&'a T as IntoIterator>::IntoIter,
 // //         Entries<'a, U, u64>,
-// //         Cow<'a, Page<U, RoaringBlock>>,
+// //         Cow<'a, Entry<U, RoaringBlock>>,
 // //     >;
 
 // //     fn into_iter(self) -> Self::IntoIter {

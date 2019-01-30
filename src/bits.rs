@@ -2,7 +2,7 @@
 //!
 //! ## `Map<T>` and `[T]`
 //!
-//! ## `PageMap<K, V>` and `[Page<K, V>]`
+//! ## `EntryMap<K, V>` and `[Entry<K, V>]`
 
 // # References
 //
@@ -34,16 +34,16 @@ pub mod rrr63 {
 pub mod ops;
 
 mod block;
+mod entry;
+
+mod flat;
 mod mask;
 mod uint;
 
-mod flat;
-mod page;
-
 pub use self::{
     block::Block,
+    entry::{Entry, EntryMap},
     flat::Map,
-    page::{Page, PageMap},
 };
 
 pub use self::mask::{and, or, xor, Fold, Mask};
@@ -51,7 +51,7 @@ pub use self::mask::{and, or, xor, Fold, Mask};
 use self::{
     block::BlockArray,
     ops::*,
-    uint::{TryCastInto, UnsignedInt},
+    uint::{TryCast, UnsignedInt},
 };
 
 const MAX_BITS: u64 = 1 << 63;
@@ -67,16 +67,16 @@ static OUT_OF_BOUNDS: &str = "index out of bounds";
 #[inline]
 fn ucast<U, T>(u: U) -> T
 where
-    U: UnsignedInt + TryCastInto<T>,
+    U: UnsignedInt + TryCast<T>,
     T: UnsignedInt,
 {
-    u.try_cast_into().expect("does not fit in T")
+    u.try_cast().expect("does not fit in T")
 }
 
 #[inline]
 fn divmod<U: UnsignedInt>(i: u64, cap: u64) -> (U, u64)
 where
-    u64: TryCastInto<U>,
+    u64: TryCast<U>,
 {
     (ucast(i / cap), i % cap)
 }
@@ -106,5 +106,5 @@ macro_rules! implMask {
 }
 implMask!(
     [T: FiniteBits] for Map<T>;
-    [K: UnsignedInt, V: FiniteBits] for PageMap<K, V>;
+    [K: UnsignedInt, V: FiniteBits] for EntryMap<K, V>;
 );

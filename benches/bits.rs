@@ -12,7 +12,7 @@ macro_rules! bench {
         use rand::prelude::*;
         use test::Bencher;
 
-        // type Type = PageMap<u64, $Repr>;
+        // type Type = EntryMap<u64, $Repr>;
         type Type = Map<$Repr>;
 
         macro_rules! bits {
