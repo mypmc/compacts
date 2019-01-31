@@ -1,4 +1,4 @@
-use crate::{bits::ucast as cast, bits::*};
+use crate::{bits::cast as cast, bits::*};
 
 use super::{Bin, Encode, Map, BLOCK_SIZE, OUT_OF_BOUNDS};
 

@@ -1,6 +1,6 @@
 use std::ops::{Bound, Range, RangeBounds};
 
-use super::{ucast, UnsignedInt, OUT_OF_BOUNDS};
+use super::{cast, UnsignedInt, OUT_OF_BOUNDS};
 
 /// `FiniteBits` denotes types with a finite, fixed number of bits.
 ///
@@ -78,16 +78,16 @@ pub enum Excess {
 /// assuming that f(i) == true implies f(i+1) == true.
 fn search_index<T: UnsignedInt>(k: T, func: impl Fn(T) -> bool) -> T {
     let mut i = 0;
-    let mut j = ucast::<T, usize>(k);
+    let mut j = cast::<T, usize>(k);
     while i < j {
         let h = i + (j - i) / 2;
-        if func(ucast(h)) {
+        if func(cast(h)) {
             j = h; // f(j) == true
         } else {
             i = h + 1; // f(i-1) == false
         }
     }
-    ucast(i) // f(i-1) == false && f(i) (= f(j)) == true
+    cast(i) // f(i-1) == false && f(i) (= f(j)) == true
 }
 
 /// `Rank` is a generization of `Count`.

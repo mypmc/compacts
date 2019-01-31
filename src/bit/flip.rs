@@ -150,9 +150,9 @@ where
         use PadItem::*;
         let item = match (self.dummy.next(), self.value.peek()) {
             (Some(i), Some(p)) => {
-                let j = ucast::<K, u64>(p.index);
+                let j = cast::<K, u64>(p.index);
                 if i < j {
-                    Dummy(ucast::<u64, K>(i))
+                    Dummy(cast::<u64, K>(i))
                 } else if i == j {
                     Found
                 } else {
@@ -161,7 +161,7 @@ where
             }
             (Some(i), None) => {
                 if i < self.bits / V::BITS {
-                    Dummy(ucast::<u64, K>(i))
+                    Dummy(cast::<u64, K>(i))
                 } else {
                     Empty
                 }

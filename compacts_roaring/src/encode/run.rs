@@ -1,4 +1,4 @@
-use crate::{bits::ucast, bits::*};
+use crate::{bits::cast, bits::*};
 
 use super::{Members, Run, BLOCK_SIZE};
 
@@ -78,7 +78,7 @@ impl Count for Run {
     fn count1(&self) -> u64 {
         self.0
             .iter()
-            .map(|r| ucast::<u16, u64>(r.end() - r.start()) + 1)
+            .map(|r| cast::<u16, u64>(r.end() - r.start()) + 1)
             .sum()
     }
 }
@@ -88,7 +88,7 @@ impl Rank for Run {
         let iter = self
             .0
             .iter()
-            .map(|r| ucast::<u16, u64>(r.end() - r.start()) + 1);
+            .map(|r| cast::<u16, u64>(r.end() - r.start()) + 1);
         let b = i as u16;
         match self.search(b) {
             Ok(n) => iter.take(n).sum::<u64>() + i - u64::from(*self.0[n].start()),
@@ -101,7 +101,7 @@ impl Select1 for Run {
     fn select1(&self, c: u64) -> Option<u64> {
         let mut curr = 0;
         for range in &self.0 {
-            let next = curr + ucast::<u16, u64>(range.end() - range.start()) + 1;
+            let next = curr + cast::<u16, u64>(range.end() - range.start()) + 1;
             if next > c {
                 return Some(u64::from(*range.start()) - curr + c);
             }

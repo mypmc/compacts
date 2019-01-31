@@ -1,6 +1,6 @@
 use std::{slice, vec};
 
-use crate::{bits::ucast, bits::UnsignedInt, bits::*};
+use crate::{bits::cast, bits::UnsignedInt, bits::*};
 
 use super::{Bin, Map, Run, BLOCK_SIZE, OUT_OF_BOUNDS};
 
@@ -109,7 +109,7 @@ impl<T: UnsignedInt> From<&'_ Bin> for Map<T> {
     fn from(bin: &Bin) -> Self {
         let mut vec = Map::<T>::splat(T::ZERO);
         for &i in bin.0.iter() {
-            vec.set1(ucast::<u16, u64>(i));
+            vec.set1(cast::<u16, u64>(i));
         }
         vec
     }

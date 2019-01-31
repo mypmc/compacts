@@ -1,6 +1,6 @@
 use crate::{
     bit::ops::*,
-    bit::{ucast, OUT_OF_BOUNDS},
+    bit::{cast, OUT_OF_BOUNDS},
     private,
 };
 
@@ -218,7 +218,7 @@ macro_rules! impls {
                 if i == Self::BITS {
                     self.count1()
                 } else {
-                    let mask = *self & Self::mask(ucast(i));
+                    let mask = *self & Self::mask(cast(i));
                     mask.count1()
                 }
             }
@@ -232,7 +232,7 @@ macro_rules! impls {
         impl Access for $ty {
             #[inline]
             fn access(&self, i: u64) -> bool {
-                (*self & Self::bit(ucast(i))) != Self::ZERO
+                (*self & Self::bit(cast(i))) != Self::ZERO
             }
         }
 
@@ -241,19 +241,19 @@ macro_rules! impls {
             #[inline]
             fn set1(&mut self, i: u64) -> Self::Output {
                 assert!(i < Self::BITS, OUT_OF_BOUNDS);
-                *self |= Self::bit(ucast(i));
+                *self |= Self::bit(cast(i));
             }
 
             #[inline]
             fn set0(&mut self, i: u64) -> Self::Output {
                 assert!(i < Self::BITS, OUT_OF_BOUNDS);
-                *self &= !Self::bit(ucast(i));
+                *self &= !Self::bit(cast(i));
             }
 
             // #[inline]
             // fn flip(&mut self, i: u64) -> Self::Output {
             //     assert!(i < Self::BITS, OUT_OF_BOUNDS);
-            //     *self ^= Self::bit(ucast(i));
+            //     *self ^= Self::bit(cast(i));
             // }
         }
 
@@ -268,7 +268,7 @@ macro_rules! impls {
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
                     let head = (!<$ty as UnsignedInt>::ZERO) << (i % Self::BITS);
-                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(ucast(Self::BITS - j % Self::BITS));
+                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j % Self::BITS));
                     let ones = self.count1();
                     *self |= head & last;
                     self.count1() - ones
@@ -283,7 +283,7 @@ macro_rules! impls {
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
                     let head = (!<$ty as UnsignedInt>::ZERO) << (i % Self::BITS);
-                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(ucast(Self::BITS - j % Self::BITS));
+                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j % Self::BITS));
                     let ones = self.count1();
                     *self &= !(head & last);
                     ones - self.count1()

@@ -38,7 +38,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let item = match (self.range.next(), self.value.peek()) {
             (Some(k), Some(p)) => {
-                let k = ucast::<u64, K>(k);
+                let k = cast::<u64, K>(k);
                 if k < p.index {
                     Item::Dummy(k)
                 } else if k == p.index {
@@ -47,7 +47,7 @@ where
                     unreachable!("dummy index > entry")
                 }
             }
-            (Some(k), None) => Item::Dummy(ucast::<u64, K>(k)),
+            (Some(k), None) => Item::Dummy(cast::<u64, K>(k)),
             (None, Some(_)) => Item::Found,
             (None, None) => Item::Empty,
         };

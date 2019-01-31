@@ -255,7 +255,7 @@
 //     fn into_iter(self) -> Self::IntoIter {
 //         let bits = self.bits.into_iter().peekable();
 //         let mask = if let Some(mask) = self.mask {
-//             mask.entries(ucast(A::BITS)).peekable()
+//             mask.entries(cast(A::BITS)).peekable()
 //         } else {
 //             Entries(None).peekable()
 //         };
@@ -283,7 +283,7 @@
 //                 loop {
 //                     let cmp = lhs
 //                         .peek()
-//                         .and_then(|x| rhs.peek().map(|y| ucast::<K, usize>(x.index).cmp(&y.index)));
+//                         .and_then(|x| rhs.peek().map(|y| cast::<K, usize>(x.index).cmp(&y.index)));
 //                     match cmp {
 //                         Some(Ordering::Equal) => {
 //                             let mut lhs = lhs.next().unwrap();
@@ -358,17 +358,17 @@
 //             let mut head = vec![!T::ZERO; vec_len];
 //             head.set0(0..head_offset);
 //             Box::new(
-//                 std::iter::once(Entry::new(ucast(head_index), head))
+//                 std::iter::once(Entry::new(cast(head_index), head))
 //                     .chain(
-//                         (ucast::<K, usize>(head_index) + 1..ucast(last_index))
-//                             .map(move |i| Entry::new(ucast::<usize, K>(i), vec![!T::ZERO; vec_len])),
+//                         (cast::<K, usize>(head_index) + 1..cast(last_index))
+//                             .map(move |i| Entry::new(cast::<usize, K>(i), vec![!T::ZERO; vec_len])),
 //                     )
 //                     .chain({
 //                         // let mut last = vec![!T::ZERO; vec_len];
 //                         // last.remove_range(last_offset, chunk as u64 - last_offset);
 //                         let mut last = vec![T::ZERO; vec_len];
 //                         last.set1(0..last_offset);
-//                         std::iter::once(Entry::new(ucast(last_index), last))
+//                         std::iter::once(Entry::new(cast(last_index), last))
 //                     }),
 //             )
 //         }))
