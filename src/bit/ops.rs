@@ -64,7 +64,7 @@ pub trait Access {
     where
         Self: Count,
     {
-        Box::new((0..self.bits()).filter_map(move |i| if self.access(i) { Some(i) } else { None }))
+        Box::new((0..self.bits()).filter(move |&i| self.access(i)))
     }
 }
 
@@ -210,7 +210,7 @@ impl<'a, T: ?Sized + Count + Assign<U>, U: Clone> Assign<&'a U> for T {
     }
 }
 
-macro_rules! implsRangeBounds {
+macro_rules! implsRangeBoundsAssign {
     ($($Type:ty),*) => ($(
         impl<T: ?Sized + Count + Assign<Range<u64>>> Assign<$Type> for T {
             type Output = <T as Assign<Range<u64>>>::Output;
@@ -220,13 +220,47 @@ macro_rules! implsRangeBounds {
             fn set0(&mut self, r: $Type) -> Self::Output {
                 self.set0(from_bounds(&r, self.bits()))
             }
-            // fn flip(&mut self, r: $Type) -> Self::Output {
-            //     self.flip(from_bounds(&r, self.bits()))
-            // }
         }
     )*)
 }
-implsRangeBounds!(
+implsRangeBoundsAssign!(
+    std::ops::RangeTo<u64>,
+    std::ops::RangeFull,
+    std::ops::RangeFrom<u64>,
+    std::ops::RangeInclusive<u64>,
+    std::ops::RangeToInclusive<u64>
+);
+
+/// `Read` is a trait to read a word from the bits container.
+pub trait Read<W: UnsignedInt, Idx> {
+    fn read(&self, i: Idx) -> W;
+}
+
+impl<'a, T, W, Idx> Read<W, &'a Idx> for T
+where
+    T: ?Sized + Read<W, Idx>,
+    W: UnsignedInt,
+    Idx: Clone,
+{
+    fn read(&self, i: &'a Idx) -> W {
+        self.read(i.clone())
+    }
+}
+
+macro_rules! implsRangeBoundsRead {
+    ($($Type:ty),*) => ($(
+        impl<T, W> Read<W, $Type> for T
+        where
+            T: ?Sized + Count + Read<W, Range<u64>>,
+            W: UnsignedInt,
+        {
+            fn read(&self, i: $Type) -> W {
+                self.read(from_bounds(&i, self.bits()))
+            }
+        }
+    )*)
+}
+implsRangeBoundsRead!(
     std::ops::RangeTo<u64>,
     std::ops::RangeFull,
     std::ops::RangeFrom<u64>,

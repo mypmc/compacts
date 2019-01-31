@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Range};
 
-use crate::bit::{self, cast, ops::*, UnsignedInt};
+use crate::bit::{self, cast, divmod, ops::*, uint::TryCast, UnsignedInt};
 
 impl<T> bit::Map<T> {
     fn access<U: ?Sized>(data: &U, i: u64) -> bool
@@ -9,7 +9,7 @@ impl<T> bit::Map<T> {
         U: AsRef<[T]> + Count,
     {
         assert!(i < data.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = bit::divmod::<usize>(i, T::BITS);
+        let (i, o) = divmod::<usize>(i, T::BITS);
         data.as_ref().get(i).map_or(false, |t| t.access(o))
     }
 
@@ -19,7 +19,7 @@ impl<T> bit::Map<T> {
         U: AsRef<[T]> + Count,
     {
         assert!(i <= data.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = bit::divmod(i, T::BITS);
+        let (i, o) = divmod(i, T::BITS);
         let slice = data.as_ref();
         let c = slice.iter().take(i).fold(0, |acc, b| acc + b.count1());
         let r = slice.get(i).map_or(0, |b| b.rank1(o));
@@ -338,7 +338,7 @@ where
     ///
     fn set1(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = bit::divmod::<usize>(i, T::BITS);
+        let (i, o) = divmod::<usize>(i, T::BITS);
 
         if i >= self.data.len() {
             self.data.resize(i + 1, T::empty());
@@ -366,7 +366,7 @@ where
     ///
     fn set0(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = bit::divmod::<usize>(i, T::BITS);
+        let (i, o) = divmod::<usize>(i, T::BITS);
 
         if i < self.data.len() && self.data[i].access(o) {
             self.ones -= 1;
@@ -376,7 +376,7 @@ where
 
     // fn flip(&mut self, i: u64) -> Self::Output {
     //     assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-    //     let (i, o) = bit::divmod::<usize>(i, T::BITS);
+    //     let (i, o) = divmod::<usize>(i, T::BITS);
     //     if i < self.data.len() {
     //         if self.data[i].access(o) {
     //             self.ones -= 1;
@@ -401,19 +401,19 @@ where
 
     fn set1(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = bit::divmod::<usize>(i, T::BITS);
+        let (i, o) = divmod::<usize>(i, T::BITS);
         self[i].set1(o)
     }
 
     fn set0(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = bit::divmod::<usize>(i, T::BITS);
+        let (i, o) = divmod::<usize>(i, T::BITS);
         self[i].set0(o)
     }
 
     // fn flip(&mut self, i: u64) -> Self::Output {
     //     assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-    //     let (i, o) = bit::divmod::<usize>(i, T::BITS);
+    //     let (i, o) = divmod::<usize>(i, T::BITS);
     //     self[i].flip(o)
     // }
 }
@@ -455,8 +455,8 @@ where
                 let i = r.start;
                 let j = r.end - 1;
 
-                let (head_index, head_offset) = bit::divmod::<usize>(i, T::BITS);
-                let (last_index, last_offset) = bit::divmod::<usize>(j, T::BITS);
+                let (head_index, head_offset) = divmod::<usize>(i, T::BITS);
+                let (last_index, last_offset) = divmod::<usize>(j, T::BITS);
                 if head_index == last_index {
                     if head_index >= self.data.len() {
                         self.data.resize(head_index + 1, T::empty());
@@ -490,8 +490,8 @@ where
                 let i = r.start;
                 let j = r.end - 1;
 
-                let (head_index, head_offset) = bit::divmod::<usize>(i, T::BITS);
-                let (last_index, last_offset) = bit::divmod::<usize>(j, T::BITS);
+                let (head_index, head_offset) = divmod::<usize>(i, T::BITS);
+                let (last_index, last_offset) = divmod::<usize>(j, T::BITS);
                 if self.data.len() <= head_index {
                     return 0;
                 }
@@ -527,8 +527,8 @@ macro_rules! set_range {
                 let j = $j - 1;
                 debug_assert!(i <= j);
 
-                let (head_index, head_offset) = bit::divmod::<usize>(i, T::BITS);
-                let (last_index, last_offset) = bit::divmod::<usize>(j, T::BITS);
+                let (head_index, head_offset) = divmod::<usize>(i, T::BITS);
+                let (last_index, last_offset) = divmod::<usize>(j, T::BITS);
 
                 let mut out = 0;
                 if head_index == last_index {
@@ -580,6 +580,50 @@ where
     /// Disable bits in a specified range, and returns the number of **updated** bits.
     fn set0(&mut self, index: Range<u64>) -> Self::Output {
         set_range!(self, set0, index.start, index.end)
+    }
+}
+
+impl<T, W> Read<W, Range<u64>> for [T]
+where
+    T: UnsignedInt + Read<W, Range<u64>> + TryCast<W>,
+    W: UnsignedInt,
+{
+    fn read(&self, r: Range<u64>) -> W {
+        assert!(r.start < r.end);
+        let i = r.start;
+        let j = r.end - 1;
+        assert!(j - i <= W::BITS && i < self.bits() && j < self.bits());
+
+        let (head_index, head_offset) = divmod::<usize>(i, T::BITS);
+        let (last_index, last_offset) = divmod::<usize>(j, T::BITS);
+
+        if head_index == last_index {
+            self[head_index].read(head_offset..last_offset + 1)
+        } else {
+            // head_index < last_index
+
+            // returning value
+            let mut out = W::ZERO;
+            // how many bits do we have read?
+            let mut len = 0;
+
+            out |= self[head_index].read(head_offset..T::BITS);
+            len += T::BITS - head_offset;
+
+            for &n in &self[(head_index + 1)..last_index] {
+                out |= cast::<T, W>(n).shiftl(len);
+                len += T::BITS;
+            }
+
+            let last: W = self[last_index].read(0..last_offset + 1);
+            // debug_assert_eq!(
+            //     cast::<u8, u64>(last),
+            //     cast::<U, u64>((cast::<u8, U>(last) << cast(len)) >> cast(len))
+            // );
+            //
+            // last need to be shifted to left by `len`
+            out | last.shiftl(len)
+        }
     }
 }
 

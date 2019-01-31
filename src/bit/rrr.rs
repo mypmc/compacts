@@ -1,6 +1,13 @@
+//! # Reference
+//!
+//! Succinct indexable dictionaries with applications to encoding k-ary trees and multisets
+//!
+//! https://portal.acm.org/citation.cfm?id=545411
+//!
+
 include!(concat!(env!("OUT_DIR"), "/table.rs"));
 
-use crate::bit::{cast, UnsignedInt};
+use crate::bit::{cast, divmod, ops::*, UnsignedInt};
 
 // It is a good idea to choose `BLOCK_SIZE + 1` as a power of two,
 // so that the bits that has size `CLASS_SIZE` can be fully used for bitpacking.
@@ -32,8 +39,49 @@ implCode!((usize, 5));
 #[cfg(target_pointer_width = "64")]
 implCode!((usize, 6));
 
-pub fn encode<C: Code>(mut code: C) -> (u64, C) {
-    code &= C::MASK;
+//// read bits in [i, j)
+//pub fn read_code<U>(slice: &[u8], i: u64, j: u64) -> U
+//where
+//    U: UnsignedInt,
+//{
+//    assert!(i < j && j - i <= U::BITS && i < slice.bits() && j <= slice.bits());
+
+//    let j = j - 1; // make inclusive
+
+//    let (head_index, head_offset) = divmod::<usize>(i, u8::BITS);
+//    let (last_index, last_offset) = divmod::<usize>(j, u8::BITS);
+
+//    if head_index == last_index {
+//        slice[head_index].read(head_offset..last_offset + 1)
+//    } else {
+//        // head_index < last_index
+
+//        // returning value
+//        let mut out = U::ZERO;
+//        // how many bits do we have read?
+//        let mut len = 0;
+
+//        out |= slice[head_index].read::<U>(head_offset..u8::BITS);
+//        len += u8::BITS - head_offset;
+
+//        for &word in &slice[(head_index + 1)..last_index] {
+//            out |= cast::<u8, U>(word).shiftl(len);
+//            len += u8::BITS;
+//        }
+
+//        let last = slice[last_index].read::<U>(0..last_offset + 1);
+//        // debug_assert_eq!(
+//        //     cast::<u8, u64>(last),
+//        //     cast::<U, u64>((cast::<u8, U>(last) << cast(len)) >> cast(len))
+//        // );
+//        //
+//        // last need to be shifted to left by `len`
+//        out | last.shiftl(len)
+//    }
+//}
+
+pub fn encode<C: Code>(code: C) -> (u64, C) {
+    let code = code & C::MASK;
 
     let class = code.count1();
     let offset = {

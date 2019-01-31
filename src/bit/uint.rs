@@ -43,6 +43,12 @@ pub trait UnsignedInt:
     + Access
     + Assign<u64>
     + Assign<Range<u64>>
+    + Read<u8, Range<u64>>
+    + Read<u16, Range<u64>>
+    + Read<u32, Range<u64>>
+    + Read<u64, Range<u64>>
+    + Read<u128, Range<u64>>
+    + Read<usize, Range<u64>>
     + TryCast<u8>
     + TryCast<u16>
     + TryCast<u32>
@@ -59,9 +65,14 @@ pub trait UnsignedInt:
 {
     const ZERO: Self;
 
-    fn bit(i: Self) -> Self;
+    fn bit<T: UnsignedInt + TryCast<Self>>(i: T) -> Self;
 
-    fn mask(i: Self) -> Self;
+    fn mask<T: UnsignedInt + TryCast<Self>>(i: T) -> Self;
+
+    #[doc(hidden)]
+    fn shiftl<T: UnsignedInt + TryCast<Self>>(&self, i: T) -> Self;
+    #[doc(hidden)]
+    fn shiftr<T: UnsignedInt + TryCast<Self>>(&self, i: T) -> Self;
 }
 
 /// Lossless cast that never fail.
@@ -111,8 +122,18 @@ macro_rules! implUnsignedInt {
     ($($ty:ty),*) => ($(
         impl UnsignedInt for $ty {
             const ZERO: Self = 0;
-            fn bit(i: Self) -> Self { 1 << i }
-            fn mask(i: Self) -> Self { (1 << i) - 1 }
+
+            fn bit<T>(i: T) -> Self where T: UnsignedInt + TryCast<Self>,
+            { 1 << cast::<T, Self>(i) }
+
+            fn mask<T>(i: T) -> Self where T: UnsignedInt + TryCast<Self>,
+            { (1 << cast::<T, Self>(i)) - 1 }
+
+            fn shiftl<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self>,
+            { self.wrapping_shl(cast(i)) }
+
+            fn shiftr<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self>,
+            { self.wrapping_shr(cast(i)) }
         }
     )*)
 }
@@ -218,7 +239,7 @@ macro_rules! impls {
                 if i == Self::BITS {
                     self.count1()
                 } else {
-                    let mask = *self & Self::mask(cast(i));
+                    let mask = *self & Self::mask(i);
                     mask.count1()
                 }
             }
@@ -232,7 +253,7 @@ macro_rules! impls {
         impl Access for $ty {
             #[inline]
             fn access(&self, i: u64) -> bool {
-                (*self & Self::bit(cast(i))) != Self::ZERO
+                (*self & Self::bit(i)) != Self::ZERO
             }
         }
 
@@ -241,13 +262,13 @@ macro_rules! impls {
             #[inline]
             fn set1(&mut self, i: u64) -> Self::Output {
                 assert!(i < Self::BITS, OUT_OF_BOUNDS);
-                *self |= Self::bit(cast(i));
+                *self |= Self::bit(i);
             }
 
             #[inline]
             fn set0(&mut self, i: u64) -> Self::Output {
                 assert!(i < Self::BITS, OUT_OF_BOUNDS);
-                *self &= !Self::bit(cast(i));
+                *self &= !Self::bit(i);
             }
 
             // #[inline]
@@ -267,8 +288,8 @@ macro_rules! impls {
                     0
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
-                    let head = (!<$ty as UnsignedInt>::ZERO) << (i % Self::BITS);
-                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j % Self::BITS));
+                    let head = (!<$ty as UnsignedInt>::ZERO) << i;
+                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j));
                     let ones = self.count1();
                     *self |= head & last;
                     self.count1() - ones
@@ -282,11 +303,31 @@ macro_rules! impls {
                     0
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
-                    let head = (!<$ty as UnsignedInt>::ZERO) << (i % Self::BITS);
-                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j % Self::BITS));
+                    let head = (!<$ty as UnsignedInt>::ZERO) << i;
+                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j));
                     let ones = self.count1();
                     *self &= !(head & last);
                     ones - self.count1()
+                }
+            }
+        }
+
+        impl<W: UnsignedInt> Read<W, Range<u64>> for $ty {
+            fn read(&self, r: Range<u64>) -> W {
+                if r.start == 0 && r.end == Self::BITS {
+                    cast(*self)
+                } else {
+                    let i = r.start;
+                    let j = r.end;
+                    assert!(i < j && j - i <= W::BITS && i < self.bits() && j <= self.bits());
+                    // let self = 01101010, i = 1 and j = 6
+                    // head: 11111110
+                    let head = (!<$ty as UnsignedInt>::ZERO).shiftl(i);
+                    // last: 00111111
+                    let last = (!<$ty as UnsignedInt>::ZERO).shiftr(Self::BITS - j);
+                    // mask: 00111110
+                    let mask = head & last;
+                    cast::<$ty, W>(*self & mask).shiftr(i)
                 }
             }
         }

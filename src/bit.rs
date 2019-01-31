@@ -18,6 +18,7 @@ pub mod rrr;
 
 mod block;
 mod entry;
+mod impls;
 mod key_map;
 mod vec_map;
 

@@ -1,16 +1,34 @@
 use crate::bit::rrr::Code;
 use crate::bit::*;
 
-// #[test]
-// fn flip() {
-//     let mut u = 0b_0001_1001_u8;
-//     u.flip(1);
-//     assert_eq!(u, 0b_0001_1011_u8);
-//     u.flip(0..5);
-//     assert_eq!(u, 0b_0000_0100_u8);
-//     u.flip(..);
-//     assert_eq!(u, 0b_1111_1011_u8);
-// }
+#[test]
+fn test_read_code() {
+    let slice: &[u8] = &[
+        0b_1100_1010_u8,
+        0b_0010_1101,
+        0b_0010_1011,
+        0b_0010_1011,
+        0b_0010_1011,
+    ];
+
+    let mut read: u8 = 0;
+
+    read = slice.read(0..7);
+    assert_eq!(read, 0b_01001010_u8);
+    read = slice.read(3..4);
+    assert_eq!(read, 0b_00000001_u8);
+    read = slice.read(3..7);
+    assert_eq!(read, 0b_00001001_u8);
+    read = slice.read(7..10);
+    assert_eq!(read, 0b_00000011_u8);
+    read = slice.read(13..20);
+    assert_eq!(read, 0b_01011001_u8);
+
+    let read: u16 = slice.read(0..15);
+    assert_eq!(read, 0b_00101101_11001010_u16);
+    let read: u32 = slice.read(8..27);
+    assert_eq!(read, 0b_0011_00101011_00101101_u32);
+}
 
 #[test]
 fn default_value() {
