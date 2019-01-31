@@ -1,3 +1,4 @@
+use crate::bit::rrr::Code;
 use crate::bit::*;
 
 // #[test]
@@ -30,6 +31,39 @@ quickcheck! {
 
         r1 && r2
     }
+}
+
+quickcheck! {
+    fn rrr8(code: u8) -> bool {
+        let (class, offset) = rrr::encode(code);
+        let got = rrr::decode(class, offset);
+        got == code & u8::MASK
+    }
+
+    fn rrr16(code: u16) -> bool {
+        let (class, offset) = rrr::encode(code);
+        let got = rrr::decode(class, offset);
+        got == code & u16::MASK
+    }
+
+    fn rrr32(code: u32) -> bool {
+        let (class, offset) = rrr::encode(code);
+        let got = rrr::decode(class, offset);
+        got == code & u32::MASK
+    }
+
+    fn rrr64(code: u64) -> bool {
+        let (class, offset) = rrr::encode(code);
+        let got = rrr::decode(class, offset);
+        got == code & u64::MASK
+    }
+
+    fn rrrsize(code: usize) -> bool {
+        let (class, offset) = rrr::encode(code);
+        let got = rrr::decode(class, offset);
+        got == code & usize::MASK
+    }
+
 }
 
 quickcheck! {

@@ -7,28 +7,14 @@
 // - Fast, Small, Simple Rank/Select on Bitmaps
 // - Space-Efficient, High-Performance Rank & Select Structures on Uncompressed Bit Sequences
 
-#[macro_use]
-mod macros;
 #[cfg(test)]
 mod tests;
-
-#[allow(dead_code)]
-pub mod rrr15 {
-    generate_rrr_mod!("/table15.rs", u16, 15, 4);
-}
-#[allow(dead_code)]
-pub mod rrr31 {
-    generate_rrr_mod!("/table31.rs", u32, 31, 5);
-}
-#[allow(dead_code)]
-pub mod rrr63 {
-    generate_rrr_mod!("/table63.rs", u64, 63, 6);
-}
 
 // mod flip;
 // mod range;
 
 pub mod ops;
+pub mod rrr;
 
 mod block;
 mod entry;
