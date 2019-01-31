@@ -6,7 +6,7 @@ use std::{
     ops::{BitAndAssign, BitOrAssign, BitXorAssign},
 };
 
-use crate::bits::*;
+use crate::bit;
 
 mod sealed {
     pub trait Op {}
@@ -146,13 +146,13 @@ where
     }
 }
 
-impl<'a, L, R, A> Iterator for Iter<L, R, Cow<'a, Block<A>>, sealed::And>
+impl<'a, L, R, A> Iterator for Iter<L, R, Cow<'a, bit::Block<A>>, sealed::And>
 where
-    L: Iterator<Item = Cow<'a, Block<A>>>,
-    R: Iterator<Item = Cow<'a, Block<A>>>,
-    A: BlockArray,
+    L: Iterator<Item = Cow<'a, bit::Block<A>>>,
+    R: Iterator<Item = Cow<'a, bit::Block<A>>>,
+    A: bit::BlockArray,
 {
-    type Item = Cow<'a, Block<A>>;
+    type Item = Cow<'a, bit::Block<A>>;
     fn next(&mut self) -> Option<Self::Item> {
         let lhs = &mut self.lhs;
         let rhs = &mut self.rhs;
@@ -165,13 +165,13 @@ where
     }
 }
 
-impl<'a, L, R, A> Iterator for Iter<L, R, Cow<'a, Block<A>>, sealed::Or>
+impl<'a, L, R, A> Iterator for Iter<L, R, Cow<'a, bit::Block<A>>, sealed::Or>
 where
-    L: Iterator<Item = Cow<'a, Block<A>>>,
-    R: Iterator<Item = Cow<'a, Block<A>>>,
-    A: BlockArray,
+    L: Iterator<Item = Cow<'a, bit::Block<A>>>,
+    R: Iterator<Item = Cow<'a, bit::Block<A>>>,
+    A: bit::BlockArray,
 {
-    type Item = Cow<'a, Block<A>>;
+    type Item = Cow<'a, bit::Block<A>>;
     fn next(&mut self) -> Option<Self::Item> {
         match (self.lhs.next(), self.rhs.next()) {
             (Some(mut x), Some(y)) => {
@@ -185,13 +185,13 @@ where
     }
 }
 
-impl<'a, L, R, A> Iterator for Iter<L, R, Cow<'a, Block<A>>, sealed::Xor>
+impl<'a, L, R, A> Iterator for Iter<L, R, Cow<'a, bit::Block<A>>, sealed::Xor>
 where
-    L: Iterator<Item = Cow<'a, Block<A>>>,
-    R: Iterator<Item = Cow<'a, Block<A>>>,
-    A: BlockArray,
+    L: Iterator<Item = Cow<'a, bit::Block<A>>>,
+    R: Iterator<Item = Cow<'a, bit::Block<A>>>,
+    A: bit::BlockArray,
 {
-    type Item = Cow<'a, Block<A>>;
+    type Item = Cow<'a, bit::Block<A>>;
     fn next(&mut self) -> Option<Self::Item> {
         match (self.lhs.next(), self.rhs.next()) {
             (Some(mut x), Some(y)) => {
@@ -205,14 +205,14 @@ where
     }
 }
 
-impl<'a, L, R, K, A> Iterator for Iter<L, R, Entry<K, Cow<'a, Block<A>>>, sealed::And>
+impl<'a, L, R, K, A> Iterator for Iter<L, R, bit::Entry<K, Cow<'a, bit::Block<A>>>, sealed::And>
 where
-    L: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
-    R: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
-    K: UnsignedInt,
-    A: BlockArray,
+    L: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
+    R: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
+    K: bit::UnsignedInt,
+    A: bit::BlockArray,
 {
-    type Item = Entry<K, Cow<'a, Block<A>>>;
+    type Item = bit::Entry<K, Cow<'a, bit::Block<A>>>;
     fn next(&mut self) -> Option<Self::Item> {
         let lhs = &mut self.lhs;
         let rhs = &mut self.rhs;
@@ -240,14 +240,14 @@ where
     }
 }
 
-impl<'a, L, R, K, A> Iterator for Iter<L, R, Entry<K, Cow<'a, Block<A>>>, sealed::Or>
+impl<'a, L, R, K, A> Iterator for Iter<L, R, bit::Entry<K, Cow<'a, bit::Block<A>>>, sealed::Or>
 where
-    L: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
-    R: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
-    K: UnsignedInt,
-    A: BlockArray,
+    L: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
+    R: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
+    K: bit::UnsignedInt,
+    A: bit::BlockArray,
 {
-    type Item = Entry<K, Cow<'a, Block<A>>>;
+    type Item = bit::Entry<K, Cow<'a, bit::Block<A>>>;
     fn next(&mut self) -> Option<Self::Item> {
         let lhs = &mut self.lhs;
         let rhs = &mut self.rhs;
@@ -270,14 +270,14 @@ where
     }
 }
 
-impl<'a, L, R, K, A> Iterator for Iter<L, R, Entry<K, Cow<'a, Block<A>>>, sealed::Xor>
+impl<'a, L, R, K, A> Iterator for Iter<L, R, bit::Entry<K, Cow<'a, bit::Block<A>>>, sealed::Xor>
 where
-    L: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
-    R: Iterator<Item = Entry<K, Cow<'a, Block<A>>>>,
-    K: UnsignedInt,
-    A: BlockArray,
+    L: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
+    R: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
+    K: bit::UnsignedInt,
+    A: bit::BlockArray,
 {
-    type Item = Entry<K, Cow<'a, Block<A>>>;
+    type Item = bit::Entry<K, Cow<'a, bit::Block<A>>>;
     fn next(&mut self) -> Option<Self::Item> {
         let lhs = &mut self.lhs;
         let rhs = &mut self.rhs;
@@ -442,11 +442,11 @@ impl<'a, T: 'a> Fold<'a, T> {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Map, Block, Fold, ops::Access};
-    /// let a = Map::<Block<[u64; 1024]>>::build(&[1, 2, 4, 5, 10]);
-    /// let b = Map::<Block<[u64; 1024]>>::build(&[1, 3, 4, 8, 10]);
-    /// let c = Map::<Block<[u64; 1024]>>::build(&[1, 2, 4, 9, 10]);
-    /// let fold = Fold::and(vec![&a, &b, &c]).collect::<Map<Block<[u64; 1024]>>>();
+    /// use compacts::bit::{VecMap, Fold, ops::Access};
+    /// let a = VecMap::<[u64; 1024]>::build(&[1, 2, 4, 5, 10]);
+    /// let b = VecMap::<[u64; 1024]>::build(&[1, 3, 4, 8, 10]);
+    /// let c = VecMap::<[u64; 1024]>::build(&[1, 2, 4, 9, 10]);
+    /// let fold = Fold::and(vec![&a, &b, &c]).collect::<VecMap<[u64; 1024]>>();
     /// let bits = fold.iterate().collect::<Vec<_>>();
     /// assert_eq!(bits, vec![1, 4, 10]);
     /// ```

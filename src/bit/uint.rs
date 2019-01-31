@@ -1,4 +1,8 @@
-use crate::{bits::*, private};
+use crate::{
+    bit::ops::*,
+    bit::{ucast, OUT_OF_BOUNDS},
+    private,
+};
 
 use std::ops::Range;
 
@@ -31,6 +35,14 @@ pub trait UnsignedInt:
     + std::ops::BitXorAssign
     + std::ops::Not<Output = Self>
     + std::iter::Sum
+    + FiniteBits
+    + Count
+    + Rank
+    + Select1
+    + Select0
+    + Access
+    + Assign<u64>
+    + Assign<Range<u64>>
     + TryCast<u8>
     + TryCast<u16>
     + TryCast<u32>
@@ -43,14 +55,6 @@ pub trait UnsignedInt:
     + TryCastFrom<u64>
     + TryCastFrom<u128>
     + TryCastFrom<usize>
-    + FiniteBits
-    + Count
-    + Rank
-    + Select1
-    + Select0
-    + Access
-    + Assign<u64>
-    + Assign<Range<u64>>
     + private::Sealed
 {
     const ZERO: Self;
@@ -286,35 +290,6 @@ macro_rules! impls {
                 }
             }
         }
-
-        // impl MaskAssign<&'_ $ty> for $ty {
-        //     fn intersection(&mut self, that: &$ty) {
-        //         *self &= *that;
-        //     }
-        //     fn union(&mut self, that: &$ty) {
-        //         *self |= *that;
-        //     }
-        //     fn difference(&mut self, that: &$ty) {
-        //         *self &= !*that;
-        //     }
-        //     fn symmetric_difference(&mut self, that: &$ty) {
-        //         *self ^= *that;
-        //     }
-        // }
-        // impl MaskAssign<Cow<'_, $ty>> for $ty {
-        //     fn intersection(&mut self, that: Cow<'_, $ty>) {
-        //         *self &= *that;
-        //     }
-        //     fn union(&mut self, that: Cow<'_, $ty>) {
-        //         *self |= *that;
-        //     }
-        //     fn difference(&mut self, that: Cow<'_, $ty>) {
-        //         *self &= !*that;
-        //     }
-        //     fn symmetric_difference(&mut self, that: Cow<'_, $ty>) {
-        //         *self ^= *that;
-        //     }
-        // }
     )*)
 }
 impls!(u8, u16, u32, u64, u128, usize);
@@ -347,14 +322,14 @@ impl Select1 for u64 {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::ops::Select1;
+    /// use compacts::bit::ops::Select1;
     /// let n = 0b_00000100_10010000_u64;
     /// assert_eq!(n.select1(0), Some(4));
     /// assert_eq!(n.select1(1), Some(7));
     /// assert_eq!(n.select1(2), Some(10));
     /// assert_eq!(n.select1(3), None);
     ///
-    /// use compacts::bits::ops::Rank;
+    /// use compacts::bit::ops::Rank;
     /// assert_eq!(n.rank1(n.select1(0).unwrap()), 0);
     /// assert_eq!(n.rank1(n.select1(1).unwrap()), 1);
     /// assert_eq!(n.rank1(n.select1(2).unwrap()), 2);
@@ -387,7 +362,7 @@ impl Select1 for u128 {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::ops::Select1;
+    /// use compacts::bit::ops::Select1;
     /// let n: u128 = (0b_00001100_u128 << 64) | 0b_00000100_u128;
     /// assert_eq!(n.select1(0), Some(2));
     /// assert_eq!(n.select1(1), Some(66));
@@ -436,307 +411,3 @@ macro_rules! implSelect0 {
 }
 implSelect1!(u8, u16, u32, usize);
 implSelect0!(u8, u16, u32, u64, u128, usize);
-
-///// `Block<U>` is a boxed slice of `U`.
-///// It is almost same with `[U]` where U is an UnsignedInt, except that `Block<U>` implements `FiniteBits`.
-/////
-///// Currently bit size of `Block<U>` is fixed, but if const generics is stabilized,
-///// we will change type signature to `Block<U, LEN>`.
-//#[derive(Clone, Debug, PartialEq, Eq)]
-//pub struct Block<U> {
-//    ones: u32,
-//    data: Option<Box<[U]>>,
-//}
-
-//impl<U: UnsignedInt> Default for Block<U> {
-//    fn default() -> Self {
-//        Block {
-//            ones: 0,
-//            data: None,
-//        }
-//    }
-//}
-
-//impl<U: UnsignedInt> Block<U> {
-//    const LEN: usize = (Self::BITS / U::BITS) as usize;
-
-//    /// Constructs a new instance with each element initialized to value.
-//    pub fn splat(value: U) -> Self {
-//        let ones = ucast::<u64, u32>(value.count1()) * ucast::<usize, u32>(Self::LEN);
-//        let data = Some(vec![value; Self::LEN].into_boxed_slice());
-//        Block { ones, data }
-//    }
-//}
-
-//impl<U: UnsignedInt> From<&'_ [U]> for Block<U> {
-//    fn from(slice: &'_ [U]) -> Self {
-//        Self::from(slice.to_vec())
-//    }
-//}
-//impl<U: UnsignedInt> From<Vec<U>> for Block<U> {
-//    fn from(mut vec: Vec<U>) -> Self {
-//        if vec.is_empty() {
-//            Block::empty()
-//        } else {
-//            vec.resize(Self::LEN, U::ZERO);
-//            let ones = ucast::<u64, u32>(vec.count1());
-//            let data = Some(vec.into_boxed_slice());
-//            Block { ones, data }
-//        }
-//    }
-//}
-
-//impl<U: UnsignedInt> FiniteBits for Block<U> {
-//    const BITS: u64 = 1 << 16;
-//    fn empty() -> Self {
-//        Self::default()
-//    }
-//}
-
-//impl<U: UnsignedInt> Count for Block<U> {
-//    fn bits(&self) -> u64 {
-//        Self::BITS
-//    }
-//    fn count1(&self) -> u64 {
-//        u64::from(self.ones)
-//    }
-//}
-
-//impl<U: UnsignedInt> Access for Block<U> {
-//    /// Uest bit at `i`.
-//    fn access(&self, i: u64) -> bool {
-//        assert!(i < self.bits(), OUT_OF_BOUNDS);
-//        self.data.as_ref().map_or(false, |vec| vec.access(i))
-//    }
-//    fn iterate<'a>(&'a self) -> Box<dyn Iterator<Item = u64> + 'a> {
-//        if let Some(slice) = self.data.as_ref() {
-//            slice.iterate()
-//        } else {
-//            Box::new(std::iter::empty())
-//        }
-//    }
-//}
-
-//impl<U: UnsignedInt> Rank for Block<U> {
-//    fn rank1(&self, i: u64) -> u64 {
-//        assert!(i <= self.bits(), OUT_OF_BOUNDS);
-//        self.data.as_ref().map_or(0, |vec| vec.rank1(i))
-//    }
-//}
-
-//impl<U: UnsignedInt> Select1 for Block<U> {
-//    fn select1(&self, n: u64) -> Option<u64> {
-//        self.data.as_ref().and_then(|vec| vec.select1(n))
-//    }
-//}
-//impl<U: UnsignedInt> Select0 for Block<U> {
-//    fn select0(&self, n: u64) -> Option<u64> {
-//        self.data.as_ref().map_or(Some(n), |vec| vec.select0(n))
-//    }
-//}
-
-//impl<U: UnsignedInt> Assign<u64> for Block<U> {
-//    type Output = ();
-
-//    fn set1(&mut self, i: u64) -> Self::Output {
-//        assert!(i < self.bits(), OUT_OF_BOUNDS);
-
-//        let (i, o) = divmod::<usize>(i, U::BITS);
-//        if let Some(vec) = self.data.as_mut() {
-//            if !vec[i].access(o) {
-//                vec[i].set1(o);
-//                self.ones += 1;
-//            }
-//        } else {
-//            self.ones += 1;
-//            let mut vec = vec![U::ZERO; Self::LEN];
-//            vec[i].set1(o);
-//            self.data = Some(vec.into_boxed_slice());
-//        }
-//    }
-
-//    fn set0(&mut self, i: u64) -> Self::Output {
-//        assert!(i < self.bits(), OUT_OF_BOUNDS);
-//        let (i, o) = divmod::<usize>(i, U::BITS);
-//        if let Some(vec) = self.data.as_mut() {
-//            if vec[i].access(o) {
-//                self.ones -= 1;
-//                vec[i].set0(o);
-//            }
-//        }
-//    }
-//}
-
-//impl<U: UnsignedInt> Assign<Range<u64>> for Block<U>
-//where
-//    [U]: Assign<Range<u64>, Output = u64>,
-//{
-//    type Output = u64;
-
-//    /// # Examples
-//    ///
-//    /// ```
-//    /// use compacts::bits::{Block, Assign};
-//    /// let mut map = Block::from(vec![0b_00000000u8, 0b_00000000]);
-//    /// map.set1(0..3);
-//    /// assert_eq!(map, Block::from(vec![0b_00000111u8, 0b_00000000]));
-//    /// map.set1(14..18);
-//    /// assert_eq!(map, Block::from(vec![0b_00000111u8, 0b_11000000, 0b_00000011]));
-//    /// ```
-//    fn set1(&mut self, r: Range<u64>) -> Self::Output {
-//        if r.start >= r.end {
-//            return 0;
-//        }
-
-//        if let Some(vec) = self.data.as_mut() {
-//            let out = vec.set1(r);
-//            self.ones += ucast::<u64, u32>(out);
-//            out
-//        } else {
-//            let mut vec = vec![U::ZERO; Self::LEN];
-//            let out = vec.set1(r);
-//            self.ones = ucast(out);
-//            self.data = Some(vec.into_boxed_slice());
-//            out
-//        }
-//    }
-
-//    fn set0(&mut self, r: Range<u64>) -> Self::Output {
-//        if r.start >= r.end {
-//            return 0;
-//        }
-//        if let Some(vec) = self.data.as_mut() {
-//            let out = vec.set0(r);
-//            self.ones -= ucast::<u64, u32>(out);
-//            out
-//        } else {
-//            0
-//        }
-//    }
-//}
-
-//impl<'a, U: UnsignedInt> std::ops::BitAndAssign<Cow<'a, Block<U>>> for Block<U> {
-//    fn bitand_assign(&mut self, cow: Cow<'a, Block<U>>) {
-//        self.bitand_assign(cow.as_ref());
-//    }
-//}
-//impl<'b, U: UnsignedInt> std::ops::BitAndAssign<&'b Block<U>> for Block<U> {
-//    fn bitand_assign(&mut self, that: &'b Block<U>) {
-//        match (self.data.as_mut(), that.data.as_ref()) {
-//            (Some(lhs), Some(rhs)) => {
-//                assert_eq!(lhs.len(), rhs.len());
-//                let mut ones = 0;
-//                for (x, y) in lhs.iter_mut().zip(rhs.iter()) {
-//                    *x &= *y;
-//                    ones += x.count1();
-//                }
-//                self.ones = ucast(ones);
-//            }
-//            _ => {
-//                self.data = None;
-//            }
-//        }
-//    }
-//}
-
-//impl<'a, U: UnsignedInt> std::ops::BitOrAssign<Cow<'a, Block<U>>> for Block<U> {
-//    fn bitor_assign(&mut self, cow: Cow<'a, Block<U>>) {
-//        self.bitor_assign(cow.as_ref());
-//    }
-//}
-//impl<'b, U: UnsignedInt> std::ops::BitOrAssign<&'b Block<U>> for Block<U> {
-//    fn bitor_assign(&mut self, that: &'b Block<U>) {
-//        match (self.data.as_mut(), that.data.as_ref()) {
-//            (None, Some(vec)) => {
-//                let mut dst = vec![U::ZERO; vec.len()];
-//                dst.copy_from_slice(&vec[..]);
-//                self.data = Some(dst.into_boxed_slice());
-//            }
-//            (Some(lhs), Some(rhs)) => {
-//                assert_eq!(lhs.len(), rhs.len());
-//                let mut ones = 0;
-//                for (x, y) in lhs.iter_mut().zip(rhs.iter()) {
-//                    *x |= *y;
-//                    ones += x.count1();
-//                }
-//                self.ones = ucast(ones);
-//            }
-//            _ => {}
-//        }
-//    }
-//}
-
-//impl<'a, U: UnsignedInt> std::ops::BitXorAssign<Cow<'a, Block<U>>> for Block<U> {
-//    fn bitxor_assign(&mut self, cow: Cow<'a, Block<U>>) {
-//        self.bitxor_assign(cow.as_ref());
-//    }
-//}
-//impl<'b, U: UnsignedInt> std::ops::BitXorAssign<&'b Block<U>> for Block<U> {
-//    fn bitxor_assign(&mut self, that: &'b Block<U>) {
-//        match (self.data.as_mut(), that.data.as_ref()) {
-//            (None, Some(buf)) => {
-//                let mut dst = vec![U::ZERO; buf.len()];
-//                dst.copy_from_slice(&buf[..]);
-//                self.data = Some(dst.into_boxed_slice());
-//            }
-//            (Some(lhs), Some(rhs)) => {
-//                assert_eq!(lhs.len(), rhs.len());
-//                let mut ones = 0;
-//                for (x, y) in lhs.iter_mut().zip(rhs.iter()) {
-//                    *x ^= *y;
-//                    ones += x.count1();
-//                }
-//                self.ones = ucast(ones);
-//            }
-//            _ => {}
-//        }
-//    }
-//}
-
-//impl<U: UnsignedInt> std::ops::Not for Block<U> {
-//    type Output = Block<U>;
-//    fn not(self) -> Self::Output {
-//        match self.data {
-//            Some(mut vec) => {
-//                let ones = {
-//                    let mut acc = 0;
-//                    for v in vec.iter_mut() {
-//                        *v = !*v;
-//                        acc += v.count1();
-//                    }
-//                    acc
-//                };
-//                Block {
-//                    ones: ucast(ones),
-//                    data: if ones > 0 { Some(vec) } else { None },
-//                }
-//            }
-//            None => Self::splat(!U::ZERO),
-//        }
-//    }
-//}
-
-//impl<U: UnsignedInt> std::ops::Not for &'_ Block<U> {
-//    type Output = Block<U>;
-//    fn not(self) -> Self::Output {
-//        match self.data {
-//            Some(ref vec) => {
-//                let mut out = vec![U::ZERO; Block::<U>::LEN];
-//                let mut acc = 0;
-//                for (a, b) in out.iter_mut().zip(vec.iter()) {
-//                    *a = !*b;
-//                    acc += a.count1();
-//                }
-//                Block {
-//                    ones: ucast(acc),
-//                    data: if acc > 0 {
-//                        Some(out.into_boxed_slice())
-//                    } else {
-//                        None
-//                    },
-//                }
-//            }
-//            None => Block::splat(!U::ZERO),
-//        }
-//    }
-//}

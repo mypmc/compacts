@@ -55,7 +55,7 @@ pub trait Access {
     /// Default implementation is just a accessing to all bits.
     ///
     /// ```
-    /// use compacts::bits::ops::Access;
+    /// use compacts::bit::ops::Access;
     /// let word = [0b_10101010_u8, 0b_11110000_u8];
     /// let bits = word.iterate().collect::<Vec<_>>();
     /// assert_eq!(bits, vec![1, 3, 5, 7, 12, 13, 14, 15]);

@@ -53,39 +53,30 @@ pub use self::{
     mask::{and, or, xor, Fold, Mask},
 };
 
-const MAX_BITS: u64 = 1 << 63;
+const MAX: u64 = 1 << 63;
 
 // Panic message.
 static OUT_OF_BOUNDS: &str = "index out of bounds";
 
+/// `Map<T>`
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Map<T> {
     ones: u64,
     data: Vec<T>,
 }
 
-pub type BlockMap<A> = Map<Block<A>>;
-
-/// `EntryMap` is a vector of `Entry<K, V>` that are sorted by index `K`.
-/// `EntryMap` can be seen as a bits container that filtered out the empty `T` from `Map<T>`.
+/// `KeyMap<K, V>` is a type alias for `Map<Entry<K, V>>.
+/// `KeyMap<K, V>` can be seen as a bits container that filtered out the empty `V` from `Map<V>`.
 ///
-/// The type parameters `K` specifies the bit size of the vector.
-/// In other words, the smaller of `(1 << K::BITS) * V::BITS` and `MAX_BITS` is the bit size of `EntryMap<K, V>`.
+/// The type parameters `K` specifies the bit size of `KeyMap<K, V>`.
+/// In other words, the smaller of `(1 << K::BITS) * V::BITS` and `MAX_BITS` is the bit size of `KeyMap<K, V>`.
 ///
 /// However, there is no guaranteed that the number of bits reach that size.
 /// It can fail to allocate at any point before that size is reached.
-pub type EntryMap<K, V> = Map<Entry<K, V>>;
+pub type KeyMap<K, V> = Map<Entry<K, V>>;
 
-// impl<A: BlockArray> PartialEq for Map<A> {
-//     fn eq(&self, that: &Self) -> bool {
-//         let this = self.data.as_ref();
-//         let that = that.data.as_ref();
-//         if self.ones != that.ones || this.len() != that.len() {
-//             return false;
-//         }
-//         this.iter().zip(that).all(|(a, b)| a == b)
-//     }
-// }
+/// `VecMap<A>` is a type alias for `Map<Block<A>>.
+pub type VecMap<A> = Map<Block<A>>;
 
 impl<T> Default for Map<T> {
     fn default() -> Self {

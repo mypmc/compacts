@@ -1,19 +1,13 @@
-use crate::bits::*;
-
-// #[derive(Clone, Debug, PartialEq, Eq)]
-// pub struct EntryMap<K: UnsignedInt, V> {
-//     ones: u64,
-//     data: Vec<Entry<K, V>>,
-// }
+use crate::bit::{self, ops::*, ucast};
 
 /// `Entry` holds value `V` and its index `K`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Entry<K: UnsignedInt, V> {
+pub struct Entry<K: bit::UnsignedInt, V> {
     pub(crate) index: K,
     pub(crate) value: V,
 }
 
-impl<K: UnsignedInt, V> Entry<K, V> {
+impl<K: bit::UnsignedInt, V> Entry<K, V> {
     pub fn new(index: K, value: V) -> Self {
         Self { index, value }
     }
@@ -36,39 +30,11 @@ impl<K: UnsignedInt, V> Entry<K, V> {
         // (1<<K::BITS) * V::BITS
         1u64.checked_shl(K::BITS as u32)
             .and_then(|len| len.checked_mul(V::BITS))
-            .map_or(MAX_BITS, |bits| std::cmp::min(bits, MAX_BITS))
+            .map_or(bit::MAX, |bits| std::cmp::min(bits, bit::MAX))
     }
 }
 
-// impl<K: UnsignedInt, V> Default for EntryMap<K, V> {
-//     fn default() -> Self {
-//         let ones = 0;
-//         let data = Vec::new();
-//         EntryMap { ones, data }
-//     }
-// }
-
-// impl<K: UnsignedInt, V> AsRef<[Entry<K, V>]> for EntryMap<K, V> {
-//     fn as_ref(&self) -> &[Entry<K, V>] {
-//         self.data.as_slice()
-//     }
-// }
-
-impl<K: UnsignedInt, V> EntryMap<K, V> {
-    // pub fn new() -> Self {
-    //     Default::default()
-    // }
-
-    // fn new_unchecked(ones: u64, data: Vec<Entry<K, V>>) -> Self {
-    //     EntryMap { ones, data }
-    // }
-
-    // pub fn into_inner(self) -> (u64, Vec<Entry<K, V>>) {
-    //     (self.ones, self.data)
-    // }
-}
-
-impl<K: UnsignedInt, V> Count for EntryMap<K, V>
+impl<K: bit::UnsignedInt, V> Count for bit::KeyMap<K, V>
 where
     V: FiniteBits,
 {
@@ -79,14 +45,15 @@ where
         self.ones
     }
 }
-impl<K: UnsignedInt, V> Count for [Entry<K, V>]
+
+impl<K: bit::UnsignedInt, V> Count for [Entry<K, V>]
 where
     V: FiniteBits,
 {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Entry, ops::Count};
+    /// use compacts::bit::{Entry, ops::Count};
     /// let slice = [Entry::new(9u8, 0u64)];
     /// assert_eq!(slice.bits(), (1 << 8) * 64);
     /// ```
@@ -97,7 +64,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Entry, ops::Count};
+    /// use compacts::bit::{Entry, ops::Count};
     /// let slice = [Entry::new(9u8, 0b_00001111_11110101u128)];
     /// assert_eq!(slice.bits(), (1 << 8) * 128); // 32768
     /// assert_eq!(slice.count1(), 10);
@@ -108,7 +75,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Access for EntryMap<K, V>
+impl<K: bit::UnsignedInt, V> Access for bit::KeyMap<K, V>
 where
     V: FiniteBits + Access,
 {
@@ -119,7 +86,8 @@ where
         self.data.iterate()
     }
 }
-impl<K: UnsignedInt, V> Access for [Entry<K, V>]
+
+impl<K: bit::UnsignedInt, V> Access for [Entry<K, V>]
 where
     V: FiniteBits + Access,
 {
@@ -128,7 +96,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Entry, ops::Access};
+    /// use compacts::bit::{Entry, ops::Access};
     /// let slice = [Entry::new(0usize, 1u16), Entry::new(5, 1)];
     /// assert!( slice.access(0));
     /// assert!(!slice.access(1));
@@ -140,7 +108,7 @@ where
     /// We can create a masked bits by slicing entries.
     ///
     /// ```
-    /// # use compacts::bits::{Entry, ops::Access};
+    /// # use compacts::bit::{Entry, ops::Access};
     /// # let slice = [Entry::new(0usize, 1u16), Entry::new(5, 1)];
     /// let slice = &slice[1..]; // [Entry::new(5, 1)]
     /// assert!(!slice.access(0));
@@ -154,8 +122,8 @@ where
     ///
     /// Panics if index out of bounds.
     fn access(&self, i: u64) -> bool {
-        assert!(i < self.bits(), OUT_OF_BOUNDS);
-        let (i, o) = divmod(i, V::BITS);
+        assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
+        let (i, o) = bit::divmod(i, V::BITS);
         self.binary_search_by_key(&i, |e| e.index)
             .map(|k| self[k].value.access(o))
             .unwrap_or_default()
@@ -164,7 +132,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Entry, ops::Access};
+    /// use compacts::bit::{Entry, ops::Access};
     /// let slice = [Entry::new(0usize, 1u16), Entry::new(5, 1)];
     /// let vec = slice.iterate().collect::<Vec<_>>();
     /// assert_eq!(vec, vec![0, 80]);
@@ -178,14 +146,14 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Assign<u64> for EntryMap<K, V>
+impl<K: bit::UnsignedInt, V> Assign<u64> for bit::KeyMap<K, V>
 where
     V: FiniteBits + Access + Assign<u64>,
 {
     type Output = ();
     fn set1(&mut self, i: u64) -> Self::Output {
-        assert!(i < self.bits(), OUT_OF_BOUNDS);
-        let (index, offset) = divmod(i, V::BITS);
+        assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
+        let (index, offset) = bit::divmod(i, V::BITS);
         match Entry::find(&*self.data, &index) {
             Ok(j) => {
                 if !self.data[j].value.access(offset) {
@@ -204,8 +172,8 @@ where
     }
 
     fn set0(&mut self, i: u64) -> Self::Output {
-        assert!(i < self.bits(), OUT_OF_BOUNDS);
-        let (index, offset) = divmod(i, V::BITS);
+        assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
+        let (index, offset) = bit::divmod(i, V::BITS);
         if let Ok(k) = Entry::find(&*self.data, &index) {
             if self.data[k].value.access(offset) {
                 self.ones -= 1;
@@ -218,13 +186,13 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Rank for EntryMap<K, V>
+impl<K: bit::UnsignedInt, V> Rank for bit::KeyMap<K, V>
 where
     V: FiniteBits + Rank,
 {
     fn rank1(&self, i: u64) -> u64 {
         let bits = self.bits();
-        assert!(i <= bits, OUT_OF_BOUNDS);
+        assert!(i <= bits, bit::OUT_OF_BOUNDS);
         if i == bits {
             self.ones
         } else {
@@ -232,14 +200,15 @@ where
         }
     }
 }
-impl<K: UnsignedInt, V> Rank for [Entry<K, V>]
+
+impl<K: bit::UnsignedInt, V> Rank for [Entry<K, V>]
 where
     V: FiniteBits + Rank,
 {
     /// Return the number of enabled bits in `[0, i)`.
     ///
     /// ```
-    /// use compacts::bits::{Entry, ops::{Rank, Count}};
+    /// use compacts::bit::{Entry, ops::{Rank, Count}};
     /// let slice = [Entry::new(0usize, 0b_00001111_11110000u32), Entry::new(3, 0b_01100000_01100000)];
     /// assert_eq!(slice.rank1(10), 6);
     /// assert_eq!(slice.rank1(32), 8);
@@ -250,7 +219,7 @@ where
     /// Unlike `[T]`, slicing for `[Entry<K, V>]` mask the bits.
     ///
     /// ```
-    /// # use compacts::bits::{Entry, ops::{Rank, Count}};
+    /// # use compacts::bit::{Entry, ops::{Rank, Count}};
     /// # let slice = [Entry::new(0usize, 0b_00001111_11110000u32), Entry::new(3, 0b_01100000_01100000)];
     /// let slice = &slice[1..]; // [Entry::new(3, 0b_01100000_01100000)]
     /// assert_eq!(slice.rank1(10), 0);
@@ -259,8 +228,8 @@ where
     /// assert_eq!(slice.rank1(slice.bits()), slice.count1());
     /// ```
     fn rank1(&self, i: u64) -> u64 {
-        assert!(i <= self.bits(), OUT_OF_BOUNDS);
-        let (i, o) = divmod(i, V::BITS);
+        assert!(i <= self.bits(), bit::OUT_OF_BOUNDS);
+        let (i, o) = bit::divmod(i, V::BITS);
         let mut rank = 0;
         for entry in self {
             if entry.index < i {
@@ -276,7 +245,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Select1 for EntryMap<K, V>
+impl<K: bit::UnsignedInt, V> Select1 for bit::KeyMap<K, V>
 where
     V: FiniteBits + Select1,
 {
@@ -288,7 +257,8 @@ where
         }
     }
 }
-impl<K: UnsignedInt, V> Select1 for [Entry<K, V>]
+
+impl<K: bit::UnsignedInt, V> Select1 for [Entry<K, V>]
 where
     V: FiniteBits + Select1,
 {
@@ -306,7 +276,7 @@ where
     }
 }
 
-impl<K: UnsignedInt, V> Select0 for EntryMap<K, V>
+impl<K: bit::UnsignedInt, V> Select0 for bit::KeyMap<K, V>
 where
     V: FiniteBits + Select0,
 {
@@ -318,14 +288,15 @@ where
         }
     }
 }
-impl<K: UnsignedInt, V> Select0 for [Entry<K, V>]
+
+impl<K: bit::UnsignedInt, V> Select0 for [Entry<K, V>]
 where
     V: FiniteBits + Select0,
 {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bits::{Entry, ops::Select0};
+    /// use compacts::bit::{Entry, ops::Select0};
     /// // [T]: 00000000 00000000 11111011 00000000 00000000 00000000 11111011 00000000 ...
     /// let slice = [Entry::new(2usize, 0b_11111011_u8), Entry::new(6, 0b_11111011)];
     /// assert_eq!(slice.select0(10), Some(10));
@@ -402,25 +373,3 @@ where
         }
     }
 }
-
-// pub struct Iter<'a, K: UnsignedInt, V> {
-//     iter: std::slice::Iter<'a, Entry<K, V>>,
-// }
-
-// impl<'a, K: UnsignedInt, V: FiniteBits> Iterator for Iter<'a, K, V> {
-//     type Item = Entry<K, Cow<'a, V>>;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.iter
-//             .next()
-//             .map(|p| Entry::new(p.index, Cow::Borrowed(&p.value)))
-//     }
-// }
-
-// impl<'a, K: UnsignedInt, V: FiniteBits> IntoIterator for &'a EntryMap<K, V> {
-//     type Item = Entry<K, Cow<'a, V>>;
-//     type IntoIter = Iter<'a, K, V>;
-//     fn into_iter(self) -> Self::IntoIter {
-//         let iter = self.data.iter();
-//         Iter { iter }
-//     }
-// }

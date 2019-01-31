@@ -1,4 +1,4 @@
-use crate::bits::*;
+use crate::bit::*;
 
 // #[test]
 // fn flip() {
@@ -39,7 +39,7 @@ quickcheck! {
             bytes.set1(i);
         }
 
-        let mut entries = EntryMap::<usize, u8>::new();
+        let mut entries = KeyMap::<usize, u8>::new();
         for &i in &vec {
             entries.set1(i);
         }
@@ -71,7 +71,7 @@ quickcheck! {
 macro_rules! gen {
     ($Type:ty, $NBITS:expr, $BOUND:expr) => {
         use super::*;
-        use crate::bits::*;
+        use crate::bit::*;
         use rand::prelude::*;
 
         type Type = Map<$Type>;
