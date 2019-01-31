@@ -1,18 +1,6 @@
 use crate::bits::*;
 
 // #[test]
-// fn not() {
-//     let bv = EntryMap::<u8, Block<u64>>::new();
-//     for b in bv.not().into_iter().take(3) {
-//         assert_eq!(b.value.count1(), 65536);
-//     }
-//     let bv = Map::<Block<u64>>::new();
-//     for b in bv.not().not().into_iter().take(3) {
-//         assert_eq!(b.count1(), 65536);
-//     }
-// }
-
-// #[test]
 // fn flip() {
 //     let mut u = 0b_0001_1001_u8;
 //     u.flip(1);
@@ -24,31 +12,16 @@ use crate::bits::*;
 // }
 
 #[test]
-fn set1_range() {
-    let mut slice = [0b_00000000_u8, 0b_00000000, 0b_00000000];
-    slice.set1(3..13);
-    assert_eq!(slice, [0b_11111000_u8, 0b_00011111, 0b_00000000]);
-
-    let mut slice = [0b_00000000_u8, 0b_00000000, 0b_00000000];
-    slice.set1(1..4);
-    assert_eq!(slice, [0b_00001110_u8, 0b_00000000, 0b_00000000]);
-}
-
-#[test]
-fn set0_range() {
-    let mut slice = [0b_11111000_u8, 0b_00011111, 0b_00000000];
-    slice.set0(6..11);
-    assert_eq!(slice, [0b_00111000u8, 0b_00011000, 0b_00000000]);
-
-    let mut slice = [0b_11111000_u8, 0b_00011111, 0b_00000000];
-    slice.set0(3..5);
-    assert_eq!(slice, [0b_11100000_u8, 0b_00011111, 0b_00000000]);
+fn default_value() {
+    let zero = <u64 as UnsignedInt>::ZERO;
+    assert_eq!(zero, <u64 as Default>::default());
 }
 
 quickcheck! {
     fn update_all(vec1: Vec<u64>, vec2: Vec<u64>) -> bool {
         let mut v1 = vec1;
         let mut v2 = vec2;
+
         let c1 = v1.count1();
         let r1 = c1 == v1.set0(..);
 
@@ -61,12 +34,8 @@ quickcheck! {
 
 quickcheck! {
     fn rank_select(vec: Vec<u64>) -> bool {
-        let mut bytes = Vec::<u8>::new();
+        let mut bytes = Map::<u8>::new();
         for &i in &vec {
-            let k = i as usize / 8 ;
-            if bytes.len() <= k {
-                bytes.resize(k + 1, 0);
-            }
             bytes.set1(i);
         }
 
@@ -97,12 +66,6 @@ quickcheck! {
             vec.search1(i) == vec.select1(i)
         })
     }
-}
-
-#[test]
-fn default_value() {
-    let zero = <u64 as UnsignedInt>::ZERO;
-    assert_eq!(zero, <u64 as Default>::default());
 }
 
 macro_rules! gen {
@@ -172,26 +135,6 @@ macro_rules! gen {
         }
     };
 }
-
-// mod array {
-//     const BITSIZE: u64 = 010_000_000;
-//
-//     mod density_00 {
-//         gen!([u64; 1024], BITSIZE / 1000, BITSIZE);
-//     }
-//     mod density_05 {
-//         gen!([u64; 1024], BITSIZE / 20, BITSIZE);
-//     }
-//     mod density_10 {
-//         gen!([u64; 1024], BITSIZE / 10, BITSIZE);
-//     }
-//     mod density_20 {
-//         gen!([u64; 1024], BITSIZE / 5, BITSIZE);
-//     }
-//     mod density_50 {
-//         gen!([u64; 1024], BITSIZE / 2, BITSIZE);
-//     }
-// }
 
 mod block {
     const BITSIZE: u64 = 010_000_000;

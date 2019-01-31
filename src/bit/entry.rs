@@ -1,15 +1,5 @@
 use crate::bits::*;
 
-/// `EntryMap` is a vector of `Entry<K, V>` that are sorted by index `K`.
-/// `EntryMap` can be seen as a bits container that filtered out the empty `T` from `[T]`.
-///
-/// The type parameters `K` specifies the bit size of the vector.
-/// In other words, the smaller of `(1 << K::BITS) * V::BITS` and `MAX_BITS` is the bit size of `EntryMap<K, V>`.
-///
-/// However, there is no guaranteed that the number of bits reach that size.
-/// It can fail to allocate at any point before that size is reached.
-pub type EntryMap<K, V> = Map<Entry<K, V>>;
-
 // #[derive(Clone, Debug, PartialEq, Eq)]
 // pub struct EntryMap<K: UnsignedInt, V> {
 //     ones: u64,

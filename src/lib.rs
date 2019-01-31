@@ -35,7 +35,7 @@ mod private {
     );
 }
 
-pub mod bits;
+pub mod bit;
 
 // pub trait Count<T> {
 //     type Symbol;
