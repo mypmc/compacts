@@ -65,12 +65,17 @@ pub trait UnsignedInt:
 {
     const ZERO: Self;
 
-    fn bit<T: UnsignedInt + TryCast<Self>>(i: T) -> Self;
+    const ONE: Self;
 
-    fn mask<T: UnsignedInt + TryCast<Self>>(i: T) -> Self;
+    fn mask<T: UnsignedInt + TryCast<Self>>(i: T) -> Self {
+        Self::ONE.shiftl(i) - Self::ONE
+    }
 
+    /// Equals to `wrapping_shl`.
     #[doc(hidden)]
     fn shiftl<T: UnsignedInt + TryCast<Self>>(&self, i: T) -> Self;
+
+    /// Equals to `wrapping_shr`.
     #[doc(hidden)]
     fn shiftr<T: UnsignedInt + TryCast<Self>>(&self, i: T) -> Self;
 }
@@ -122,18 +127,14 @@ macro_rules! implUnsignedInt {
     ($($ty:ty),*) => ($(
         impl UnsignedInt for $ty {
             const ZERO: Self = 0;
+            const ONE:  Self = 1;
 
-            fn bit<T>(i: T) -> Self where T: UnsignedInt + TryCast<Self>,
-            { 1 << cast::<T, Self>(i) }
-
-            fn mask<T>(i: T) -> Self where T: UnsignedInt + TryCast<Self>,
-            { (1 << cast::<T, Self>(i)) - 1 }
-
-            fn shiftl<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self>,
-            { self.wrapping_shl(cast(i)) }
-
-            fn shiftr<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self>,
-            { self.wrapping_shr(cast(i)) }
+            fn shiftl<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self> {
+                self.wrapping_shl(cast(i))
+            }
+            fn shiftr<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self> {
+                self.wrapping_shr(cast(i))
+            }
         }
     )*)
 }
@@ -253,7 +254,7 @@ macro_rules! impls {
         impl Access for $ty {
             #[inline]
             fn access(&self, i: u64) -> bool {
-                (*self & Self::bit(i)) != Self::ZERO
+                (*self & Self::ONE.shiftl(i)) != Self::ZERO
             }
         }
 
@@ -262,13 +263,13 @@ macro_rules! impls {
             #[inline]
             fn set1(&mut self, i: u64) -> Self::Output {
                 assert!(i < Self::BITS, OUT_OF_BOUNDS);
-                *self |= Self::bit(i);
+                *self |= Self::ONE.shiftl(i);
             }
 
             #[inline]
             fn set0(&mut self, i: u64) -> Self::Output {
                 assert!(i < Self::BITS, OUT_OF_BOUNDS);
-                *self &= !Self::bit(i);
+                *self &= !Self::ONE.shiftl(i);
             }
 
             // #[inline]

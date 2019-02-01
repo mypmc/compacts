@@ -1,22 +1,69 @@
-use std::{borrow::Cow, ops::Range};
+use std::{borrow::Cow, iter::FromIterator, ops::Range};
 
-use crate::bit::{self, cast, divmod, from_any_bounds, ops::*, uint::TryCast, UnsignedInt};
+use crate::bit::{self, cast, divmod, ops::*, Entry, KeyMap, Map, UnsignedInt};
 
-impl<T> bit::Map<T> {
-    fn access<U: ?Sized>(data: &U, i: u64) -> bool
+impl<T> Map<T> {
+    pub fn new() -> Self {
+        Self::new_unchecked(0, Vec::new())
+    }
+
+    pub(super) fn new_unchecked(ones: u64, data: Vec<T>) -> Self {
+        Map { ones, data }
+    }
+
+    pub fn build<U>(data: impl IntoIterator<Item = U>) -> Self
     where
-        T: FiniteBits + Access,
-        U: AsRef<[T]> + Count,
+        Self: Assign<U>,
+    {
+        let mut map = Self::new();
+        for x in data {
+            map.set1(x);
+        }
+        map
+    }
+
+    /// Shrink an internal vector.
+    pub fn shrink_to_fit(&mut self) {
+        self.data.shrink_to_fit()
+    }
+
+    pub fn and<Rhs>(&self, rhs: Rhs) -> bit::And<&Self, Rhs> {
+        bit::and(self, rhs)
+    }
+
+    pub fn or<Rhs>(&self, rhs: Rhs) -> bit::Or<&Self, Rhs> {
+        bit::or(self, rhs)
+    }
+
+    pub fn xor<Rhs>(&self, rhs: Rhs) -> bit::Xor<&Self, Rhs> {
+        bit::xor(self, rhs)
+    }
+}
+
+impl<T: FiniteBits> Map<T> {
+    pub fn with<U>(data: &U) -> Map<T>
+    where
+        U: ?Sized + AsRef<[T]>,
+    {
+        let ones = data.as_ref().count1();
+        let data = data.as_ref().to_vec();
+        Map { ones, data }
+    }
+
+    pub(super) fn access<U>(data: &U, i: u64) -> bool
+    where
+        T: Access,
+        U: ?Sized + AsRef<[T]> + Count,
     {
         assert!(i < data.bits(), bit::OUT_OF_BOUNDS);
         let (i, o) = divmod::<usize>(i, T::BITS);
         data.as_ref().get(i).map_or(false, |t| t.access(o))
     }
 
-    fn rank1<U: ?Sized>(data: &U, i: u64) -> u64
+    pub(super) fn rank1<U>(data: &U, i: u64) -> u64
     where
-        T: FiniteBits + Rank,
-        U: AsRef<[T]> + Count,
+        T: Rank,
+        U: ?Sized + AsRef<[T]> + Count,
     {
         assert!(i <= data.bits(), bit::OUT_OF_BOUNDS);
         let (i, o) = divmod(i, T::BITS);
@@ -26,10 +73,10 @@ impl<T> bit::Map<T> {
         c + r
     }
 
-    fn select1<U: ?Sized>(data: &U, mut n: u64) -> Option<u64>
+    pub(super) fn select1<U>(data: &U, mut n: u64) -> Option<u64>
     where
-        T: FiniteBits + Select1,
-        U: AsRef<[T]>,
+        T: Select1,
+        U: ?Sized + AsRef<[T]>,
     {
         for (k, v) in data.as_ref().iter().enumerate() {
             let count = v.count1();
@@ -43,7 +90,7 @@ impl<T> bit::Map<T> {
     }
 }
 
-impl<T> Count for bit::Map<T>
+impl<T> Count for Map<T>
 where
     T: FiniteBits,
 {
@@ -51,7 +98,7 @@ where
     ///
     /// ```
     /// use compacts::bit::{Map, ops::Count};
-    /// let map = Map::with([0u64, 0b10101100000, 0b0000100000]);
+    /// let map = Map::with(&[0u64, 0b10101100000, 0b0000100000]);
     /// assert_eq!(1<<63, map.bits());
     /// assert_eq!(192,   map.as_ref().bits());
     /// ```
@@ -73,19 +120,20 @@ where
     }
 }
 
-impl<T> Count for [T]
+impl<K, V> Count for KeyMap<K, V>
 where
-    T: FiniteBits,
+    K: UnsignedInt,
+    V: FiniteBits,
 {
     fn bits(&self) -> u64 {
-        cast::<usize, u64>(self.len()) * T::BITS
+        Entry::<K, V>::potential_bits()
     }
     fn count1(&self) -> u64 {
-        self.iter().fold(0, |acc, w| acc + w.count1())
+        self.ones
     }
 }
 
-impl<T> Access for bit::Map<T>
+impl<T> Access for Map<T>
 where
     T: FiniteBits + Access,
 {
@@ -95,7 +143,7 @@ where
     ///
     /// ```
     /// use compacts::bit::{Map, ops::Access};
-    /// let map = Map::with([0b_00000101u64, 0b01100011]);
+    /// let map = Map::with(&[0b_00000101u64, 0b01100011]);
     /// assert!( map.access(0));
     /// assert!(!map.access(1));
     /// assert!( map.access(2));
@@ -106,7 +154,7 @@ where
     ///
     /// ```
     /// # use compacts::bit::{Map, ops::Access};
-    /// # let map = Map::with([0b_00000101u64, 0b01100011]);
+    /// # let map = Map::with(&[0b_00000101u64, 0b01100011]);
     /// let slice = map.as_ref();
     /// assert!( slice.access(0));
     /// assert!(!slice.access(1));
@@ -119,7 +167,7 @@ where
     ///
     /// ```
     /// # use compacts::bit::{Map, ops::Access};
-    /// # let map = Map::with([0b_00000101u64, 0b01100011]);
+    /// # let map = Map::with(&[0b_00000101u64, 0b01100011]);
     /// # let slice = map.as_ref();
     /// let slice = &slice[1..];
     /// assert!( slice.access(0));
@@ -131,7 +179,7 @@ where
     ///
     /// Panics if `i >= self.bits()`.
     fn access(&self, i: u64) -> bool {
-        bit::Map::access(self, i)
+        Map::access(self, i)
     }
 
     /// Return the positions of all enabled bits in the container.
@@ -150,36 +198,20 @@ where
     }
 }
 
-impl<T> Access for [T]
+impl<K, V> Access for KeyMap<K, V>
 where
-    T: FiniteBits + Access,
+    K: UnsignedInt,
+    V: FiniteBits + Access,
 {
     fn access(&self, i: u64) -> bool {
-        bit::Map::access(self, i)
+        self.data.access(i)
     }
-
-    /// Return the positions of all enabled bits in the container.
-    ///
-    /// ```
-    /// use compacts::bit::ops::Access;
-    /// let word = [0b_10101010_u8, 0b_11110000_u8];
-    /// let bits = word.iterate().collect::<Vec<_>>();
-    /// assert_eq!(bits, vec![1, 3, 5, 7, 12, 13, 14, 15]);
-    /// ```
     fn iterate<'a>(&'a self) -> Box<dyn Iterator<Item = u64> + 'a> {
-        Box::new(
-            self.iter()
-                .enumerate()
-                .filter(|(_, t)| t.count1() > 0)
-                .flat_map(|(i, t)| {
-                    let offset = cast::<usize, u64>(i) * T::BITS;
-                    t.iterate().map(move |j| j + offset)
-                }),
-        )
+        self.data.iterate()
     }
 }
 
-impl<T> Rank for bit::Map<T>
+impl<T> Rank for Map<T>
 where
     T: FiniteBits + Rank,
 {
@@ -201,20 +233,27 @@ where
     /// assert_eq!(slice.rank1(15), 3);
     /// ```
     fn rank1(&self, i: u64) -> u64 {
-        bit::Map::rank1(self, i)
+        Map::rank1(self, i)
     }
 }
 
-impl<T> Rank for [T]
+impl<K, V> Rank for KeyMap<K, V>
 where
-    T: FiniteBits + Rank,
+    K: UnsignedInt,
+    V: FiniteBits + Rank,
 {
     fn rank1(&self, i: u64) -> u64 {
-        bit::Map::rank1(self, i)
+        let bits = self.bits();
+        assert!(i <= bits, bit::OUT_OF_BOUNDS);
+        if i == bits {
+            self.ones
+        } else {
+            self.data.rank1(i)
+        }
     }
 }
 
-impl<T> Select1 for bit::Map<T>
+impl<T> Select1 for Map<T>
 where
     T: FiniteBits + Select1,
 {
@@ -222,7 +261,7 @@ where
     ///
     /// ```
     /// use compacts::bit::{Map, ops::Select1};
-    /// let map = Map::with([0b_00000000_u8, 0b_01000000, 0b_00001001]);
+    /// let map = Map::with(&[0b_00000000_u8, 0b_01000000, 0b_00001001]);
     /// assert_eq!(map.select1(0), Some(14));
     /// assert_eq!(map.select1(1), Some(16));
     /// assert_eq!(map.select1(2), Some(19));
@@ -231,27 +270,32 @@ where
     ///
     /// ```
     /// # use compacts::bit::{Map, ops::Select1};
-    /// # let map = Map::with([0b_00000000_u8, 0b_01000000, 0b_00001001]);
+    /// # let map = Map::with(&[0b_00000000_u8, 0b_01000000, 0b_00001001]);
     /// assert_eq!(map.as_ref().select1(0), Some(14));
     /// assert_eq!(map.as_ref().select1(1), Some(16));
     /// assert_eq!(map.as_ref().select1(2), Some(19));
     /// assert_eq!(map.as_ref().select1(3), None);
     /// ```
     fn select1(&self, n: u64) -> Option<u64> {
-        bit::Map::select1(self, n)
+        Map::select1(self, n)
     }
 }
 
-impl<T> Select1 for [T]
+impl<K, V> Select1 for KeyMap<K, V>
 where
-    T: FiniteBits + Select1,
+    K: UnsignedInt,
+    V: FiniteBits + Select1,
 {
     fn select1(&self, n: u64) -> Option<u64> {
-        bit::Map::select1(self, n)
+        if n < self.count1() {
+            self.data.select1(n)
+        } else {
+            None
+        }
     }
 }
 
-impl<T> Select0 for bit::Map<T>
+impl<T> Select0 for Map<T>
 where
     T: FiniteBits + Select0,
 {
@@ -259,7 +303,7 @@ where
     ///
     /// ```
     /// use compacts::bit::{Map, ops::Select0};
-    /// let map = Map::with([0b_11110111_u8, 0b_11111110, 0b_10010011]);
+    /// let map = Map::with(&[0b_11110111_u8, 0b_11111110, 0b_10010011]);
     /// assert_eq!(map.select0(0), Some(3));
     /// assert_eq!(map.select0(1), Some(8));
     /// assert_eq!(map.select0(2), Some(18));
@@ -267,7 +311,7 @@ where
     /// ```
     /// ```
     /// # use compacts::bit::{Map, ops::Select0};
-    /// # let map = Map::with([0b_11110111_u8, 0b_11111110, 0b_10010011]);
+    /// # let map = Map::with(&[0b_11110111_u8, 0b_11111110, 0b_10010011]);
     /// let slice = map.as_ref();
     /// assert_eq!(slice.select0(0), Some(3));
     /// assert_eq!(slice.select0(1), Some(8));
@@ -292,24 +336,21 @@ where
     }
 }
 
-impl<T> Select0 for [T]
+impl<K, V> Select0 for KeyMap<K, V>
 where
-    T: FiniteBits + Select0,
+    K: UnsignedInt,
+    V: FiniteBits + Select0,
 {
-    fn select0(&self, mut n: u64) -> Option<u64> {
-        for (k, v) in self.iter().enumerate() {
-            let count = v.count0();
-            if n < count {
-                let select0 = v.select0(n).expect("remain < count");
-                return Some(cast::<usize, u64>(k) * T::BITS + select0);
-            }
-            n -= count;
+    fn select0(&self, n: u64) -> Option<u64> {
+        if n < self.count0() {
+            self.data.select0(n)
+        } else {
+            None
         }
-        None
     }
 }
 
-impl<T> Assign<u64> for bit::Map<T>
+impl<T> Assign<u64> for Map<T>
 where
     T: FiniteBits + Access + Assign<u64>,
 {
@@ -321,7 +362,7 @@ where
     ///
     /// ```
     /// use compacts::bit::{Map, Block, ops::{Access, Assign}};
-    /// let mut map = Map::with([0u64, 0b10101100000, 0b0000100000]);
+    /// let mut map = Map::with(&[0u64, 0b10101100000, 0b0000100000]);
     /// map.set1(0);
     /// map.set1(2);
     /// assert!( map.access(0));
@@ -373,52 +414,50 @@ where
             self.data[i].set0(o);
         }
     }
-
-    // fn flip(&mut self, i: u64) -> Self::Output {
-    //     assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-    //     let (i, o) = divmod::<usize>(i, T::BITS);
-    //     if i < self.data.len() {
-    //         if self.data[i].access(o) {
-    //             self.ones -= 1;
-    //             self.data[i].set0(o)
-    //         } else {
-    //             self.ones += 1;
-    //             self.data[i].set1(o)
-    //         }
-    //     } else {
-    //         self.ones += 1;
-    //         self.data.resize(i + 1, T::empty());
-    //         self.data[i].set1(o)
-    //     }
-    // }
 }
 
-impl<T> Assign<u64> for [T]
+impl<K, V> Assign<u64> for KeyMap<K, V>
 where
-    T: FiniteBits + Assign<u64>,
+    K: UnsignedInt,
+    V: FiniteBits + Access + Assign<u64>,
 {
-    type Output = <T as Assign<u64>>::Output;
-
+    type Output = ();
     fn set1(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = divmod::<usize>(i, T::BITS);
-        self[i].set1(o)
+        let (index, offset) = bit::divmod(i, V::BITS);
+        match Entry::find(&*self.data, &index) {
+            Ok(j) => {
+                if !self.data[j].value.access(offset) {
+                    self.ones += 1;
+                    self.data[j].value.set1(offset);
+                }
+            }
+            Err(j) => {
+                self.ones += 1;
+                let mut value = V::empty();
+                value.set1(offset);
+                let entry = Entry::new(index, value);
+                self.data.insert(j, entry);
+            }
+        }
     }
 
     fn set0(&mut self, i: u64) -> Self::Output {
         assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-        let (i, o) = divmod::<usize>(i, T::BITS);
-        self[i].set0(o)
+        let (index, offset) = bit::divmod(i, V::BITS);
+        if let Ok(k) = Entry::find(&*self.data, &index) {
+            if self.data[k].value.access(offset) {
+                self.ones -= 1;
+                self.data[k].value.set0(offset);
+                if self.data[k].value.count1() == 0 {
+                    self.data.remove(k);
+                }
+            }
+        }
     }
-
-    // fn flip(&mut self, i: u64) -> Self::Output {
-    //     assert!(i < self.bits(), bit::OUT_OF_BOUNDS);
-    //     let (i, o) = divmod::<usize>(i, T::BITS);
-    //     self[i].flip(o)
-    // }
 }
 
-impl<T> Assign<Range<u64>> for bit::Map<T>
+impl<T> Assign<Range<u64>> for Map<T>
 where
     T: FiniteBits + Assign<Range<u64>, Output = u64>,
 {
@@ -518,116 +557,7 @@ where
     }
 }
 
-macro_rules! set_range {
-    ($this:expr, $func:ident, $i:expr, $j:expr) => {
-        #[allow(clippy::range_plus_one)]
-        {
-            if $i < $j {
-                let i = $i;
-                let j = $j - 1;
-                debug_assert!(i <= j);
-
-                let (head_index, head_offset) = divmod::<usize>(i, T::BITS);
-                let (last_index, last_offset) = divmod::<usize>(j, T::BITS);
-
-                let mut out = 0;
-                if head_index == last_index {
-                    out += $this[head_index].$func(head_offset..last_offset + 1);
-                } else {
-                    out += $this[head_index].$func(head_offset..T::BITS);
-                    for i in (head_index + 1)..last_index {
-                        out += $this[i].$func(0..T::BITS);
-                    }
-                    out += $this[last_index].$func(0..last_offset + 1);
-                }
-                out
-            } else {
-                0
-            }
-        }
-    };
-}
-
-impl<T> Assign<Range<u64>> for [T]
-where
-    T: FiniteBits + Assign<Range<u64>, Output = u64>,
-{
-    type Output = u64;
-
-    /// Enable bits in a specified range, and returns the number of **updated** bits.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use compacts::bit::ops::{Count, Assign};
-    /// let mut slice = [0b_11111111u8, 0b_11111111];
-    /// assert_eq!(16, slice.set0(..));
-    /// assert_eq!(slice, [0b_00000000u8, 0b_00000000]);
-    ///
-    /// assert_eq!(3, slice.set1(..=2));
-    /// assert_eq!(slice, [0b_00000111u8, 0b_00000000]);
-    /// assert_eq!(1, slice.set0(1..2));
-    /// assert_eq!(slice, [0b_00000101u8, 0b_00000000]);
-    /// assert_eq!(2, slice.set1(7..=8));
-    /// assert_eq!(slice, [0b_10000101u8, 0b_00000001]);
-    /// assert_eq!(4, slice.set1(7..13));
-    /// assert_eq!(slice, [0b_10000101u8, 0b_00011111]);
-    /// ```
-    fn set1(&mut self, index: Range<u64>) -> Self::Output {
-        set_range!(self, set1, index.start, index.end)
-    }
-
-    /// Disable bits in a specified range, and returns the number of **updated** bits.
-    fn set0(&mut self, index: Range<u64>) -> Self::Output {
-        set_range!(self, set0, index.start, index.end)
-    }
-}
-
-impl<T, W> Read<W> for [T]
-where
-    T: UnsignedInt + Read<W> + TryCast<W>,
-    W: UnsignedInt,
-{
-    fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
-        let r = from_any_bounds(&r, self.bits());
-        assert!(r.start < r.end);
-        let i = r.start;
-        let j = r.end - 1;
-        assert!(j - i <= W::BITS && i < self.bits() && j < self.bits());
-
-        let (head_index, head_offset) = divmod::<usize>(i, T::BITS);
-        let (last_index, last_offset) = divmod::<usize>(j, T::BITS);
-
-        if head_index == last_index {
-            self[head_index].read(head_offset..last_offset + 1)
-        } else {
-            // head_index < last_index
-
-            // returning value
-            let mut out = W::ZERO;
-            // how many bits do we have read?
-            let mut len = 0;
-
-            out |= self[head_index].read(head_offset..T::BITS);
-            len += T::BITS - head_offset;
-
-            for &n in &self[(head_index + 1)..last_index] {
-                out |= cast::<T, W>(n).shiftl(len);
-                len += T::BITS;
-            }
-
-            let last = self[last_index].read(0..last_offset + 1);
-            // last need to be shifted to left by `len`
-            debug_assert_eq!(
-                cast::<W, u64>(last),
-                cast::<W, u64>(last.shiftl(len).shiftr(len))
-            );
-            out | last.shiftl(len)
-        }
-    }
-}
-
-impl<'a, V, U> std::iter::FromIterator<Cow<'a, V>> for bit::Map<U>
+impl<'a, V, U> FromIterator<Cow<'a, V>> for Map<U>
 where
     V: Clone + Count + 'a,
     U: From<V>,
@@ -654,6 +584,34 @@ where
     }
 }
 
+impl<'a, K, V, U> FromIterator<Entry<K, Cow<'a, V>>> for KeyMap<K, U>
+where
+    K: UnsignedInt,
+    V: Clone + Count + 'a,
+    U: From<V>,
+{
+    fn from_iter<I>(iterable: I) -> Self
+    where
+        I: IntoIterator<Item = Entry<K, Cow<'a, V>>>,
+    {
+        let mut ones = 0;
+        let mut bits = Vec::with_capacity(1 << 10);
+
+        iterable.into_iter().for_each(|entry| {
+            let count = entry.value.as_ref().count1();
+            if count == 0 {
+                return;
+            }
+            ones += count;
+            let value = entry.value.into_owned().into();
+            bits.push(Entry::new(entry.index, value));
+        });
+
+        bits.shrink_to_fit();
+        KeyMap::new_unchecked(ones, bits)
+    }
+}
+
 pub struct Chunks<'a, T: UnsignedInt> {
     iter: std::slice::Chunks<'a, T>,
 }
@@ -662,9 +620,17 @@ pub struct Blocks<'a, T> {
     iter: std::slice::Iter<'a, T>,
 }
 
+pub struct Entries<'a, K: UnsignedInt, V> {
+    iter: std::slice::Iter<'a, Entry<K, V>>,
+}
+
+pub struct PeekEntries<'a, K: UnsignedInt, V> {
+    iter: std::iter::Peekable<std::slice::Iter<'a, Entry<K, V>>>,
+}
+
 macro_rules! implChunks {
     ($(($Uint:ty, $LEN:expr)),*) => ($(
-        impl<'a> IntoIterator for &'a bit::Map<$Uint> {
+        impl<'a> IntoIterator for &'a Map<$Uint> {
             type Item = Cow<'a, bit::Block<[$Uint; $LEN]>>;
             type IntoIter = Chunks<'a, $Uint>;
             fn into_iter(self) -> Self::IntoIter {
@@ -680,6 +646,40 @@ macro_rules! implChunks {
                     let mut block = bit::Block::splat(0);
                     block.copy_from_slice(chunk);
                     Cow::Owned(block)
+                })
+            }
+        }
+
+        impl<'a, K: UnsignedInt> IntoIterator for &'a KeyMap<K, $Uint> {
+            type Item = Entry<K, Cow<'a, bit::Block<[$Uint; $LEN]>>>;
+            type IntoIter = PeekEntries<'a, K, $Uint>;
+            fn into_iter(self) -> Self::IntoIter {
+                let iter = self.data.iter().peekable();
+                PeekEntries { iter }
+            }
+        }
+
+        impl<'a, K: UnsignedInt> Iterator for PeekEntries<'a, K, $Uint> {
+            type Item = Entry<K, Cow<'a, bit::Block<[$Uint; $LEN]>>>;
+            fn next(&mut self) -> Option<Self::Item> {
+                self.iter.next().map(|head| {
+                    let mut arr = [0; $LEN];
+                    let len = cast::<usize, K>($LEN);
+
+                    arr[cast::<K, usize>(head.index % len)] = head.value;
+
+                    // index of returning entry
+                    let index = head.index / len;
+
+                    while let Some(peek) = self.iter.peek() {
+                        if peek.index / len != index {
+                            break;
+                        }
+                        let item = self.iter.next().expect("next");
+                        arr[cast::<K, usize>(item.index % len)] = item.value;
+                    }
+
+                    return Entry::new(index, Cow::Owned(bit::Block::from(arr)))
                 })
             }
         }
@@ -700,7 +700,10 @@ implChunks!((usize, 2048usize));
 #[cfg(target_pointer_width = "64")]
 implChunks!((usize, 1024usize));
 
-impl<'a, A: bit::BlockArray> IntoIterator for &'a bit::Map<A> {
+impl<'a, A> IntoIterator for &'a Map<A>
+where
+    A: bit::BlockArray,
+{
     type Item = Cow<'a, bit::Block<A>>;
     type IntoIter = Blocks<'a, A>;
     fn into_iter(self) -> Self::IntoIter {
@@ -709,12 +712,28 @@ impl<'a, A: bit::BlockArray> IntoIterator for &'a bit::Map<A> {
     }
 }
 
-impl<'a, A: bit::BlockArray> IntoIterator for &'a bit::VecMap<A> {
+impl<'a, A> IntoIterator for &'a Map<bit::Block<A>>
+where
+    A: bit::BlockArray,
+{
     type Item = Cow<'a, bit::Block<A>>;
     type IntoIter = Blocks<'a, bit::Block<A>>;
     fn into_iter(self) -> Self::IntoIter {
         let iter = self.data.iter();
         Blocks { iter }
+    }
+}
+
+impl<'a, K, A> IntoIterator for &'a KeyMap<K, bit::Block<A>>
+where
+    K: UnsignedInt,
+    A: bit::BlockArray,
+{
+    type Item = Entry<K, Cow<'a, bit::Block<A>>>;
+    type IntoIter = Entries<'a, K, bit::Block<A>>;
+    fn into_iter(self) -> Self::IntoIter {
+        let iter = self.data.iter();
+        Entries { iter }
     }
 }
 
@@ -736,6 +755,24 @@ impl<'a, A: bit::BlockArray> Iterator for Blocks<'a, bit::Block<A>> {
         while let Some(block) = self.iter.next() {
             if block.count1() > 0 {
                 return Some(Cow::Borrowed(block));
+            }
+        }
+        None
+    }
+}
+
+impl<'a, K, A> Iterator for Entries<'a, K, bit::Block<A>>
+where
+    K: bit::UnsignedInt,
+    A: bit::BlockArray,
+{
+    type Item = Entry<K, Cow<'a, bit::Block<A>>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(page) = self.iter.next() {
+            if page.value.count1() > 0 {
+                let index = page.index;
+                let value = Cow::Borrowed(&page.value);
+                return Some(Entry::new(index, value));
             }
         }
         None
