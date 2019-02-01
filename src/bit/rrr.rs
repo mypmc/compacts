@@ -7,13 +7,13 @@
 
 include!(concat!(env!("OUT_DIR"), "/table.rs"));
 
-use crate::bit::{cast, UnsignedInt};
+use crate::bit::{cast, Uint};
 
 // It is a good idea to choose `BLOCK_SIZE + 1` as a power of two,
 // so that the bits that has size `CLASS_SIZE` can be fully used for bitpacking.
 // e.g) 255: 8, 127: 7, 63: 6, 31: 5, 15: 4,
 
-pub trait Code: UnsignedInt {
+pub trait Code: Uint {
     /// The minimum bits size to represents class value of bits that has size `SIZE`.
     const CLASS: usize;
 
@@ -42,7 +42,7 @@ implCode!((usize, 6));
 //// read bits in [i, j)
 //pub fn read_code<U>(slice: &[u8], i: u64, j: u64) -> U
 //where
-//    U: UnsignedInt,
+//    U: Uint,
 //{
 //    assert!(i < j && j - i <= U::BITS && i < slice.bits() && j <= slice.bits());
 

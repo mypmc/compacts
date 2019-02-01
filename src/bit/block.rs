@@ -3,7 +3,7 @@ use std::{
     ops::{self, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Range},
 };
 
-use crate::bit::{self, cast, from_any_bounds, ops::*, UnsignedInt};
+use crate::bit::{self, cast, from_any_bounds, ops::*, Uint};
 
 #[derive(Clone, Eq)]
 pub struct Block<A: BlockArray> {
@@ -49,7 +49,7 @@ pub trait BlockArray:
     + Read<u128>
     + Read<usize>
 {
-    type Value: UnsignedInt;
+    type Value: Uint;
     const LEN: usize;
 
     fn splat(value: Self::Value) -> Self;
@@ -258,7 +258,7 @@ impl<A: BlockArray> Assign<Range<u64>> for Block<A> {
     }
 }
 
-impl<W: UnsignedInt, A: BlockArray + Read<W>> Read<W> for Block<A> {
+impl<W: Uint, A: BlockArray + Read<W>> Read<W> for Block<A> {
     /// # Examples
     ///
     /// ```
@@ -489,7 +489,7 @@ impl<A: BlockArray> Not for &'_ Block<A> {
 
 // FIXME: Revisit here when const generics is stabilized.
 
-/// `[T; N]` is almost same with `[T]` where T is an UnsignedInt,
+/// `[T; N]` is almost same with `[T]` where T is an Uint,
 /// except that `[T; N]` implements `FiniteBlocks`.
 macro_rules! implBlockArray {
     ($( ($Val:ty, $LEN:expr) ),*) => ($(
@@ -589,7 +589,7 @@ macro_rules! implBlockArray {
             }
         }
 
-        impl<W: UnsignedInt> Read<W> for [$Val; $LEN] {
+        impl<W: Uint> Read<W> for [$Val; $LEN] {
             fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
                 self.as_ref().read(r)
             }

@@ -1,6 +1,6 @@
 use std::{borrow::Cow, iter::FromIterator, ops::Range};
 
-use crate::bit::{self, cast, divmod, ops::*, Entry, KeyMap, Map, UnsignedInt};
+use crate::bit::{self, cast, divmod, ops::*, Entry, KeyMap, Map, Uint};
 
 impl<T> Map<T> {
     pub fn new() -> Self {
@@ -122,7 +122,7 @@ where
 
 impl<K, V> Count for KeyMap<K, V>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits,
 {
     fn bits(&self) -> u64 {
@@ -200,7 +200,7 @@ where
 
 impl<K, V> Access for KeyMap<K, V>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Access,
 {
     fn access(&self, i: u64) -> bool {
@@ -239,7 +239,7 @@ where
 
 impl<K, V> Rank for KeyMap<K, V>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Rank,
 {
     fn rank1(&self, i: u64) -> u64 {
@@ -283,7 +283,7 @@ where
 
 impl<K, V> Select1 for KeyMap<K, V>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Select1,
 {
     fn select1(&self, n: u64) -> Option<u64> {
@@ -338,7 +338,7 @@ where
 
 impl<K, V> Select0 for KeyMap<K, V>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Select0,
 {
     fn select0(&self, n: u64) -> Option<u64> {
@@ -418,7 +418,7 @@ where
 
 impl<K, V> Assign<u64> for KeyMap<K, V>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Access + Assign<u64>,
 {
     type Output = ();
@@ -586,7 +586,7 @@ where
 
 impl<'a, K, V, U> FromIterator<Entry<K, Cow<'a, V>>> for KeyMap<K, U>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: Clone + Count + 'a,
     U: From<V>,
 {
@@ -612,7 +612,7 @@ where
     }
 }
 
-pub struct Chunks<'a, T: UnsignedInt> {
+pub struct Chunks<'a, T: Uint> {
     iter: std::slice::Chunks<'a, T>,
 }
 
@@ -620,11 +620,11 @@ pub struct Blocks<'a, T> {
     iter: std::slice::Iter<'a, T>,
 }
 
-pub struct Entries<'a, K: UnsignedInt, V> {
+pub struct Entries<'a, K: Uint, V> {
     iter: std::slice::Iter<'a, Entry<K, V>>,
 }
 
-pub struct PeekEntries<'a, K: UnsignedInt, V> {
+pub struct PeekEntries<'a, K: Uint, V> {
     iter: std::iter::Peekable<std::slice::Iter<'a, Entry<K, V>>>,
 }
 
@@ -650,7 +650,7 @@ macro_rules! implChunks {
             }
         }
 
-        impl<'a, K: UnsignedInt> IntoIterator for &'a KeyMap<K, $Uint> {
+        impl<'a, K: Uint> IntoIterator for &'a KeyMap<K, $Uint> {
             type Item = Entry<K, Cow<'a, bit::Block<[$Uint; $LEN]>>>;
             type IntoIter = PeekEntries<'a, K, $Uint>;
             fn into_iter(self) -> Self::IntoIter {
@@ -659,7 +659,7 @@ macro_rules! implChunks {
             }
         }
 
-        impl<'a, K: UnsignedInt> Iterator for PeekEntries<'a, K, $Uint> {
+        impl<'a, K: Uint> Iterator for PeekEntries<'a, K, $Uint> {
             type Item = Entry<K, Cow<'a, bit::Block<[$Uint; $LEN]>>>;
             fn next(&mut self) -> Option<Self::Item> {
                 self.iter.next().map(|head| {
@@ -726,7 +726,7 @@ where
 
 impl<'a, K, A> IntoIterator for &'a KeyMap<K, bit::Block<A>>
 where
-    K: UnsignedInt,
+    K: Uint,
     A: bit::BlockArray,
 {
     type Item = Entry<K, Cow<'a, bit::Block<A>>>;
@@ -763,7 +763,7 @@ impl<'a, A: bit::BlockArray> Iterator for Blocks<'a, bit::Block<A>> {
 
 impl<'a, K, A> Iterator for Entries<'a, K, bit::Block<A>>
 where
-    K: bit::UnsignedInt,
+    K: bit::Uint,
     A: bit::BlockArray,
 {
     type Item = Entry<K, Cow<'a, bit::Block<A>>>;

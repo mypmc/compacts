@@ -24,7 +24,7 @@ mod tuples;
 //    }
 //}
 
-//impl<'a, I, K: UnsignedInt> Iterator for NotIntoIter<I, Entry<K, Cow<'a, Array>>>
+//impl<'a, I, K: Uint> Iterator for NotIntoIter<I, Entry<K, Cow<'a, Array>>>
 //where
 //    I: Iterator<Item = Entry<K, Cow<'a, Array>>>,
 //{
@@ -38,7 +38,7 @@ mod tuples;
 //    }
 //}
 
-//impl<'a, I, K: UnsignedInt> Iterator for NotIntoIter<I, Entry<K, Cow<'a, RoaringBlock>>>
+//impl<'a, I, K: Uint> Iterator for NotIntoIter<I, Entry<K, Cow<'a, RoaringBlock>>>
 //where
 //    I: Iterator<Item = Entry<K, Cow<'a, RoaringBlock>>>,
 //{

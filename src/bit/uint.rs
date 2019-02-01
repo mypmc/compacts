@@ -7,7 +7,7 @@ use crate::{
 use std::ops::Range;
 
 /// Trait for an unsigned int. This trait is public but sealed.
-pub trait UnsignedInt:
+pub trait Uint:
     'static
     + Copy
     + Eq
@@ -67,17 +67,17 @@ pub trait UnsignedInt:
 
     const ONE: Self;
 
-    fn mask<T: UnsignedInt + TryCast<Self>>(i: T) -> Self {
+    fn mask<T: Uint + TryCast<Self>>(i: T) -> Self {
         Self::ONE.shiftl(i) - Self::ONE
     }
 
     /// Equals to `wrapping_shl`.
     #[doc(hidden)]
-    fn shiftl<T: UnsignedInt + TryCast<Self>>(&self, i: T) -> Self;
+    fn shiftl<T: Uint + TryCast<Self>>(&self, i: T) -> Self;
 
     /// Equals to `wrapping_shr`.
     #[doc(hidden)]
-    fn shiftr<T: UnsignedInt + TryCast<Self>>(&self, i: T) -> Self;
+    fn shiftr<T: Uint + TryCast<Self>>(&self, i: T) -> Self;
 }
 
 /// Lossless cast that never fail.
@@ -100,45 +100,45 @@ pub trait TryCastFrom<T>: Sized + crate::private::Sealed {
     fn try_cast_from(from: T) -> Option<Self>;
 }
 
-impl<T: UnsignedInt> CastFrom<T> for T {
+impl<T: Uint> CastFrom<T> for T {
     fn cast_from(from: T) -> T {
         from
     }
 }
-impl<T: UnsignedInt, U: CastFrom<T>> TryCastFrom<T> for U {
+impl<T: Uint, U: CastFrom<T>> TryCastFrom<T> for U {
     fn try_cast_from(from: T) -> Option<Self> {
         Some(U::cast_from(from))
     }
 }
 
-impl<T: UnsignedInt, U: CastFrom<T>> Cast<U> for T {
+impl<T: Uint, U: CastFrom<T>> Cast<U> for T {
     fn cast(self) -> U {
         U::cast_from(self)
     }
 }
 
-impl<T: UnsignedInt, U: TryCastFrom<T>> TryCast<U> for T {
+impl<T: Uint, U: TryCastFrom<T>> TryCast<U> for T {
     fn try_cast(self) -> Option<U> {
         U::try_cast_from(self)
     }
 }
 
-macro_rules! implUnsignedInt {
+macro_rules! implUint {
     ($($ty:ty),*) => ($(
-        impl UnsignedInt for $ty {
+        impl Uint for $ty {
             const ZERO: Self = 0;
             const ONE:  Self = 1;
 
-            fn shiftl<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self> {
+            fn shiftl<T>(&self, i: T) -> Self where T: Uint + TryCast<Self> {
                 self.wrapping_shl(cast(i))
             }
-            fn shiftr<T>(&self, i: T) -> Self where T: UnsignedInt + TryCast<Self> {
+            fn shiftr<T>(&self, i: T) -> Self where T: Uint + TryCast<Self> {
                 self.wrapping_shr(cast(i))
             }
         }
     )*)
 }
-implUnsignedInt!(u8, u16, u32, u64, u128, usize);
+implUint!(u8, u16, u32, u64, u128, usize);
 
 macro_rules! implCastFrom {
     ( $large:ty; $( $small:ty ),* ) => ($(
@@ -289,8 +289,8 @@ macro_rules! impls {
                     0
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
-                    let head = (!<$ty as UnsignedInt>::ZERO) << i;
-                    let last = (!<$ty as UnsignedInt>::ZERO).shiftr(Self::BITS - j);
+                    let head = (!<$ty as Uint>::ZERO) << i;
+                    let last = (!<$ty as Uint>::ZERO).shiftr(Self::BITS - j);
                     let ones = self.count1();
                     *self |= head & last;
                     self.count1() - ones
@@ -304,8 +304,8 @@ macro_rules! impls {
                     0
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
-                    let head = (!<$ty as UnsignedInt>::ZERO) << i;
-                    let last = (!<$ty as UnsignedInt>::ZERO).shiftr(Self::BITS - j);
+                    let head = (!<$ty as Uint>::ZERO) << i;
+                    let last = (!<$ty as Uint>::ZERO).shiftr(Self::BITS - j);
                     let ones = self.count1();
                     *self &= !(head & last);
                     ones - self.count1()
@@ -313,7 +313,7 @@ macro_rules! impls {
             }
         }
 
-        impl<W: UnsignedInt> Read<W> for $ty {
+        impl<W: Uint> Read<W> for $ty {
             fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
                 let r = from_any_bounds(&r, self.bits());
                 if r.start == 0 && r.end == Self::BITS {
@@ -324,9 +324,9 @@ macro_rules! impls {
                     assert!(i < j && j - i <= W::BITS && i < self.bits() && j <= self.bits());
                     // let self = 01101010, i = 1 and j = 6
                     // head: 11111110
-                    let head = (!<$ty as UnsignedInt>::ZERO).shiftl(i);
+                    let head = (!<$ty as Uint>::ZERO).shiftl(i);
                     // last: 00111111
-                    let last = (!<$ty as UnsignedInt>::ZERO).shiftr(Self::BITS - j);
+                    let last = (!<$ty as Uint>::ZERO).shiftr(Self::BITS - j);
                     // mask: 00111110
                     let mask = head & last;
                     cast::<$ty, W>(*self & mask).shiftr(i)

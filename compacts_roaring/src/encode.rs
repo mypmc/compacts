@@ -95,7 +95,7 @@ impl From<Run> for Encode {
     }
 }
 
-// impl<T: UnsignedInt> From<&'_ Map<T>> for Bin {
+// impl<T: Uint> From<&'_ Map<T>> for Bin {
 //     fn from(vec: &Map<T>) -> Self {
 //         let mut bin = Bin::with_capacity(Encode::BINARY_HEAP_MAX);
 //         for (i, word) in vec.iter().enumerate().filter(|&(_, v)| v != T::ZERO) {

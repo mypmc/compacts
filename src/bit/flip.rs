@@ -32,7 +32,7 @@ pub struct Iter<I: Iterator, B> {
 impl<'a, I, V> Iterator for Iter<I, V>
 where
     I: Iterator<Item = V>,
-    V: UnsignedInt,
+    V: Uint,
 {
     type Item = V;
     fn next(&mut self) -> Option<Self::Item> {
@@ -54,7 +54,7 @@ where
 impl<'a, I, K, V> Iterator for Iter<I, Entry<K, Cow<'a, V>>>
 where
     I: Iterator<Item = Entry<K, Cow<'a, V>>>,
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Not<Output = V> + 'a,
 {
     type Item = Entry<K, Cow<'a, V>>;
@@ -94,7 +94,7 @@ enum PadItem<K> {
 
 impl<I, V> Iterator for PadDefault<I, V>
 where
-    V: UnsignedInt,
+    V: Uint,
     I: Iterator<Item = V>,
 {
     type Item = V;
@@ -140,7 +140,7 @@ where
 
 impl<'a, I, K, V> Iterator for PadDefault<I, Entry<K, Cow<'a, V>>>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits,
     I: Iterator<Item = Entry<K, Cow<'a, V>>>,
 {

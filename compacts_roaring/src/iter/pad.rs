@@ -29,7 +29,7 @@ enum Item<K> {
 
 impl<'a, I, K, V> Iterator for PadUsingDefault<I, Entry<K, Cow<'a, V>>>
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Clone,
     I: Iterator<Item = Entry<K, Cow<'a, V>>>,
 {

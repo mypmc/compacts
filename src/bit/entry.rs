@@ -1,13 +1,13 @@
-use crate::bit::{self, ops::FiniteBits, UnsignedInt};
+use crate::bit::{self, ops::FiniteBits, Uint};
 
 /// `Entry` holds value `V` and its index `K`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Entry<K: UnsignedInt, V> {
+pub struct Entry<K: Uint, V> {
     pub(crate) index: K,
     pub(crate) value: V,
 }
 
-impl<K: UnsignedInt, V> Entry<K, V> {
+impl<K: Uint, V> Entry<K, V> {
     pub fn new(index: K, value: V) -> Self {
         Self { index, value }
     }

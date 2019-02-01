@@ -194,7 +194,7 @@
 // //     }
 // // }
 // // implBitsIndex!(
-// //     [K: UnsignedInt, V: FiniteBits] for bits::EntryMap<K, V>;
+// //     [K: Uint, V: FiniteBits] for bits::EntryMap<K, V>;
 // // );
 
 // impl<'a, T: Access> Access for Range<'a, T> {
@@ -269,7 +269,7 @@
 
 // macro_rules! implIterator {
 //     ($Type:ty, $ctor:path) => {
-//         impl<'a, I, K: UnsignedInt> Iterator for RangeIntoIter<I, Entry<K, Cow<'a, $Type>>>
+//         impl<'a, I, K: Uint> Iterator for RangeIntoIter<I, Entry<K, Cow<'a, $Type>>>
 //         where
 //             I: Iterator<Item = Entry<K, Cow<'a, $Type>>>,
 //         {
@@ -315,11 +315,11 @@
 // implIterator!(Array, to_array);
 // implIterator!(RoaringBlock, to_block);
 
-// pub(crate) struct Entries<K: UnsignedInt, T>(
+// pub(crate) struct Entries<K: Uint, T>(
 //     Option<Box<dyn Iterator<Item = Entry<K, Vec<T>>> + 'static>>,
 // );
 
-// impl<K: UnsignedInt, T: UnsignedInt> Iterator for Entries<K, T> {
+// impl<K: Uint, T: Uint> Iterator for Entries<K, T> {
 //     type Item = Entry<K, Vec<T>>;
 //     fn next(&mut self) -> Option<Self::Item> {
 //         self.0.as_mut().and_then(|i| i.next())
@@ -329,8 +329,8 @@
 // impl Mask {
 //     pub(crate) fn entries<K, T>(&self, chunk: usize) -> Entries<K, T>
 //     where
-//         K: UnsignedInt,
-//         T: UnsignedInt,
+//         K: Uint,
+//         T: Uint,
 //         [T]: Assign<std::ops::Range<u64>>,
 //     {
 //         assert!(chunk >= T::BITS as usize && chunk % T::BITS as usize == 0);
@@ -375,7 +375,7 @@
 //     }
 // }
 
-// // impl<'a, T, U: UnsignedInt> IntoIterator for Range<'a, T>
+// // impl<'a, T, U: Uint> IntoIterator for Range<'a, T>
 // // where
 // //     &'a T: IntoIterator<Item = Cow<'a, Entry<U, RoaringBlock>>>,
 // // {

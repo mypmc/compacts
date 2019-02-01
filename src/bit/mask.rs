@@ -209,7 +209,7 @@ impl<'a, L, R, K, A> Iterator for Iter<L, R, bit::Entry<K, Cow<'a, bit::Block<A>
 where
     L: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
     R: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
-    K: bit::UnsignedInt,
+    K: bit::Uint,
     A: bit::BlockArray,
 {
     type Item = bit::Entry<K, Cow<'a, bit::Block<A>>>;
@@ -244,7 +244,7 @@ impl<'a, L, R, K, A> Iterator for Iter<L, R, bit::Entry<K, Cow<'a, bit::Block<A>
 where
     L: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
     R: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
-    K: bit::UnsignedInt,
+    K: bit::Uint,
     A: bit::BlockArray,
 {
     type Item = bit::Entry<K, Cow<'a, bit::Block<A>>>;
@@ -274,7 +274,7 @@ impl<'a, L, R, K, A> Iterator for Iter<L, R, bit::Entry<K, Cow<'a, bit::Block<A>
 where
     L: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
     R: Iterator<Item = bit::Entry<K, Cow<'a, bit::Block<A>>>>,
-    K: bit::UnsignedInt,
+    K: bit::Uint,
     A: bit::BlockArray,
 {
     type Item = bit::Entry<K, Cow<'a, bit::Block<A>>>;
@@ -304,7 +304,7 @@ where
 // where
 //     L: Iterator<Item = Cow<'a, [U]>>,
 //     R: Iterator<Item = Cow<'a, [U]>>,
-//     U: UnsignedInt,
+//     U: Uint,
 // {
 //     type Item = Cow<'a, [U]>;
 //     fn next(&mut self) -> Option<Self::Item> {
@@ -325,7 +325,7 @@ where
 // where
 //     L: Iterator<Item = Cow<'a, [U]>>,
 //     R: Iterator<Item = Cow<'a, [U]>>,
-//     U: UnsignedInt,
+//     U: Uint,
 // {
 //     type Item = Cow<'a, [U]>;
 //     fn next(&mut self) -> Option<Self::Item> {
@@ -347,7 +347,7 @@ where
 // where
 //     L: Iterator<Item = Cow<'a, [U]>>,
 //     R: Iterator<Item = Cow<'a, [U]>>,
-//     U: UnsignedInt,
+//     U: Uint,
 // {
 //     type Item = Cow<'a, [U]>;
 //     fn next(&mut self) -> Option<Self::Item> {

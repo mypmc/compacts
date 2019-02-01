@@ -1,6 +1,6 @@
 use std::ops::{Range, RangeBounds};
 
-use super::{cast, from_any_bounds, UnsignedInt, OUT_OF_BOUNDS};
+use super::{cast, from_any_bounds, Uint, OUT_OF_BOUNDS};
 
 /// `FiniteBits` denotes types with a finite, fixed number of bits.
 ///
@@ -76,7 +76,7 @@ pub enum Excess {
 
 /// Search the smallest index in range at which f(i) is true,
 /// assuming that f(i) == true implies f(i+1) == true.
-fn search_index<T: UnsignedInt>(k: T, func: impl Fn(T) -> bool) -> T {
+fn search_index<T: Uint>(k: T, func: impl Fn(T) -> bool) -> T {
     let mut i = 0;
     let mut j = cast::<T, usize>(k);
     while i < j {
@@ -207,14 +207,14 @@ implsRangeBoundsAssign!(
 );
 
 /// `Read` is a trait to read a word from the bits container.
-pub trait Read<W: UnsignedInt> {
+pub trait Read<W: Uint> {
     fn read<Idx: RangeBounds<u64>>(&self, i: Idx) -> W;
 }
 
 // impl<'a, T, W, Idx> Read<W, &'a Idx> for T
 // where
 //     T: ?Sized + Read<W, Idx>,
-//     W: UnsignedInt,
+//     W: Uint,
 //     Idx: Clone,
 // {
 //     fn read(&self, i: &'a Idx) -> W {
@@ -227,7 +227,7 @@ pub trait Read<W: UnsignedInt> {
 //         impl<T, W> Read<W, $Type> for T
 //         where
 //             T: ?Sized + Count + Read<W, Range<u64>>,
-//             W: UnsignedInt,
+//             W: Uint,
 //         {
 //             fn read(&self, i: $Type) -> W {
 //                 self.read(from_bounds(&i, self.bits()))

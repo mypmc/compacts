@@ -1,6 +1,6 @@
 use std::{slice, vec};
 
-use crate::{bits::cast, bits::UnsignedInt, bits::*};
+use crate::{bits::cast, bits::Uint, bits::*};
 
 use super::{Bin, Map, Run, BLOCK_SIZE, OUT_OF_BOUNDS};
 
@@ -10,14 +10,14 @@ impl<T> Default for Map<T> {
     }
 }
 
-impl<T: UnsignedInt> FiniteBits for Map<T> {
+impl<T: Uint> FiniteBits for Map<T> {
     const BITS: u64 = BLOCK_SIZE as u64;
     fn empty() -> Self {
         Self::default()
     }
 }
 
-impl<T: UnsignedInt> Count for Map<T> {
+impl<T: Uint> Count for Map<T> {
     fn bits(&self) -> u64 {
         Self::BITS
     }
@@ -26,14 +26,14 @@ impl<T: UnsignedInt> Count for Map<T> {
     }
 }
 
-impl<T: UnsignedInt> Access for Map<T> {
+impl<T: Uint> Access for Map<T> {
     fn access(&self, i: u64) -> bool {
         assert!(i < Self::BITS, OUT_OF_BOUNDS);
         self.as_ref().map_or(false, |slice| slice.access(i))
     }
 }
 
-impl<T: UnsignedInt> Assign<u64> for Map<T> {
+impl<T: Uint> Assign<u64> for Map<T> {
     type Output = <[T] as Assign<u64>>::Output;
 
     fn set1(&mut self, i: u64) -> Self::Output {
@@ -47,7 +47,7 @@ impl<T: UnsignedInt> Assign<u64> for Map<T> {
     }
 }
 
-impl<T: UnsignedInt> Assign<std::ops::Range<u64>> for Map<T>
+impl<T: Uint> Assign<std::ops::Range<u64>> for Map<T>
 where
     [T]: Assign<std::ops::Range<u64>>,
 {
@@ -62,19 +62,19 @@ where
     }
 }
 
-impl<T: UnsignedInt> Rank for Map<T> {
+impl<T: Uint> Rank for Map<T> {
     fn rank1(&self, i: u64) -> u64 {
         assert!(i <= Self::BITS, OUT_OF_BOUNDS);
         self.as_ref().map_or(0, |cow| cow.rank1(i))
     }
 }
 
-impl<T: UnsignedInt> Select1 for Map<T> {
+impl<T: Uint> Select1 for Map<T> {
     fn select1(&self, n: u64) -> Option<u64> {
         self.as_ref().and_then(|xs| xs.select1(n))
     }
 }
-impl<T: UnsignedInt> Select0 for Map<T> {
+impl<T: Uint> Select0 for Map<T> {
     fn select0(&self, n: u64) -> Option<u64> {
         self.as_ref().map_or(Some(n), |bv| bv.select0(n))
     }
@@ -94,18 +94,18 @@ impl<T> Map<T> {
     }
 }
 
-impl<T: UnsignedInt> Map<T> {
+impl<T: Uint> Map<T> {
     pub(crate) const LEN: usize = (Self::BITS / T::BITS) as usize;
 }
 
-impl<T: UnsignedInt> From<Vec<T>> for Map<T> {
+impl<T: Uint> From<Vec<T>> for Map<T> {
     fn from(mut vec: Vec<T>) -> Self {
         vec.resize(Self::LEN, T::ZERO);
         Map(Some(vec.into_boxed_slice()))
     }
 }
 
-impl<T: UnsignedInt> From<&'_ Bin> for Map<T> {
+impl<T: Uint> From<&'_ Bin> for Map<T> {
     fn from(bin: &Bin) -> Self {
         let mut vec = Map::<T>::splat(T::ZERO);
         for &i in bin.0.iter() {
@@ -127,7 +127,7 @@ impl From<&'_ Run> for Map<u64> {
     }
 }
 
-impl<T: UnsignedInt> Map<T> {
+impl<T: Uint> Map<T> {
     /// Return an empty instance.
     pub fn empty() -> Self {
         Map(None)
@@ -163,10 +163,10 @@ impl<T: UnsignedInt> Map<T> {
     }
 }
 
-pub struct Iter<'a, T: UnsignedInt>(Option<slice::Iter<'a, T>>);
-pub struct IntoIter<T: UnsignedInt>(Option<vec::IntoIter<T>>);
+pub struct Iter<'a, T: Uint>(Option<slice::Iter<'a, T>>);
+pub struct IntoIter<T: Uint>(Option<vec::IntoIter<T>>);
 
-impl<'r, T: UnsignedInt> IntoIterator for &'r Map<T> {
+impl<'r, T: Uint> IntoIterator for &'r Map<T> {
     type Item = T;
     type IntoIter = Iter<'r, T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -174,7 +174,7 @@ impl<'r, T: UnsignedInt> IntoIterator for &'r Map<T> {
     }
 }
 
-impl<T: UnsignedInt> IntoIterator for Map<T> {
+impl<T: Uint> IntoIterator for Map<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -182,20 +182,20 @@ impl<T: UnsignedInt> IntoIterator for Map<T> {
     }
 }
 
-impl<'a, T: UnsignedInt> Iterator for Iter<'a, T> {
+impl<'a, T: Uint> Iterator for Iter<'a, T> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.as_mut().and_then(|i| i.next().cloned())
     }
 }
-impl<T: UnsignedInt> Iterator for IntoIter<T> {
+impl<T: Uint> Iterator for IntoIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.as_mut().and_then(|i| i.next())
     }
 }
 
-impl<'b, T: UnsignedInt> std::ops::BitAndAssign<&'b Map<T>> for Map<T> {
+impl<'b, T: Uint> std::ops::BitAndAssign<&'b Map<T>> for Map<T> {
     fn bitand_assign(&mut self, that: &'b Map<T>) {
         match (self.as_mut(), that.as_ref()) {
             (Some(lhs), Some(rhs)) => {
@@ -211,7 +211,7 @@ impl<'b, T: UnsignedInt> std::ops::BitAndAssign<&'b Map<T>> for Map<T> {
     }
 }
 
-impl<'b, T: UnsignedInt> std::ops::BitOrAssign<&'b Map<T>> for Map<T> {
+impl<'b, T: Uint> std::ops::BitOrAssign<&'b Map<T>> for Map<T> {
     fn bitor_assign(&mut self, that: &'b Map<T>) {
         match (self.as_mut(), that.as_ref()) {
             (None, Some(buf)) => {
@@ -230,7 +230,7 @@ impl<'b, T: UnsignedInt> std::ops::BitOrAssign<&'b Map<T>> for Map<T> {
     }
 }
 
-impl<'b, T: UnsignedInt> std::ops::BitXorAssign<&'b Map<T>> for Map<T> {
+impl<'b, T: Uint> std::ops::BitXorAssign<&'b Map<T>> for Map<T> {
     fn bitxor_assign(&mut self, that: &'b Map<T>) {
         match (self.as_mut(), that.as_ref()) {
             (None, Some(buf)) => {
@@ -249,7 +249,7 @@ impl<'b, T: UnsignedInt> std::ops::BitXorAssign<&'b Map<T>> for Map<T> {
     }
 }
 
-impl<T: UnsignedInt> std::ops::Not for &'_ Map<T> {
+impl<T: Uint> std::ops::Not for &'_ Map<T> {
     type Output = Map<T>;
     fn not(self) -> Self::Output {
         match self.as_ref() {
@@ -274,7 +274,7 @@ impl<T: UnsignedInt> std::ops::Not for &'_ Map<T> {
     }
 }
 
-impl<T: UnsignedInt> std::ops::Not for Map<T> {
+impl<T: Uint> std::ops::Not for Map<T> {
     type Output = Map<T>;
     fn not(self) -> Self::Output {
         match self.into_inner() {

@@ -43,7 +43,7 @@ fn test_read_code() {
 
 #[test]
 fn default_value() {
-    let zero = <u64 as UnsignedInt>::ZERO;
+    let zero = <u64 as Uint>::ZERO;
     assert_eq!(zero, <u64 as Default>::default());
 }
 

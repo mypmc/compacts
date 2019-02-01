@@ -26,7 +26,7 @@ use std::ops::{Bound, Range, RangeBounds};
 
 use self::{
     ops::*,
-    uint::{TryCast, UnsignedInt},
+    uint::{TryCast, Uint},
 };
 
 pub use self::{
@@ -36,7 +36,11 @@ pub use self::{
     mask::{Fold, Mask},
 };
 
-const MAX: u64 = 1 << 63;
+/// Max size of the bits container.
+///
+/// However, there is no guarantee that the number of bits reach that size.
+/// It can fail to allocate at any point before that size is reached.
+pub const MAX: u64 = 1 << 63;
 
 // Panic message.
 static OUT_OF_BOUNDS: &str = "index out of bounds";
@@ -55,10 +59,7 @@ pub type VecMap<A> = Map<Block<A>>;
 /// `KeyMap<K, V>` can be seen as a bits container that filtered out the empty `V` from `Map<V>`.
 ///
 /// The type parameters `K` specifies the bit size of `KeyMap<K, V>`.
-/// In other words, the smaller of `(1 << K::BITS) * V::BITS` and `MAX_BITS` is the bit size of `KeyMap<K, V>`.
-///
-/// However, there is no guaranteed that the number of bits reach that size.
-/// It can fail to allocate at any point before that size is reached.
+/// In other words, the smaller of `(1 << K::BITS) * V::BITS` and `bit::MAX` is the bit size of `KeyMap<K, V>`.
 pub type KeyMap<K, V> = Map<Entry<K, V>>;
 
 impl<T> Default for Map<T> {
@@ -81,14 +82,14 @@ impl<T> AsRef<[T]> for Map<T> {
 #[inline]
 fn cast<U, T>(u: U) -> T
 where
-    U: UnsignedInt + TryCast<T>,
-    T: UnsignedInt,
+    U: Uint + TryCast<T>,
+    T: Uint,
 {
     u.try_cast().expect("does not fit in T")
 }
 
 #[inline]
-fn divmod<U: UnsignedInt>(i: u64, cap: u64) -> (U, u64)
+fn divmod<U: Uint>(i: u64, cap: u64) -> (U, u64)
 where
     u64: TryCast<U>,
 {
@@ -135,7 +136,7 @@ where
 
 impl<K, V> Count for [Entry<K, V>]
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits,
 {
     /// # Examples
@@ -194,7 +195,7 @@ where
 
 impl<K, V> Access for [Entry<K, V>]
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Access,
 {
     /// Test bit at a given position.
@@ -263,7 +264,7 @@ where
 
 impl<K, V> Rank for [Entry<K, V>]
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Rank,
 {
     /// Return the number of enabled bits in `[0, i)`.
@@ -317,7 +318,7 @@ where
 
 impl<K, V> Select1 for [Entry<K, V>]
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Select1,
 {
     fn select1(&self, mut n: u64) -> Option<u64> {
@@ -353,7 +354,7 @@ where
 
 impl<K, V> Select0 for [Entry<K, V>]
 where
-    K: UnsignedInt,
+    K: Uint,
     V: FiniteBits + Select0,
 {
     /// # Examples
@@ -439,8 +440,8 @@ where
 
 impl<T, W> Read<W> for [T]
 where
-    T: UnsignedInt + Read<W> + TryCast<W>,
-    W: UnsignedInt,
+    T: Uint + Read<W> + TryCast<W>,
+    W: Uint,
 {
     fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
         let r = from_any_bounds(&r, self.bits());
