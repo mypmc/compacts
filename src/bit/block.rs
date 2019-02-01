@@ -3,7 +3,7 @@ use std::{
     ops::{self, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Range},
 };
 
-use crate::bit::{self, cast, ops::*, UnsignedInt};
+use crate::bit::{self, cast, from_any_bounds, ops::*, UnsignedInt};
 
 #[derive(Clone, Eq)]
 pub struct Block<A: BlockArray> {
@@ -42,6 +42,12 @@ pub trait BlockArray:
     + Select0
     + Assign<u64>
     + Assign<Range<u64>, Output = u64>
+    + Read<u8>
+    + Read<u16>
+    + Read<u32>
+    + Read<u64>
+    + Read<u128>
+    + Read<usize>
 {
     type Value: UnsignedInt;
     const LEN: usize;
@@ -248,6 +254,32 @@ impl<A: BlockArray> Assign<Range<u64>> for Block<A> {
             out
         } else {
             0u64
+        }
+    }
+}
+
+impl<W: UnsignedInt, A: BlockArray + Read<W>> Read<W> for Block<A> {
+    /// # Examples
+    ///
+    /// ```
+    /// use compacts::bit::{Block, ops::Read, ops::FiniteBits};
+    ///
+    /// let block = Block::<[u8; 8192]>::empty();
+    /// assert_eq!(Read::<u64>::read(&block, 100..163), 0);
+    /// assert_eq!(Read::<u64>::read(&block, 163..180), 0);
+    ///
+    /// let block = Block::<[u8; 8192]>::splat(0b_0001_1100);
+    /// assert_eq!(Read::<u8>::read(&block, 0..3),  0b_0000_0100_u8);
+    /// assert_eq!(Read::<u8>::read(&block, 0..4),  0b_0000_1100_u8);
+    /// assert_eq!(Read::<u8>::read(&block, 6..12), 0b_0011_0000_u8);
+    /// ```
+    fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
+        if let Some(arr) = self.data.as_ref() {
+            arr.read(r)
+        } else {
+            let r = from_any_bounds(&r, self.bits());
+            assert!(r.start < r.end && r.end - r.start <= W::BITS);
+            W::ZERO
         }
     }
 }
@@ -554,6 +586,12 @@ macro_rules! implBlockArray {
             }
             fn set0(&mut self, i: Range<u64>) -> Self::Output {
                 self.as_mut().set0(i)
+            }
+        }
+
+        impl<W: UnsignedInt> Read<W> for [$Val; $LEN] {
+            fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
+                self.as_ref().read(r)
             }
         }
     )*)

@@ -25,6 +25,8 @@ mod vec_map;
 mod mask;
 mod uint;
 
+use std::ops::{Bound, Range, RangeBounds};
+
 use self::{
     ops::*,
     uint::{TryCast, UnsignedInt},
@@ -49,6 +51,9 @@ pub struct Map<T> {
     data: Vec<T>,
 }
 
+/// `VecMap<A>` is a type alias for `Map<Block<A>>.
+pub type VecMap<A> = Map<Block<A>>;
+
 /// `KeyMap<K, V>` is a type alias for `Map<Entry<K, V>>`.
 /// `KeyMap<K, V>` can be seen as a bits container that filtered out the empty `V` from `Map<V>`.
 ///
@@ -58,9 +63,6 @@ pub struct Map<T> {
 /// However, there is no guaranteed that the number of bits reach that size.
 /// It can fail to allocate at any point before that size is reached.
 pub type KeyMap<K, V> = Map<Entry<K, V>>;
-
-/// `VecMap<A>` is a type alias for `Map<Block<A>>.
-pub type VecMap<A> = Map<Block<A>>;
 
 impl<T> Default for Map<T> {
     fn default() -> Self {
@@ -140,4 +142,29 @@ where
     u64: TryCast<U>,
 {
     (cast(i / cap), i % cap)
+}
+
+#[allow(clippy::range_plus_one)]
+#[rustfmt::skip]
+pub(crate) fn from_any_bounds<R: RangeBounds<u64>>(range: &'_ R, bits: u64) -> Range<u64> {
+    use Bound::*;
+    match (range.start_bound(), range.end_bound()) {
+
+        (Included(&i), Included(&j)) if i   < bits && i <= j && j <  bits => i   .. j+1,
+        (Included(&i), Excluded(&j)) if i   < bits && i <= j && j <= bits => i   .. j,
+        (Excluded(&i), Included(&j)) if i+1 < bits && i <  j && j <  bits => i+1 .. j+1,
+        (Excluded(&i), Excluded(&j)) if i+1 < bits && i <  j && j <= bits => i+1 .. j,
+
+        // i == 0
+        (Unbounded, Included(&j)) if j <  bits => 0 .. j+1,
+        (Unbounded, Excluded(&j)) if j <= bits => 0 .. j,
+
+        // j == bits
+        (Included(&i), Unbounded) if i   < bits => i   .. bits,
+        (Excluded(&i), Unbounded) if i+1 < bits => i+1 .. bits,
+
+        (Unbounded, Unbounded) => 0 .. bits,
+
+        _ => panic!("unexpected range"),
+    }
 }

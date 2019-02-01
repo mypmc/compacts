@@ -11,7 +11,9 @@ fn test_read_code() {
         0b_0010_1011,
     ];
 
-    let mut read: u8 = 0;
+    let mut read: u8;
+
+    assert_eq!(Read::<u8>::read(slice, 0..7), 0b_01001010_u8);
 
     read = slice.read(0..7);
     assert_eq!(read, 0b_01001010_u8);
@@ -24,10 +26,19 @@ fn test_read_code() {
     read = slice.read(13..20);
     assert_eq!(read, 0b_01011001_u8);
 
-    let read: u16 = slice.read(0..15);
-    assert_eq!(read, 0b_00101101_11001010_u16);
-    let read: u32 = slice.read(8..27);
-    assert_eq!(read, 0b_0011_00101011_00101101_u32);
+    assert_eq!(
+        Read::<u16>::read(slice, 0..15),
+        0b_0000_00101101_11001010_u16
+    );
+
+    assert_eq!(
+        Read::<u32>::read(slice, 8..27),
+        0b_0011_00101011_00101101_u32
+    );
+    assert_eq!(
+        Read::<u64>::read(slice, 8..27),
+        0b_0011_00101011_00101101_u64
+    );
 }
 
 #[test]

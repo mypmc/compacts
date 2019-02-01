@@ -7,7 +7,7 @@
 
 include!(concat!(env!("OUT_DIR"), "/table.rs"));
 
-use crate::bit::{cast, divmod, ops::*, UnsignedInt};
+use crate::bit::{cast, UnsignedInt};
 
 // It is a good idea to choose `BLOCK_SIZE + 1` as a power of two,
 // so that the bits that has size `CLASS_SIZE` can be fully used for bitpacking.

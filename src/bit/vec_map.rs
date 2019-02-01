@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::Range};
 
-use crate::bit::{self, cast, divmod, ops::*, uint::TryCast, UnsignedInt};
+use crate::bit::{self, cast, divmod, from_any_bounds, ops::*, uint::TryCast, UnsignedInt};
 
 impl<T> bit::Map<T> {
     fn access<U: ?Sized>(data: &U, i: u64) -> bool
@@ -583,12 +583,13 @@ where
     }
 }
 
-impl<T, W> Read<W, Range<u64>> for [T]
+impl<T, W> Read<W> for [T]
 where
-    T: UnsignedInt + Read<W, Range<u64>> + TryCast<W>,
+    T: UnsignedInt + Read<W> + TryCast<W>,
     W: UnsignedInt,
 {
-    fn read(&self, r: Range<u64>) -> W {
+    fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
+        let r = from_any_bounds(&r, self.bits());
         assert!(r.start < r.end);
         let i = r.start;
         let j = r.end - 1;
@@ -615,13 +616,12 @@ where
                 len += T::BITS;
             }
 
-            let last: W = self[last_index].read(0..last_offset + 1);
-            // debug_assert_eq!(
-            //     cast::<u8, u64>(last),
-            //     cast::<U, u64>((cast::<u8, U>(last) << cast(len)) >> cast(len))
-            // );
-            //
+            let last = self[last_index].read(0..last_offset + 1);
             // last need to be shifted to left by `len`
+            debug_assert_eq!(
+                cast::<W, u64>(last),
+                cast::<W, u64>(last.shiftl(len).shiftr(len))
+            );
             out | last.shiftl(len)
         }
     }

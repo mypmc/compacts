@@ -1,6 +1,6 @@
 use crate::{
     bit::ops::*,
-    bit::{cast, OUT_OF_BOUNDS},
+    bit::{cast, from_any_bounds, OUT_OF_BOUNDS},
     private,
 };
 
@@ -42,13 +42,13 @@ pub trait UnsignedInt:
     + Select0
     + Access
     + Assign<u64>
-    + Assign<Range<u64>>
-    + Read<u8, Range<u64>>
-    + Read<u16, Range<u64>>
-    + Read<u32, Range<u64>>
-    + Read<u64, Range<u64>>
-    + Read<u128, Range<u64>>
-    + Read<usize, Range<u64>>
+    + Assign<Range<u64>, Output = u64>
+    + Read<u8>
+    + Read<u16>
+    + Read<u32>
+    + Read<u64>
+    + Read<u128>
+    + Read<usize>
     + TryCast<u8>
     + TryCast<u16>
     + TryCast<u32>
@@ -289,7 +289,7 @@ macro_rules! impls {
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
                     let head = (!<$ty as UnsignedInt>::ZERO) << i;
-                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j));
+                    let last = (!<$ty as UnsignedInt>::ZERO).shiftr(Self::BITS - j);
                     let ones = self.count1();
                     *self |= head & last;
                     self.count1() - ones
@@ -304,7 +304,7 @@ macro_rules! impls {
                 } else {
                     assert!(i < Self::BITS && j <= Self::BITS);
                     let head = (!<$ty as UnsignedInt>::ZERO) << i;
-                    let last = (!<$ty as UnsignedInt>::ZERO).wrapping_shr(cast(Self::BITS - j));
+                    let last = (!<$ty as UnsignedInt>::ZERO).shiftr(Self::BITS - j);
                     let ones = self.count1();
                     *self &= !(head & last);
                     ones - self.count1()
@@ -312,8 +312,9 @@ macro_rules! impls {
             }
         }
 
-        impl<W: UnsignedInt> Read<W, Range<u64>> for $ty {
-            fn read(&self, r: Range<u64>) -> W {
+        impl<W: UnsignedInt> Read<W> for $ty {
+            fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
+                let r = from_any_bounds(&r, self.bits());
                 if r.start == 0 && r.end == Self::BITS {
                     cast(*self)
                 } else {

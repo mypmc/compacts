@@ -1,6 +1,6 @@
-use std::ops::{Bound, Range, RangeBounds};
+use std::ops::{Range, RangeBounds};
 
-use super::{cast, UnsignedInt, OUT_OF_BOUNDS};
+use super::{cast, from_any_bounds, UnsignedInt, OUT_OF_BOUNDS};
 
 /// `FiniteBits` denotes types with a finite, fixed number of bits.
 ///
@@ -175,31 +175,6 @@ pub trait Assign<Idx> {
     fn set0(&mut self, index: Idx) -> Self::Output;
 }
 
-#[allow(clippy::range_plus_one)]
-#[rustfmt::skip]
-pub(crate) fn from_bounds<R: RangeBounds<u64>>(range: &'_ R, bits: u64) -> Range<u64> {
-    use Bound::*;
-    match (range.start_bound(), range.end_bound()) {
-
-        (Included(&i), Included(&j)) if i   < bits && i <= j && j <  bits => i   .. j+1,
-        (Included(&i), Excluded(&j)) if i   < bits && i <= j && j <= bits => i   .. j,
-        (Excluded(&i), Included(&j)) if i+1 < bits && i <  j && j <  bits => i+1 .. j+1,
-        (Excluded(&i), Excluded(&j)) if i+1 < bits && i <  j && j <= bits => i+1 .. j,
-
-        // i == 0
-        (Unbounded, Included(&j)) if j <  bits => 0 .. j+1,
-        (Unbounded, Excluded(&j)) if j <= bits => 0 .. j,
-
-        // j == bits
-        (Included(&i), Unbounded) if i   < bits => i   .. bits,
-        (Excluded(&i), Unbounded) if i+1 < bits => i+1 .. bits,
-
-        (Unbounded, Unbounded) => 0 .. bits,
-
-        _ => panic!("unexpected range"),
-    }
-}
-
 impl<'a, T: ?Sized + Count + Assign<U>, U: Clone> Assign<&'a U> for T {
     type Output = <T as Assign<U>>::Output;
     fn set1(&mut self, r: &'a U) -> Self::Output {
@@ -215,10 +190,10 @@ macro_rules! implsRangeBoundsAssign {
         impl<T: ?Sized + Count + Assign<Range<u64>>> Assign<$Type> for T {
             type Output = <T as Assign<Range<u64>>>::Output;
             fn set1(&mut self, r: $Type) -> Self::Output {
-                self.set1(from_bounds(&r, self.bits()))
+                self.set1(from_any_bounds(&r, self.bits()))
             }
             fn set0(&mut self, r: $Type) -> Self::Output {
-                self.set0(from_bounds(&r, self.bits()))
+                self.set0(from_any_bounds(&r, self.bits()))
             }
         }
     )*)
@@ -232,38 +207,38 @@ implsRangeBoundsAssign!(
 );
 
 /// `Read` is a trait to read a word from the bits container.
-pub trait Read<W: UnsignedInt, Idx> {
-    fn read(&self, i: Idx) -> W;
+pub trait Read<W: UnsignedInt> {
+    fn read<Idx: RangeBounds<u64>>(&self, i: Idx) -> W;
 }
 
-impl<'a, T, W, Idx> Read<W, &'a Idx> for T
-where
-    T: ?Sized + Read<W, Idx>,
-    W: UnsignedInt,
-    Idx: Clone,
-{
-    fn read(&self, i: &'a Idx) -> W {
-        self.read(i.clone())
-    }
-}
+// impl<'a, T, W, Idx> Read<W, &'a Idx> for T
+// where
+//     T: ?Sized + Read<W, Idx>,
+//     W: UnsignedInt,
+//     Idx: Clone,
+// {
+//     fn read(&self, i: &'a Idx) -> W {
+//         self.read(i.clone())
+//     }
+// }
 
-macro_rules! implsRangeBoundsRead {
-    ($($Type:ty),*) => ($(
-        impl<T, W> Read<W, $Type> for T
-        where
-            T: ?Sized + Count + Read<W, Range<u64>>,
-            W: UnsignedInt,
-        {
-            fn read(&self, i: $Type) -> W {
-                self.read(from_bounds(&i, self.bits()))
-            }
-        }
-    )*)
-}
-implsRangeBoundsRead!(
-    std::ops::RangeTo<u64>,
-    std::ops::RangeFull,
-    std::ops::RangeFrom<u64>,
-    std::ops::RangeInclusive<u64>,
-    std::ops::RangeToInclusive<u64>
-);
+// macro_rules! implsRangeBoundsRead {
+//     ($($Type:ty),*) => ($(
+//         impl<T, W> Read<W, $Type> for T
+//         where
+//             T: ?Sized + Count + Read<W, Range<u64>>,
+//             W: UnsignedInt,
+//         {
+//             fn read(&self, i: $Type) -> W {
+//                 self.read(from_bounds(&i, self.bits()))
+//             }
+//         }
+//     )*)
+// }
+// implsRangeBoundsRead!(
+//     std::ops::RangeTo<u64>,
+//     std::ops::RangeFull,
+//     std::ops::RangeFrom<u64>,
+//     std::ops::RangeInclusive<u64>,
+//     std::ops::RangeToInclusive<u64>
+// );
