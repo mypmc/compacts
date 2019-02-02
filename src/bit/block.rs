@@ -5,58 +5,10 @@ use std::{
 
 use crate::bit::{self, cast, from_any_bounds, ops::*, Uint};
 
-#[derive(Clone, Eq)]
+#[derive(Clone)]
 pub struct Block<A: BlockArray> {
     ones: u32,
     data: Option<Box<A>>,
-}
-
-// impl<A: BlockArray, Idx: SliceIndex<[A::Value]>> ops::Index<Idx> for Block<A> {
-//     type Output = <Idx as SliceIndex<[A::Value]>>::Output;
-//     fn index(&self, index: Idx) -> &Self::Output {
-//         index.index(self.as_ref().expect(""))
-//     }
-// }
-
-impl<A: BlockArray> ops::Index<usize> for Block<A> {
-    type Output = A::Value;
-    fn index(&self, i: usize) -> &Self::Output {
-        static MSG: &str = "index out of bounds: not allocated block";
-        &self.as_ref().expect(MSG)[i]
-    }
-}
-
-// impl<A: BlockArray> ops::IndexMut<usize> for Block<A> {
-//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-//         &mut self.alloc().as_slice_mut()[index]
-//     }
-// }
-
-pub trait BlockArray:
-    crate::private::Sealed
-    + Copy
-    + FiniteBits
-    + Access
-    + Rank
-    + Select1
-    + Select0
-    + Assign<u64>
-    + Assign<Range<u64>, Output = u64>
-    + Read<u8>
-    + Read<u16>
-    + Read<u32>
-    + Read<u64>
-    + Read<u128>
-    + Read<usize>
-{
-    type Value: Uint;
-    const LEN: usize;
-
-    fn splat(value: Self::Value) -> Self;
-
-    fn as_slice(&self) -> &[Self::Value];
-
-    fn as_slice_mut(&mut self) -> &mut [Self::Value];
 }
 
 impl<A: BlockArray> Default for Block<A> {
@@ -105,6 +57,55 @@ impl<A: BlockArray> PartialEq for Block<A> {
         // if both `ones` are zero, we do not care about its data representation
         (self.ones == 0 && that.ones == 0) || self.as_ref() == that.as_ref()
     }
+}
+impl<A: BlockArray> Eq for Block<A> {}
+
+// impl<A: BlockArray, Idx: SliceIndex<[A::Value]>> ops::Index<Idx> for Block<A> {
+//     type Output = <Idx as SliceIndex<[A::Value]>>::Output;
+//     fn index(&self, index: Idx) -> &Self::Output {
+//         index.index(self.as_ref().expect(""))
+//     }
+// }
+
+impl<A: BlockArray> ops::Index<usize> for Block<A> {
+    type Output = A::Value;
+    fn index(&self, i: usize) -> &Self::Output {
+        static MSG: &str = "index out of bounds: not allocated block";
+        &self.as_ref().expect(MSG)[i]
+    }
+}
+
+// impl<A: BlockArray> ops::IndexMut<usize> for Block<A> {
+//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+//         &mut self.alloc().as_slice_mut()[index]
+//     }
+// }
+
+pub trait BlockArray:
+    crate::private::Sealed
+    + Copy
+    + FiniteBits
+    + Access
+    + Rank
+    + Select1
+    + Select0
+    + Assign<u64>
+    + Assign<Range<u64>, Output = u64>
+    + Read<u8>
+    + Read<u16>
+    + Read<u32>
+    + Read<u64>
+    + Read<u128>
+    + Read<usize>
+{
+    type Value: Uint;
+    const LEN: usize;
+
+    fn splat(value: Self::Value) -> Self;
+
+    fn as_slice(&self) -> &[Self::Value];
+
+    fn as_slice_mut(&mut self) -> &mut [Self::Value];
 }
 
 impl<A: BlockArray> From<A> for Block<A> {

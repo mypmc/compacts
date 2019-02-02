@@ -238,3 +238,45 @@ mod entry {
         gen!(Entry<u64, Block<[u64; 1024]>>, BITSIZE/2, BITSIZE);
     }
 }
+
+#[cfg(feature = "roaring")]
+mod roaring_block {
+    const BITSIZE: u64 = 010_000_000;
+
+    mod density_00 {
+        gen!(roaring::Block, BITSIZE / 1000, BITSIZE);
+    }
+    mod density_05 {
+        gen!(roaring::Block, BITSIZE / 20, BITSIZE);
+    }
+    mod density_10 {
+        gen!(roaring::Block, BITSIZE / 10, BITSIZE);
+    }
+    mod density_20 {
+        gen!(roaring::Block, BITSIZE / 5, BITSIZE);
+    }
+    mod density_50 {
+        gen!(roaring::Block, BITSIZE / 2, BITSIZE);
+    }
+}
+
+#[cfg(feature = "roaring")]
+mod roaring_entry {
+    const BITSIZE: u64 = 010_000_000;
+
+    mod density_00 {
+        gen!(Entry<u64, roaring::Block>, BITSIZE/1000, BITSIZE);
+    }
+    mod density_05 {
+        gen!(Entry<u64, roaring::Block>, BITSIZE/20, BITSIZE);
+    }
+    mod density_10 {
+        gen!(Entry<u64, roaring::Block>, BITSIZE/10, BITSIZE);
+    }
+    mod density_20 {
+        gen!(Entry<u64, roaring::Block>, BITSIZE/5, BITSIZE);
+    }
+    mod density_50 {
+        gen!(Entry<u64, roaring::Block>, BITSIZE/2, BITSIZE);
+    }
+}

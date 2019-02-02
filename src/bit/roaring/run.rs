@@ -1,18 +1,18 @@
-use crate::{bits::cast, bits::*};
+use crate::bit::{cast, ops::*};
 
-use super::{Members, Run, BLOCK_SIZE};
+use super::{iter::Members, RunEncode};
 
 use std::cmp;
 
-impl Default for Run {
+impl Default for RunEncode {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Run {
+impl RunEncode {
     pub fn new() -> Self {
-        Run(Vec::new())
+        RunEncode(Vec::new())
     }
 
     fn search(&self, n: u16) -> Result<usize, usize> {
@@ -57,21 +57,21 @@ impl Run {
     // }
 }
 
-impl Access for Run {
+impl Access for RunEncode {
     fn access(&self, i: u64) -> bool {
         let i = i as u16;
         self.search(i).is_ok()
     }
 }
 
-impl FiniteBits for Run {
-    const BITS: u64 = BLOCK_SIZE as u64;
+impl FiniteBits for RunEncode {
+    const BITS: u64 = super::MapEncode::BITS;
     fn empty() -> Self {
         Self::default()
     }
 }
 
-impl Count for Run {
+impl Count for RunEncode {
     fn bits(&self) -> u64 {
         Self::BITS
     }
@@ -83,7 +83,7 @@ impl Count for Run {
     }
 }
 
-impl Rank for Run {
+impl Rank for RunEncode {
     fn rank1(&self, i: u64) -> u64 {
         let iter = self
             .0
@@ -97,7 +97,7 @@ impl Rank for Run {
     }
 }
 
-impl Select1 for Run {
+impl Select1 for RunEncode {
     fn select1(&self, c: u64) -> Option<u64> {
         let mut curr = 0;
         for range in &self.0 {
@@ -111,13 +111,13 @@ impl Select1 for Run {
     }
 }
 
-impl Select0 for Run {
+impl Select0 for RunEncode {
     fn select0(&self, c: u64) -> Option<u64> {
         self.search0(c)
     }
 }
 
-impl Assign<u64> for Run {
+impl Assign<u64> for RunEncode {
     type Output = ();
     fn set1(&mut self, i: u64) -> Self::Output {
         let i = i as u16;
@@ -191,7 +191,7 @@ impl Assign<u64> for Run {
 }
 
 // FIXME: This can be more efficient
-impl Assign<std::ops::Range<u64>> for Run {
+impl Assign<std::ops::Range<u64>> for RunEncode {
     type Output = ();
     fn set1(&mut self, index: std::ops::Range<u64>) -> Self::Output {
         for i in index {
@@ -205,7 +205,7 @@ impl Assign<std::ops::Range<u64>> for Run {
     }
 }
 
-impl std::iter::FromIterator<std::ops::Range<u32>> for Run {
+impl std::iter::FromIterator<std::ops::Range<u32>> for RunEncode {
     fn from_iter<I>(iterable: I) -> Self
     where
         I: IntoIterator<Item = std::ops::Range<u32>>,
@@ -233,41 +233,41 @@ impl std::iter::FromIterator<std::ops::Range<u32>> for Run {
                 ranges.push(start..=end);
             }
         }
-        Run(ranges)
+        RunEncode(ranges)
     }
 }
 
-impl<'a> std::ops::BitAndAssign<&'a Run> for Run {
-    fn bitand_assign(&mut self, that: &'a Run) {
+impl<'a> std::ops::BitAndAssign<&'a RunEncode> for RunEncode {
+    fn bitand_assign(&mut self, that: &'a RunEncode) {
         let members = Members::new(self.0.iter(), that.0.iter());
         *self = members.filter_and().collect();
     }
 }
 
-impl<'a> std::ops::BitOrAssign<&'a Run> for Run {
-    fn bitor_assign(&mut self, that: &'a Run) {
+impl<'a> std::ops::BitOrAssign<&'a RunEncode> for RunEncode {
+    fn bitor_assign(&mut self, that: &'a RunEncode) {
         let members = Members::new(self.0.iter(), that.0.iter());
         *self = members.filter_or().collect();
     }
 }
 
-impl<'a> std::ops::BitXorAssign<&'a Run> for Run {
-    fn bitxor_assign(&mut self, that: &'a Run) {
+impl<'a> std::ops::BitXorAssign<&'a RunEncode> for RunEncode {
+    fn bitxor_assign(&mut self, that: &'a RunEncode) {
         let members = Members::new(self.0.iter(), that.0.iter());
         *self = members.filter_xor().collect();
     }
 }
 
-impl<'a> std::ops::Not for Run {
-    type Output = Run;
+impl<'a> std::ops::Not for RunEncode {
+    type Output = RunEncode;
     fn not(mut self) -> Self::Output {
         let members = Members::new(self.0.iter(), std::iter::empty());
         self = members.filter_not().collect();
         self
     }
 }
-impl<'a> std::ops::Not for &'a Run {
-    type Output = Run;
+impl<'a> std::ops::Not for &'a RunEncode {
+    type Output = RunEncode;
     fn not(self) -> Self::Output {
         let members = Members::new(self.0.iter(), std::iter::empty());
         members.filter_not().collect()

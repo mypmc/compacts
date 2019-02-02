@@ -1,7 +1,8 @@
-pub use self::{merge::MergeBy, pad::PadUsingDefault, tuples::Tuples};
+pub use self::{members::Members, merge::MergeBy, tuples::Tuples};
 
+mod members;
 mod merge;
-mod pad;
+// mod pad;
 mod tuples;
 
 //pub struct NotIntoIter<I: Iterator, A> {

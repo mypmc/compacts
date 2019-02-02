@@ -13,11 +13,18 @@ description = """
 compact data structures
 """
 
+[features]
+# The default set of optional packages. Most people will want to use these
+# packages, but they are strictly optional. Note that `session` is not a package
+# but rather another feature listed in this manifest.
+default = []
+
+roaring = []
+
 [workspace]
-members = ["compacts_roaring"]
+members = []
 
 [dependencies]
-# rayon = "1"
 
 [build-dependencies]
 

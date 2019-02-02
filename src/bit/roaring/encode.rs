@@ -1,58 +1,6 @@
-use std::ops::RangeInclusive;
-
-use crate::{bits::iter, bits::*};
-
-mod bin;
-mod map;
-mod run;
-
-const BLOCK_SIZE: usize = 1 << 16;
-
-const OUT_OF_BOUNDS: &str = "index out of bounds";
-
-/// Simply encoded bits block.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct RoaringBlock(pub(crate) Encode);
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Array(pub(crate) Map<u64>);
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Encode {
-    Map(Map<u64>),
-    Bin(Bin),
-    Run(Run),
-}
-
-impl Default for Encode {
-    fn default() -> Self {
-        Encode::Bin(Bin::new())
-    }
-}
-
 /// Boxed slice of words.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Map<B>(Option<Box<[B]>>);
-
-/// Sorted vector of bits.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Bin(Vec<u16>);
-
-/// Run length encoded.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Run(Vec<RangeInclusive<u16>>);
-
-impl From<RoaringBlock> for Array {
-    fn from(b: RoaringBlock) -> Self {
-        Array(b.0.into_boxed_slice())
-    }
-}
-
-impl From<Array> for RoaringBlock {
-    fn from(a: Array) -> Self {
-        RoaringBlock(Encode::Map(a.0))
-    }
-}
 
 impl Encode {
     const BOXED_SLICE_LEN: usize = BLOCK_SIZE / u64::BITS as usize;
@@ -545,32 +493,6 @@ where
         (Merged::Rhs(a), Merged::Lhs(b)) => a.cmp(b),
         (Merged::Rhs(a), Merged::Rhs(b)) => a.cmp(b),
     })
-}
-
-struct Members<'r> {
-    finished: bool,
-    last_val: Option<Member>,
-    members: std::iter::Peekable<IntoMembers<'r>>,
-}
-struct IntoMembers<'r> {
-    lhs_is_open: bool, // remember whether last lhs is open
-    rhs_is_open: bool, // remember whether last rhs is open
-    tuples: Box<Iterator<Item = (Merged, Merged)> + 'r>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Member {
-    Lhs(std::ops::Range<u32>), // L and not R
-    Rhs(std::ops::Range<u32>), // R and not L
-    And(std::ops::Range<u32>), // L and R
-    Not(std::ops::Range<u32>), // not (L or R)
-}
-impl Member {
-    fn range(&self) -> &std::ops::Range<u32> {
-        match self {
-            Member::Lhs(r) | Member::Rhs(r) | Member::And(r) | Member::Not(r) => r,
-        }
-    }
 }
 
 impl<'r> Members<'r> {

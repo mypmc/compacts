@@ -16,6 +16,9 @@ mod tests;
 pub mod ops;
 pub mod rrr;
 
+#[cfg(feature = "roaring")]
+pub mod roaring;
+
 mod block;
 mod entry;
 mod map;
