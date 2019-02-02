@@ -2,7 +2,12 @@ mod bin;
 mod iter;
 mod run;
 
-use std::{borrow::Cow, ops::RangeInclusive};
+use std::{
+    borrow::Cow,
+    cmp::Ordering,
+    ops::RangeInclusive,
+    ops::{BitAndAssign, BitOrAssign, BitXorAssign},
+};
 
 use crate::bit::{self, ops::*};
 
@@ -438,5 +443,153 @@ where
             }
         }
         None
+    }
+}
+
+impl<'a, L, R> Iterator for bit::And<L, R, Cow<'a, Block>>
+where
+    L: Iterator<Item = Cow<'a, Block>>,
+    R: Iterator<Item = Cow<'a, Block>>,
+{
+    type Item = Cow<'a, Block>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let lhs = &mut self.lhs;
+        let rhs = &mut self.rhs;
+        lhs.next().and_then(|mut x| {
+            rhs.next().map(|y| {
+                x.to_mut().0.bitand_assign(&y.as_ref().0);
+                x
+            })
+        })
+    }
+}
+
+impl<'a, L, R> Iterator for bit::Or<L, R, Cow<'a, Block>>
+where
+    L: Iterator<Item = Cow<'a, Block>>,
+    R: Iterator<Item = Cow<'a, Block>>,
+{
+    type Item = Cow<'a, Block>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.lhs.next(), self.rhs.next()) {
+            (Some(mut x), Some(y)) => {
+                x.to_mut().0.bitor_assign(&y.as_ref().0);
+                Some(x)
+            }
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (None, None) => None,
+        }
+    }
+}
+
+impl<'a, L, R> Iterator for bit::Xor<L, R, Cow<'a, Block>>
+where
+    L: Iterator<Item = Cow<'a, Block>>,
+    R: Iterator<Item = Cow<'a, Block>>,
+{
+    type Item = Cow<'a, Block>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match (self.lhs.next(), self.rhs.next()) {
+            (Some(mut x), Some(y)) => {
+                x.to_mut().0.bitxor_assign(&y.as_ref().0);
+                Some(x)
+            }
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (None, None) => None,
+        }
+    }
+}
+
+impl<'a, L, R, K> Iterator for bit::And<L, R, bit::Entry<K, Cow<'a, Block>>>
+where
+    L: Iterator<Item = bit::Entry<K, Cow<'a, Block>>>,
+    R: Iterator<Item = bit::Entry<K, Cow<'a, Block>>>,
+    K: bit::Uint,
+{
+    type Item = bit::Entry<K, Cow<'a, Block>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let lhs = &mut self.lhs;
+        let rhs = &mut self.rhs;
+
+        loop {
+            match lhs
+                .peek()
+                .and_then(|x| rhs.peek().map(|y| x.index.cmp(&y.index)))
+            {
+                Some(Ordering::Equal) => {
+                    let mut lhs = lhs.next().expect("peek");
+                    let rhs = rhs.next().expect("peek");
+                    lhs.value.to_mut().0.bitand_assign(&rhs.value.as_ref().0);
+                    break Some(lhs);
+                }
+                Some(Ordering::Less) => {
+                    lhs.next();
+                }
+                Some(Ordering::Greater) => {
+                    rhs.next();
+                }
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<'a, L, R, K> Iterator for bit::Or<L, R, bit::Entry<K, Cow<'a, Block>>>
+where
+    L: Iterator<Item = bit::Entry<K, Cow<'a, Block>>>,
+    R: Iterator<Item = bit::Entry<K, Cow<'a, Block>>>,
+    K: bit::Uint,
+{
+    type Item = bit::Entry<K, Cow<'a, Block>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let lhs = &mut self.lhs;
+        let rhs = &mut self.rhs;
+
+        match (lhs.peek(), rhs.peek()) {
+            (Some(l), Some(r)) => match l.index.cmp(&r.index) {
+                Ordering::Less => lhs.next(),
+                Ordering::Equal => {
+                    let mut lhs = lhs.next().expect("peek");
+                    let rhs = rhs.next().expect("peek");
+                    lhs.value.to_mut().0.bitor_assign(&rhs.value.as_ref().0);
+                    Some(lhs)
+                }
+                Ordering::Greater => rhs.next(),
+            },
+            (Some(_), None) => lhs.next(),
+            (None, Some(_)) => rhs.next(),
+            (None, None) => None,
+        }
+    }
+}
+
+impl<'a, L, R, K> Iterator for bit::Xor<L, R, bit::Entry<K, Cow<'a, Block>>>
+where
+    L: Iterator<Item = bit::Entry<K, Cow<'a, Block>>>,
+    R: Iterator<Item = bit::Entry<K, Cow<'a, Block>>>,
+    K: bit::Uint,
+{
+    type Item = bit::Entry<K, Cow<'a, Block>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let lhs = &mut self.lhs;
+        let rhs = &mut self.rhs;
+
+        match (lhs.peek(), rhs.peek()) {
+            (Some(l), Some(r)) => match l.index.cmp(&r.index) {
+                Ordering::Less => lhs.next(),
+                Ordering::Equal => {
+                    let mut lhs = lhs.next().expect("peek");
+                    let rhs = rhs.next().expect("peek");
+                    lhs.value.to_mut().0.bitxor_assign(&rhs.value.as_ref().0);
+                    Some(lhs)
+                }
+                Ordering::Greater => rhs.next(),
+            },
+            (Some(_), None) => lhs.next(),
+            (None, Some(_)) => rhs.next(),
+            (None, None) => None,
+        }
     }
 }

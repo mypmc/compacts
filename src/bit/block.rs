@@ -82,7 +82,7 @@ impl<A: BlockArray> ops::Index<usize> for Block<A> {
 // }
 
 pub trait BlockArray:
-    crate::private::Sealed
+    'static
     + Copy
     + FiniteBits
     + Access
@@ -97,6 +97,7 @@ pub trait BlockArray:
     + Read<u64>
     + Read<u128>
     + Read<usize>
+    + crate::private::Sealed
 {
     type Value: Uint;
     const LEN: usize;

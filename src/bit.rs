@@ -22,10 +22,13 @@ pub mod roaring;
 mod block;
 mod entry;
 mod map;
-mod mask;
 mod uint;
 
-use std::ops::{Bound, Range, RangeBounds};
+use std::{
+    iter::Peekable,
+    marker::PhantomData,
+    ops::{Bound, Range, RangeBounds},
+};
 
 use self::{
     ops::*,
@@ -35,8 +38,6 @@ use self::{
 pub use self::{
     block::{Block, BlockArray},
     entry::Entry,
-    mask::{and, or, xor, And, Or, Xor},
-    mask::{Fold, Mask},
 };
 
 /// Max size of the bits container.
@@ -485,6 +486,52 @@ where
     }
 }
 
+impl<A, W> Read<W> for [Block<A>]
+where
+    A: BlockArray + Read<W>,
+    W: Uint,
+{
+    /// ```
+    /// use compacts::bit::{Block, Map, ops::Read};
+    /// let map = Map::<Block<[u64; 1024]>>::build(&[65535, 65536, 65537]);
+    /// let slice = map.as_ref();
+    /// assert_eq!(Read::<u64>::read(slice, 65535..65598), 0b_0111);
+    /// assert_eq!(Read::<u64>::read(slice, 65536..65599), 0b_0011);
+    /// ```
+    fn read<R: std::ops::RangeBounds<u64>>(&self, r: R) -> W {
+        let r = from_any_bounds(&r, self.bits());
+        assert!(r.start < r.end);
+        let i = r.start;
+        let j = r.end - 1;
+        assert!(j - i <= W::BITS && i < self.bits() && j < self.bits());
+
+        let (head_index, head_offset) = divmod::<usize>(i, Block::<A>::BITS);
+        let (last_index, last_offset) = divmod::<usize>(j, Block::<A>::BITS);
+
+        if head_index == last_index {
+            self[head_index].read(head_offset..last_offset + 1)
+        } else {
+            assert_eq!(head_index + 1, last_index);
+
+            // returning value
+            let mut out = W::ZERO;
+            // how many bits do we have read?
+            let mut len = 0;
+
+            out |= self[head_index].read(head_offset..Block::<A>::BITS);
+            len += Block::<A>::BITS - head_offset;
+
+            let last = self[last_index].read(0..last_offset + 1);
+            // last need to be shifted to left by `len`
+            debug_assert_eq!(
+                cast::<W, u64>(last),
+                cast::<W, u64>(last.shiftl(len).shiftr(len))
+            );
+            out | last.shiftl(len)
+        }
+    }
+}
+
 impl<T> Assign<u64> for [T]
 where
     T: FiniteBits + Assign<u64>,
@@ -572,5 +619,161 @@ where
     /// Disable bits in a specified range, and returns the number of **updated** bits.
     fn set0(&mut self, index: Range<u64>) -> Self::Output {
         set_range!(self, set0, index.start, index.end)
+    }
+}
+
+mod mask {
+    pub trait Op {}
+
+    #[derive(Debug)]
+    pub struct And;
+    #[derive(Debug)]
+    pub struct Or;
+    #[derive(Debug)]
+    pub struct Xor;
+
+    impl Op for And {}
+    impl Op for Or {}
+    impl Op for Xor {}
+}
+
+#[derive(Debug)]
+pub struct Mask<L, R, O: mask::Op> {
+    pub(crate) lhs: L,
+    pub(crate) rhs: R,
+    _op: PhantomData<O>,
+}
+
+pub fn and<L, R>(lhs: L, rhs: R) -> Mask<L, R, mask::And> {
+    let _op = PhantomData;
+    Mask { lhs, rhs, _op }
+}
+pub fn or<L, R>(lhs: L, rhs: R) -> Mask<L, R, mask::Or> {
+    let _op = PhantomData;
+    Mask { lhs, rhs, _op }
+}
+pub fn xor<L, R>(lhs: L, rhs: R) -> Mask<L, R, mask::Xor> {
+    let _op = PhantomData;
+    Mask { lhs, rhs, _op }
+}
+
+impl<L, R, O: mask::Op> Mask<L, R, O> {
+    pub fn and<Rhs>(self, rhs: Rhs) -> Mask<Self, Rhs, mask::And> {
+        and(self, rhs)
+    }
+    pub fn or<Rhs>(self, rhs: Rhs) -> Mask<Self, Rhs, mask::Or> {
+        or(self, rhs)
+    }
+    pub fn xor<Rhs>(self, rhs: Rhs) -> Mask<Self, Rhs, mask::Xor> {
+        xor(self, rhs)
+    }
+
+    // pub fn not(self) -> Not<Self> {
+    //     not(self)
+    // }
+}
+
+pub struct And<L: Iterator, R: Iterator, T> {
+    pub(crate) lhs: Peekable<L>,
+    pub(crate) rhs: Peekable<R>,
+    _ty: PhantomData<T>,
+}
+
+pub struct Or<L: Iterator, R: Iterator, T> {
+    pub(crate) lhs: Peekable<L>,
+    pub(crate) rhs: Peekable<R>,
+    _ty: PhantomData<T>,
+}
+
+pub struct Xor<L: Iterator, R: Iterator, T> {
+    pub(crate) lhs: Peekable<L>,
+    pub(crate) rhs: Peekable<R>,
+    _ty: PhantomData<T>,
+}
+
+macro_rules! implMask {
+    ($( $Iter:ident),* ) => ($(
+        impl<L, R, T> IntoIterator for Mask<L, R, mask::$Iter>
+        where
+            L: IntoIterator<Item = T>,
+            R: IntoIterator<Item = T>,
+            $Iter<L::IntoIter, R::IntoIter, T>: Iterator<Item = T>,
+        {
+            type Item = T;
+            type IntoIter = $Iter<L::IntoIter, R::IntoIter, T>;
+            fn into_iter(self) -> Self::IntoIter {
+                $Iter {
+                    lhs: self.lhs.into_iter().peekable(),
+                    rhs: self.rhs.into_iter().peekable(),
+                    _ty: PhantomData,
+                }
+            }
+        }
+    )*)
+}
+implMask!(And, Or, Xor);
+
+pub struct Fold<'a, T>(Option<BoxIter<'a, T>>);
+
+type BoxIter<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
+
+impl<'a, T: 'a> Iterator for Fold<'a, T> {
+    type Item = T;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.as_mut().and_then(|it| it.next())
+    }
+}
+
+impl<'a, T: 'a> Fold<'a, T> {
+    /// Combines all given iterators into one iterator by using `And`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use compacts::bit::{VecMap, Fold, ops::Access};
+    /// let a = VecMap::<[u64; 1024]>::build(&[1, 2, 4, 5, 10]);
+    /// let b = VecMap::<[u64; 1024]>::build(&[1, 3, 4, 8, 10]);
+    /// let c = VecMap::<[u64; 1024]>::build(&[1, 2, 4, 9, 10]);
+    /// let fold = Fold::and(vec![&a, &b, &c]).collect::<VecMap<[u64; 1024]>>();
+    /// let bits = fold.iterate().collect::<Vec<_>>();
+    /// assert_eq!(bits, vec![1, 4, 10]);
+    /// ```
+    pub fn and<U>(iters: impl IntoIterator<Item = U>) -> Self
+    where
+        U: IntoIterator<Item = T> + 'a,
+        Mask<BoxIter<'a, T>, U, mask::And>: IntoIterator<Item = T>,
+    {
+        Self::fold(iters, and)
+    }
+
+    pub fn or<U>(iters: impl IntoIterator<Item = U>) -> Self
+    where
+        U: IntoIterator<Item = T> + 'a,
+        Mask<BoxIter<'a, T>, U, mask::Or>: IntoIterator<Item = T>,
+    {
+        Self::fold(iters, or)
+    }
+
+    pub fn xor<U>(iters: impl IntoIterator<Item = U>) -> Self
+    where
+        U: IntoIterator<Item = T> + 'a,
+        Mask<BoxIter<'a, T>, U, mask::Xor>: IntoIterator<Item = T>,
+    {
+        Self::fold(iters, xor)
+    }
+
+    fn fold<A, B>(iters: impl IntoIterator<Item = A>, func: impl Fn(BoxIter<'a, T>, A) -> B) -> Self
+    where
+        A: IntoIterator<Item = T> + 'a,
+        B: IntoIterator<Item = T> + 'a,
+    {
+        let mut iters = iters.into_iter();
+        Fold(if let Some(head) = iters.next() {
+            let head = Box::new(head.into_iter());
+            Some(iters.fold(head, |it, x| Box::new(func(it, x).into_iter())))
+        } else {
+            None
+        })
     }
 }
