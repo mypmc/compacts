@@ -134,7 +134,7 @@ macro_rules! delegate {
     };
 }
 
-impl FiniteBits for Block {
+impl Finite for Block {
     const BITS: u64 = MapEncode::BITS;
     fn empty() -> Self {
         Self::default()

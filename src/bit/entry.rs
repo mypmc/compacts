@@ -1,4 +1,4 @@
-use crate::bit::{self, ops::FiniteBits, Uint};
+use crate::bit::{self, ops::Finite, Uint};
 
 /// `Entry` holds value `V` and its index `K`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -25,7 +25,7 @@ impl<K: Uint, V> Entry<K, V> {
 
     pub(crate) fn potential_bits() -> u64
     where
-        V: FiniteBits,
+        V: Finite,
     {
         // (1<<K::BITS) * V::BITS
         1u64.checked_shl(K::BITS as u32)

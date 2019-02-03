@@ -119,7 +119,7 @@ impl Iterator for Runs<'_> {
     }
 }
 
-impl FiniteBits for BinEncode {
+impl Finite for BinEncode {
     const BITS: u64 = MapEncode::BITS;
     fn empty() -> Self {
         Self::default()

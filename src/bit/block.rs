@@ -37,7 +37,7 @@ impl<A: BlockArray> PartialEq for Block<A> {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bit::{Block, ops::FiniteBits};
+    /// use compacts::bit::{Block, ops::Finite};
     /// let a = Block::<[u64; 1024]>::empty();
     /// let b = Block::<[u64; 1024]>::empty();
     /// let c = Block::<[u64; 1024]>::splat(0);
@@ -84,7 +84,7 @@ impl<A: BlockArray> ops::Index<usize> for Block<A> {
 pub trait BlockArray:
     'static
     + Copy
-    + FiniteBits
+    + Finite
     + Access
     + Rank
     + Select1
@@ -161,7 +161,7 @@ impl<A: BlockArray> Block<A> {
     }
 }
 
-impl<A: BlockArray> FiniteBits for Block<A> {
+impl<A: BlockArray> Finite for Block<A> {
     const BITS: u64 = A::Value::BITS * A::LEN as u64;
     fn empty() -> Self {
         Self::default()
@@ -235,7 +235,7 @@ impl<A: BlockArray> Assign<Range<u64>> for Block<A> {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bit::{Block, ops::{FiniteBits, Assign}};
+    /// use compacts::bit::{Block, ops::{Finite, Assign}};
     /// let mut block = Block::<[u8; 8192]>::empty();
     /// assert_eq!(block.as_ref(), None);
     /// assert_eq!(block.set1(0..3), 3);
@@ -264,7 +264,7 @@ impl<W: Uint, A: BlockArray + Read<W>> Read<W> for Block<A> {
     /// # Examples
     ///
     /// ```
-    /// use compacts::bit::{Block, ops::Read, ops::FiniteBits};
+    /// use compacts::bit::{Block, ops::Read, ops::Finite};
     ///
     /// let block = Block::<[u8; 8192]>::empty();
     /// assert_eq!(Read::<u64>::read(&block, 100..163), 0);
@@ -523,8 +523,8 @@ macro_rules! implBlockArray {
             }
         }
 
-        impl FiniteBits for [$Val; $LEN] {
-            const BITS: u64 = <$Val as FiniteBits>::BITS * $LEN as u64;
+        impl Finite for [$Val; $LEN] {
+            const BITS: u64 = <$Val as Finite>::BITS * $LEN as u64;
             fn empty() -> Self {
                 [0; $LEN]
             }

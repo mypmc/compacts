@@ -2,11 +2,11 @@ use std::ops::{Range, RangeBounds};
 
 use super::{cast, from_any_bounds, Uint, OUT_OF_BOUNDS};
 
-/// `FiniteBits` denotes types with a finite, fixed number of bits.
+/// `Finite` denotes types with a finite, fixed number of bits.
 ///
 /// This trait is for types intended to use as a component of the bits container.
 /// e.g.) T of `Map<T>`, V of `EntryMap<K, V>`
-pub trait FiniteBits: Clone + Count {
+pub trait Finite: Clone + Count {
     /// The potential bit size.
     ///
     /// This constant value corresponds to total of enabled/disabled bits.

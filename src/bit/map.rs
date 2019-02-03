@@ -46,7 +46,7 @@ impl<T> Map<T> {
     }
 }
 
-impl<T: FiniteBits> Map<T> {
+impl<T: Finite> Map<T> {
     pub fn with<U>(data: &U) -> Map<T>
     where
         U: ?Sized + AsRef<[T]>,
@@ -98,7 +98,7 @@ impl<T: FiniteBits> Map<T> {
 
 impl<T> Count for Map<T>
 where
-    T: FiniteBits,
+    T: Finite,
 {
     /// # Examples
     ///
@@ -129,7 +129,7 @@ where
 impl<K, V> Count for KeyMap<K, V>
 where
     K: Uint,
-    V: FiniteBits,
+    V: Finite,
 {
     fn bits(&self) -> u64 {
         Entry::<K, V>::potential_bits()
@@ -141,7 +141,7 @@ where
 
 impl<T> Access for Map<T>
 where
-    T: FiniteBits + Access,
+    T: Finite + Access,
 {
     /// Test bit at a given position.
     ///
@@ -207,7 +207,7 @@ where
 impl<K, V> Access for KeyMap<K, V>
 where
     K: Uint,
-    V: FiniteBits + Access,
+    V: Finite + Access,
 {
     fn access(&self, i: u64) -> bool {
         self.data.access(i)
@@ -219,7 +219,7 @@ where
 
 impl<T> Rank for Map<T>
 where
-    T: FiniteBits + Rank,
+    T: Finite + Rank,
 {
     /// Returns the number of enabled bits in `[0, i)`.
     ///
@@ -246,7 +246,7 @@ where
 impl<K, V> Rank for KeyMap<K, V>
 where
     K: Uint,
-    V: FiniteBits + Rank,
+    V: Finite + Rank,
 {
     fn rank1(&self, i: u64) -> u64 {
         let bits = self.bits();
@@ -261,7 +261,7 @@ where
 
 impl<T> Select1 for Map<T>
 where
-    T: FiniteBits + Select1,
+    T: Finite + Select1,
 {
     /// # Examples
     ///
@@ -290,7 +290,7 @@ where
 impl<K, V> Select1 for KeyMap<K, V>
 where
     K: Uint,
-    V: FiniteBits + Select1,
+    V: Finite + Select1,
 {
     fn select1(&self, n: u64) -> Option<u64> {
         if n < self.count1() {
@@ -303,7 +303,7 @@ where
 
 impl<T> Select0 for Map<T>
 where
-    T: FiniteBits + Select0,
+    T: Finite + Select0,
 {
     /// # Examples
     ///
@@ -345,7 +345,7 @@ where
 impl<K, V> Select0 for KeyMap<K, V>
 where
     K: Uint,
-    V: FiniteBits + Select0,
+    V: Finite + Select0,
 {
     fn select0(&self, n: u64) -> Option<u64> {
         if n < self.count0() {
@@ -358,7 +358,7 @@ where
 
 impl<T> Assign<u64> for Map<T>
 where
-    T: FiniteBits + Access + Assign<u64>,
+    T: Finite + Access + Assign<u64>,
 {
     type Output = ();
 
@@ -423,7 +423,7 @@ where
 impl<K, V> Assign<u64> for KeyMap<K, V>
 where
     K: Uint,
-    V: FiniteBits + Access + Assign<u64>,
+    V: Finite + Access + Assign<u64>,
 {
     type Output = ();
     fn set1(&mut self, i: u64) -> Self::Output {
@@ -463,7 +463,7 @@ where
 
 impl<T> Assign<Range<u64>> for Map<T>
 where
-    T: FiniteBits + Assign<Range<u64>, Output = u64>,
+    T: Finite + Assign<Range<u64>, Output = u64>,
 {
     type Output = u64;
 

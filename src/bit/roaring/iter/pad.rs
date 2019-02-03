@@ -30,7 +30,7 @@
 // impl<'a, I, K, V> Iterator for PadUsingDefault<I, Entry<K, Cow<'a, V>>>
 // where
 //     K: Uint,
-//     V: FiniteBits + Clone,
+//     V: Finite + Clone,
 //     I: Iterator<Item = Entry<K, Cow<'a, V>>>,
 // {
 //     type Item = Entry<K, Cow<'a, V>>;

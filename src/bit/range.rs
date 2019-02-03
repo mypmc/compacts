@@ -194,7 +194,7 @@
 // //     }
 // // }
 // // implBitsIndex!(
-// //     [K: Uint, V: FiniteBits] for bits::EntryMap<K, V>;
+// //     [K: Uint, V: Finite] for bits::EntryMap<K, V>;
 // // );
 
 // impl<'a, T: Access> Access for Range<'a, T> {
@@ -245,7 +245,7 @@
 //     _ty: PhantomData<A>,
 // }
 
-// impl<'a, T, A: FiniteBits> IntoIterator for Range<'a, T>
+// impl<'a, T, A: Finite> IntoIterator for Range<'a, T>
 // where
 //     &'a T: IntoIterator<Item = A>,
 //     RangeIntoIter<<&'a T as IntoIterator>::IntoIter, A>: Iterator<Item = A>,

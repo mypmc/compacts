@@ -70,21 +70,21 @@ macro_rules! delegate {
     };
 }
 
-impl FiniteBits for Array {
+impl Finite for Array {
     const BITS: u64 = BLOCK_SIZE as u64;
     fn empty() -> Self {
         Self::default()
     }
 }
 
-impl FiniteBits for RoaringBlock {
+impl Finite for RoaringBlock {
     const BITS: u64 = BLOCK_SIZE as u64;
     fn empty() -> Self {
         Self::default()
     }
 }
 
-impl FiniteBits for Encode {
+impl Finite for Encode {
     const BITS: u64 = BLOCK_SIZE as u64;
     fn empty() -> Self {
         Self::default()

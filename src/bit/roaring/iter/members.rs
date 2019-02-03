@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use crate::bit::ops::FiniteBits;
+use crate::bit::ops::Finite;
 
 use super::{super::MapEncode, MergeBy, Tuples};
 

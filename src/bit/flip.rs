@@ -43,7 +43,7 @@ where
 impl<'a, I, V> Iterator for Iter<I, Cow<'a, V>>
 where
     I: Iterator<Item = Cow<'a, V>>,
-    V: FiniteBits + Not<Output = V> + 'a,
+    V: Finite + Not<Output = V> + 'a,
 {
     type Item = Cow<'a, V>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -55,7 +55,7 @@ impl<'a, I, K, V> Iterator for Iter<I, Entry<K, Cow<'a, V>>>
 where
     I: Iterator<Item = Entry<K, Cow<'a, V>>>,
     K: Uint,
-    V: FiniteBits + Not<Output = V> + 'a,
+    V: Finite + Not<Output = V> + 'a,
 {
     type Item = Entry<K, Cow<'a, V>>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -117,7 +117,7 @@ where
 
 impl<'a, I, V> Iterator for PadDefault<I, Cow<'a, V>>
 where
-    V: FiniteBits,
+    V: Finite,
     I: Iterator<Item = Cow<'a, V>>,
 {
     type Item = Cow<'a, V>;
@@ -141,7 +141,7 @@ where
 impl<'a, I, K, V> Iterator for PadDefault<I, Entry<K, Cow<'a, V>>>
 where
     K: Uint,
-    V: FiniteBits,
+    V: Finite,
     I: Iterator<Item = Entry<K, Cow<'a, V>>>,
 {
     type Item = Entry<K, Cow<'a, V>>;

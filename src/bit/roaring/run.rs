@@ -64,7 +64,7 @@ impl Access for RunEncode {
     }
 }
 
-impl FiniteBits for RunEncode {
+impl Finite for RunEncode {
     const BITS: u64 = super::MapEncode::BITS;
     fn empty() -> Self {
         Self::default()

@@ -10,7 +10,7 @@ impl<T> Default for Map<T> {
     }
 }
 
-impl<T: Uint> FiniteBits for Map<T> {
+impl<T: Uint> Finite for Map<T> {
     const BITS: u64 = BLOCK_SIZE as u64;
     fn empty() -> Self {
         Self::default()

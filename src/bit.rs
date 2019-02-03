@@ -127,7 +127,7 @@ fn from_any_bounds<R: RangeBounds<u64>>(range: &'_ R, bits: u64) -> Range<u64> {
 
 impl<T> Count for [T]
 where
-    T: FiniteBits,
+    T: Finite,
 {
     fn bits(&self) -> u64 {
         cast::<usize, u64>(self.len()) * T::BITS
@@ -141,7 +141,7 @@ where
 impl<K, V> Count for [Entry<K, V>]
 where
     K: Uint,
-    V: FiniteBits,
+    V: Finite,
 {
     /// # Examples
     ///
@@ -170,7 +170,7 @@ where
 
 impl<T> Access for [T]
 where
-    T: FiniteBits + Access,
+    T: Finite + Access,
 {
     fn access(&self, i: u64) -> bool {
         Map::access(self, i)
@@ -200,7 +200,7 @@ where
 impl<K, V> Access for [Entry<K, V>]
 where
     K: Uint,
-    V: FiniteBits + Access,
+    V: Finite + Access,
 {
     /// Test bit at a given position.
     ///
@@ -259,7 +259,7 @@ where
 
 impl<T> Rank for [T]
 where
-    T: FiniteBits + Rank,
+    T: Finite + Rank,
 {
     fn rank1(&self, i: u64) -> u64 {
         Map::rank1(self, i)
@@ -269,7 +269,7 @@ where
 impl<K, V> Rank for [Entry<K, V>]
 where
     K: Uint,
-    V: FiniteBits + Rank,
+    V: Finite + Rank,
 {
     /// Return the number of enabled bits in `[0, i)`.
     ///
@@ -313,7 +313,7 @@ where
 
 impl<T> Select1 for [T]
 where
-    T: FiniteBits + Select1,
+    T: Finite + Select1,
 {
     fn select1(&self, n: u64) -> Option<u64> {
         Map::select1(self, n)
@@ -323,7 +323,7 @@ where
 impl<K, V> Select1 for [Entry<K, V>]
 where
     K: Uint,
-    V: FiniteBits + Select1,
+    V: Finite + Select1,
 {
     fn select1(&self, mut n: u64) -> Option<u64> {
         for entry in self {
@@ -341,7 +341,7 @@ where
 
 impl<T> Select0 for [T]
 where
-    T: FiniteBits + Select0,
+    T: Finite + Select0,
 {
     fn select0(&self, mut n: u64) -> Option<u64> {
         for (k, v) in self.iter().enumerate() {
@@ -359,7 +359,7 @@ where
 impl<K, V> Select0 for [Entry<K, V>]
 where
     K: Uint,
-    V: FiniteBits + Select0,
+    V: Finite + Select0,
 {
     /// # Examples
     ///
@@ -534,7 +534,7 @@ where
 
 impl<T> Assign<u64> for [T]
 where
-    T: FiniteBits + Assign<u64>,
+    T: Finite + Assign<u64>,
 {
     type Output = <T as Assign<u64>>::Output;
 
@@ -589,7 +589,7 @@ macro_rules! set_range {
 
 impl<T> Assign<Range<u64>> for [T]
 where
-    T: FiniteBits + Assign<Range<u64>, Output = u64>,
+    T: Finite + Assign<Range<u64>, Output = u64>,
 {
     type Output = u64;
 

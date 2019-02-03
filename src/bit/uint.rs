@@ -35,7 +35,7 @@ pub trait Uint:
     + std::ops::BitXorAssign
     + std::ops::Not<Output = Self>
     + std::iter::Sum
-    + FiniteBits
+    + Finite
     + Count
     + Rank
     + Select1
@@ -212,7 +212,7 @@ mod try_cast_from_for_usize {
 
 macro_rules! impls {
     ($($ty:ty),*) => ($(
-        impl FiniteBits for $ty {
+        impl Finite for $ty {
             #[allow(clippy::cast_lossless)]
             const BITS: u64 = std::mem::size_of::<$ty>() as u64 * 8;
             #[inline]
